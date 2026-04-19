@@ -1,0 +1,37 @@
+import React from "react";
+
+interface InstagramIconProps extends React.SVGProps<SVGSVGElement> {
+  size?: number | string;
+  color?: string;
+}
+
+const InstagramIcon: React.FC<InstagramIconProps> = ({
+  size = 24,
+  color = "currentColor",
+  style,
+  ...props
+}) => {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 256 256"
+      fill={color} // Use fill for the path color
+      focusable="false"
+      aria-hidden="true" // Good for accessibility if it's purely decorative
+      style={{
+        userSelect: "none",
+        display: "inline-block",
+        flexShrink: 0,
+        ...style, // Allows you to override styles from parent
+      }}
+      {...props}
+    >
+      {/* Removed the <g> tag as it's not strictly necessary for a single path */}
+      <path d="M128,80a48,48,0,1,0,48,48A48.05,48.05,0,0,0,128,80Zm0,80a32,32,0,1,1,32-32A32,32,0,0,1,128,160ZM176,24H80A56.06,56.06,0,0,0,24,80v96a56.06,56.06,0,0,0,56,56h96a56.06,56.06,0,0,0,56-56V80A56.06,56.06,0,0,0,176,24Zm40,152a40,40,0,0,1-40,40H80a40,40,0,0,1-40-40V80A40,40,0,0,1,80,40h96a40,40,0,0,1,40,40ZM192,76a12,12,0,1,1-12-12A12,12,0,0,1,192,76Z" />
+    </svg>
+  );
+};
+
+export default InstagramIcon;

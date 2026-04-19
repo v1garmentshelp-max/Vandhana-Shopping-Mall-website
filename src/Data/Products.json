@@ -1,0 +1,3468 @@
+[
+  {
+    "id": "prod_shadow_drip_001",
+    "title": "Shadow Drip",
+    "description": "Lorem ipsum dolor sit amet consectetur adipisicing elit. Enim, ratione repellendus quibusdam obcaecati, numquam omnis facere optio mollitia, corporis odio impedit quia assumenda commodi dignissimos fugiat quidem vel quasi minus.",
+    "brand": "Bewakoof",
+    "gender": "Men",
+    "categoryId": "cat_4",
+    "price": 790,
+    "originalPrice": 1290,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/men-s-blue-rider-vroom-panda-graphic-printed-t-shirt-387282-1738831748-1.jpg",
+      "https://images.bewakoof.com/t1080/men-s-blue-rider-vroom-panda-t-shirt-387282-1655748085-3.jpg",
+      "https://images.bewakoof.com/t640/men-s-blue-rider-vroom-panda-graphic-printed-t-shirt-387282-1738831748-1.jpg",
+      "https://images.bewakoof.com/t1080/men-s-blue-rider-vroom-panda-t-shirt-387282-1655748085-3.jpg",
+      "https://images.bewakoof.com/t640/men-s-blue-rider-vroom-panda-graphic-printed-t-shirt-387282-1738831748-1.jpg",
+      "https://images.bewakoof.com/t1080/men-s-blue-rider-vroom-panda-t-shirt-387282-1655748085-3.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL"
+    ],
+    "colors": [
+      "Black"
+    ],
+    "stockBySize": {
+      "S": 9,
+      "M": 8,
+      "L": 4,
+      "XL": 5
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4,
+      "count": 85
+    },
+    "createdAt": "2026-04-05T14:19:57.698Z"
+  },
+  {
+    "id": "prod_urban_phantom_002",
+    "title": "Urban Phantom",
+    "description": "Lorem ipsum dolor sit amet consectetur adipisicing elit. Enim, ratione repellendus quibusdam obcaecati, numquam omnis facere optio mollitia, corporis odio impedit quia assumenda commodi dignissimos fugiat quidem vel quasi minus.",
+    "brand": "Bewakoof",
+    "gender": "Men",
+    "categoryId": "cat_4",
+    "price": 990,
+    "originalPrice": 1490,
+    "isSale": true,
+    "images": [
+      "https://images.bewakoof.com/t1080/men-s-navy-blue-polo-t-shirt-685320-1764312952-1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL"
+    ],
+    "colors": [
+      "Black"
+    ],
+    "stockBySize": {
+      "S": 30,
+      "M": 17,
+      "L": 1,
+      "XL": 21
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.1,
+      "count": 286
+    },
+    "createdAt": "2026-02-14T06:31:45.150Z"
+  },
+  {
+    "id": "prod_neon_rebellion_003",
+    "title": "Neon Rebellion",
+    "description": "A statement piece with vibrant neon details and rebellious street art.",
+    "brand": "Bewakoof",
+    "gender": "Men",
+    "categoryId": "cat_4",
+    "price": 890,
+    "originalPrice": 1190,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t1080/men-s-black-oversized-t-shirt-597336-1751459333-1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL"
+    ],
+    "colors": [
+      "Black"
+    ],
+    "stockBySize": {
+      "S": 9,
+      "M": 10,
+      "L": 4,
+      "XL": 11
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.5,
+      "count": 36
+    },
+    "createdAt": "2026-02-04T17:33:45.541Z"
+  },
+  {
+    "id": "prod_void_runner_004",
+    "title": "Void Runner",
+    "description": "Techwear inspired jacket with water-resistant fabric.",
+    "brand": "Bewakoof",
+    "gender": "Men",
+    "categoryId": "cat_4",
+    "price": 1200,
+    "originalPrice": 1800,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t1080/men-s-red-oversized-t-shirt-547410-1739174315-1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL"
+    ],
+    "colors": [
+      "Black"
+    ],
+    "stockBySize": {
+      "S": 17,
+      "M": 18,
+      "L": 12,
+      "XL": 12
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.4,
+      "count": 20
+    },
+    "createdAt": "2026-03-30T22:35:27.447Z"
+  },
+  {
+    "id": "prod_batman_outline_logo_005",
+    "title": "Batman Outline Logo",
+    "description": "A classic Batman logo on a black oversized t-shirt.",
+    "brand": "Bewakoof",
+    "gender": "Men",
+    "categoryId": "cat_4",
+    "price": 790,
+    "originalPrice": 1290,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/men-s-black-batman-outline-logo-graphic-printed-oversized-t-shirt-519159-1753167794-1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL"
+    ],
+    "colors": [
+      "Black"
+    ],
+    "stockBySize": {
+      "S": 7,
+      "M": 9,
+      "L": 1,
+      "XL": 13
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 3.9,
+      "count": 90
+    },
+    "createdAt": "2025-12-18T09:19:41.690Z"
+  },
+  {
+    "id": "prod_grey_oversized_t_shirt_006",
+    "title": "Grey Oversized T-Shirt",
+    "description": "A classic grey oversized t-shirt.",
+    "brand": "Bewakoof",
+    "gender": "Men",
+    "categoryId": "cat_4",
+    "price": 790,
+    "originalPrice": 1290,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t1080/men-s-grey-oversized-t-shirt-539791-1747030188-1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL"
+    ],
+    "colors": [
+      "Grey"
+    ],
+    "stockBySize": {
+      "S": 9,
+      "M": 7,
+      "L": 10,
+      "XL": 19
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.4,
+      "count": 59
+    },
+    "createdAt": "2026-02-24T10:47:52.175Z"
+  },
+  {
+    "id": "prod_brown_oversized_cargo_warm_joggers_007",
+    "title": "Brown Oversized Cargo Warm Joggers",
+    "description": "Brown Oversized Cargo Warm Joggers",
+    "brand": "Bewakoof",
+    "gender": "Men",
+    "categoryId": "cat_5",
+    "price": 1290,
+    "originalPrice": 1490,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/men-s-brown-oversized-cargo-warm-joggers-552891-1764659401-1.jpg"
+    ],
+    "sizes": [
+      "M",
+      "L",
+      "XL"
+    ],
+    "colors": [
+      "Brown"
+    ],
+    "stockBySize": {
+      "M": 15,
+      "L": 9,
+      "XL": 23
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4,
+      "count": 160
+    },
+    "createdAt": "2026-02-13T21:21:49.371Z"
+  },
+  {
+    "id": "prod_grey_oversized_warm_joggers_008",
+    "title": "Grey Oversized Warm Joggers",
+    "description": "Grey Oversized Warm Joggers",
+    "brand": "Bewakoof",
+    "gender": "Men",
+    "categoryId": "cat_5",
+    "price": 1290,
+    "originalPrice": 1490,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/men-s-grey-oversized-warm-joggers-646474-1764232996-1.jpg"
+    ],
+    "sizes": [
+      "M",
+      "L",
+      "XL"
+    ],
+    "colors": [
+      "Grey"
+    ],
+    "stockBySize": {
+      "M": 5,
+      "L": 10,
+      "XL": 24
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.4,
+      "count": 197
+    },
+    "createdAt": "2026-02-09T20:20:40.859Z"
+  },
+  {
+    "id": "prod_grey_oversized_cargo_warm_joggers_009",
+    "title": "Grey Oversized Cargo Warm Joggers",
+    "description": "Grey Oversized Cargo Warm Joggers",
+    "brand": "Bewakoof",
+    "gender": "Men",
+    "categoryId": "cat_5",
+    "price": 1290,
+    "originalPrice": 1490,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/men-s-grey-oversized-cargo-warm-joggers-552890-1764246607-1.jpg"
+    ],
+    "sizes": [
+      "M",
+      "L",
+      "XL"
+    ],
+    "colors": [
+      "Grey"
+    ],
+    "stockBySize": {
+      "M": 15,
+      "L": 5,
+      "XL": 11
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.5,
+      "count": 247
+    },
+    "createdAt": "2025-12-24T01:16:22.836Z"
+  },
+  {
+    "id": "prod_green_oversized_cargo_joggers_010",
+    "title": "Green Oversized Cargo Joggers",
+    "description": "Green Oversized Cargo Joggers",
+    "brand": "Bewakoof",
+    "gender": "Men",
+    "categoryId": "cat_5",
+    "price": 1290,
+    "originalPrice": 1490,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/men-s-green-oversized-cargo-joggers-552881-1755780290-1.jpg"
+    ],
+    "sizes": [
+      "M",
+      "L",
+      "XL"
+    ],
+    "colors": [
+      "Green"
+    ],
+    "stockBySize": {
+      "M": 13,
+      "L": 24,
+      "XL": 31
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.4,
+      "count": 242
+    },
+    "createdAt": "2026-02-02T07:55:52.513Z"
+  },
+  {
+    "id": "prod_black_super_loose_fit_brushed_cargo_joggers_011",
+    "title": "Black Super Loose Fit Brushed Cargo Joggers",
+    "description": "Black Super Loose Fit Brushed Cargo Joggers",
+    "brand": "Bewakoof",
+    "gender": "Men",
+    "categoryId": "cat_5",
+    "price": 1290,
+    "originalPrice": 1490,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/men-s-black-super-loose-fit-brushed-cargo-joggers-617399-1764233001-1.jpg"
+    ],
+    "sizes": [
+      "M",
+      "L",
+      "XL"
+    ],
+    "colors": [
+      "Black"
+    ],
+    "stockBySize": {
+      "M": 25,
+      "L": 4,
+      "XL": 22
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.3,
+      "count": 55
+    },
+    "createdAt": "2026-03-24T05:16:50.954Z"
+  },
+  {
+    "id": "prod_black_oversized_cargo_joggers_012",
+    "title": "Black Oversized Cargo Joggers",
+    "description": "Black Oversized Cargo Joggers",
+    "brand": "Bewakoof",
+    "gender": "Men",
+    "categoryId": "cat_5",
+    "price": 1290,
+    "originalPrice": 1490,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/men-s-black-oversized-cargo-joggers-552880-1757414247-1.jpg"
+    ],
+    "sizes": [
+      "M",
+      "L",
+      "XL"
+    ],
+    "colors": [
+      "Black"
+    ],
+    "stockBySize": {
+      "M": 3,
+      "L": 5,
+      "XL": 17
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.1,
+      "count": 27
+    },
+    "createdAt": "2026-03-26T21:49:46.426Z"
+  },
+  {
+    "id": "prod_jet_black_vest_013",
+    "title": "Jet Black Vest",
+    "description": "Jet Black Vest",
+    "brand": "Bewakoof",
+    "gender": "Men",
+    "categoryId": "cat_29",
+    "price": 290,
+    "originalPrice": 390,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/men-s-jet-black-vest-210687-1755589153-1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Black"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 11,
+      "L": 16
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.1,
+      "count": 92
+    },
+    "createdAt": "2026-01-18T17:50:22.033Z"
+  },
+  {
+    "id": "prod_white_squid_game_graphic_printed_oversized_vest_014",
+    "title": "White Squid Game Graphic Printed Oversized Vest",
+    "description": "White Squid Game Graphic Printed Oversized Vest",
+    "brand": "Bewakoof",
+    "gender": "Men",
+    "categoryId": "cat_29",
+    "price": 290,
+    "originalPrice": 390,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/men-s-white-squid-game-graphic-printed-oversized-vest-683865-1750768560-1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "White"
+    ],
+    "stockBySize": {
+      "S": 31,
+      "M": 12,
+      "L": 20
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.6,
+      "count": 261
+    },
+    "createdAt": "2026-04-01T22:49:19.856Z"
+  },
+  {
+    "id": "prod_white_warrior_graphic_printed_vest_015",
+    "title": "White Warrior Graphic Printed Vest",
+    "description": "White Warrior Graphic Printed Vest",
+    "brand": "Bewakoof",
+    "gender": "Men",
+    "categoryId": "cat_29",
+    "price": 290,
+    "originalPrice": 390,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/men-s-white-warrior-graphic-printed-vest-666765-1745225947-1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "White"
+    ],
+    "stockBySize": {
+      "S": 1,
+      "M": 15,
+      "L": 38
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.1,
+      "count": 67
+    },
+    "createdAt": "2026-03-27T04:06:34.509Z"
+  },
+  {
+    "id": "prod_jet_black_trust_me_graphic_printed_oversized_vest_016",
+    "title": "Jet Black Trust Me Graphic Printed Oversized Vest",
+    "description": "Jet Black Trust Me Graphic Printed Oversized Vest",
+    "brand": "Bewakoof",
+    "gender": "Men",
+    "categoryId": "cat_29",
+    "price": 290,
+    "originalPrice": 390,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/men-s-jet-black-trust-me-graphic-printed-oversized-vest-684864-1764312822-1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Black"
+    ],
+    "stockBySize": {
+      "S": 23,
+      "M": 16,
+      "L": 16
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.9,
+      "count": 260
+    },
+    "createdAt": "2026-02-13T11:09:41.221Z"
+  },
+  {
+    "id": "prod_black_oversized_vest_017",
+    "title": "Black Oversized Vest",
+    "description": "Black Oversized Vest",
+    "brand": "Bewakoof",
+    "gender": "Men",
+    "categoryId": "cat_29",
+    "price": 290,
+    "originalPrice": 390,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/men-s-black-oversized-vest-500149-1747303723-1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Black"
+    ],
+    "stockBySize": {
+      "S": 4,
+      "M": 6,
+      "L": 41
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 3.9,
+      "count": 45
+    },
+    "createdAt": "2026-02-23T07:20:50.919Z"
+  },
+  {
+    "id": "prod_vroom_panda_round_neck_vest_018",
+    "title": "Vroom Panda Round Neck Vest",
+    "description": "Vroom Panda Round Neck Vest",
+    "brand": "Bewakoof",
+    "gender": "Men",
+    "categoryId": "cat_29",
+    "price": 290,
+    "originalPrice": 390,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/vroom-panda-round-neck-vest-387285-1656020850-1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Black"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 1,
+      "L": 23
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4,
+      "count": 206
+    },
+    "createdAt": "2026-04-10T10:07:21.248Z"
+  },
+  {
+    "id": "prod_men_s_white_better_better_graphic_printed_boxy_fit_vest_019",
+    "title": "Men's White Better Better Graphic Printed Boxy Fit Vest",
+    "description": "Men's White Better Better Graphic Printed Boxy Fit Vest",
+    "brand": "Bewakoof",
+    "gender": "Men",
+    "categoryId": "cat_29",
+    "price": 290,
+    "originalPrice": 390,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/men-s-white-better-better-graphic-printed-boxy-fit-vest-684010-1758891610-1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "White"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2026-01-19T21:58:59.045Z"
+  },
+  {
+    "id": "prod_men_s_navy_blue_polo_t_shirt_020",
+    "title": "Men's Navy Blue Polo T-Shirt",
+    "description": "Men's Navy Blue Polo T-Shirt",
+    "brand": "Bewakoof",
+    "gender": "Men",
+    "categoryId": "cat_6",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/men-s-navy-blue-polo-t-shirt-685320-1764312952-1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Navy Blue"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2026-01-24T03:40:28.062Z"
+  },
+  {
+    "id": "prod_men_s_jet_black_polo_t_shirt_021",
+    "title": "Men's Jet Black Polo T-Shirt",
+    "description": "Men's Jet Black Polo T-Shirt",
+    "brand": "Bewakoof",
+    "gender": "Men",
+    "categoryId": "cat_6",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/men-s-jet-black-polo-t-shirt-685318-1764308980-1.jpg",
+      "https://images.bewakoof.com/t1080/men-s-jet-black-polo-t-shirt-685318-1762175569-2.jpg",
+      "https://images.bewakoof.com/t1080/men-s-jet-black-polo-t-shirt-685318-1764308985-3.jpg",
+      "https://images.bewakoof.com/t1080/men-s-jet-black-polo-t-shirt-685318-1762175577-4.jpg",
+      "https://images.bewakoof.com/t1080/men-s-jet-black-polo-t-shirt-685318-1762175582-5.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Black"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2026-03-02T00:40:49.940Z"
+  },
+  {
+    "id": "prod_men_s_navy_blue_polo_t_shirt_022",
+    "title": "Men's Navy Blue Polo T-Shirt",
+    "description": "Men's Navy Blue Polo T-Shirt",
+    "brand": "Bewakoof",
+    "gender": "Men",
+    "categoryId": "cat_6",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t1080/1003820_2026-04-03t08-40-38_1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Navy Blue"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2025-12-18T18:59:10.774Z"
+  },
+  {
+    "id": "prod_men_s_chocolate_brown_textured_oversized_parachute_pants_023",
+    "title": "Men's Chocolate Brown Textured Oversized Parachute Pants",
+    "description": "Men's Chocolate Brown Textured Oversized Parachute Pants",
+    "brand": "Bewakoof",
+    "gender": "Men",
+    "categoryId": "cat_7",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/men-s-chocolate-brown-textured-oversized-parachute-pants-646483-1758624642-1.jpg",
+      "https://images.bewakoof.com/t1080/men-s-chocolate-brown-textured-track-pants-646483-1734504092-2.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Chocolate Brown"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2026-02-11T18:04:44.883Z"
+  },
+  {
+    "id": "prod_men_s_grey_gurkha_pants_024",
+    "title": "Men's Grey Gurkha Pants",
+    "description": "Men's Grey Gurkha Pants",
+    "brand": "Bewakoof",
+    "gender": "Men",
+    "categoryId": "cat_7",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/men-s-grey-gurkha-pants-677458-1757592916-1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Grey"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2026-01-14T10:53:45.357Z"
+  },
+  {
+    "id": "prod_men_s_beige_textured_oversized_parachute_pants_025",
+    "title": "Men's Beige Textured Oversized Parachute Pants",
+    "description": "Men's Beige Textured Oversized Parachute Pants",
+    "brand": "Bewakoof",
+    "gender": "Men",
+    "categoryId": "cat_7",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t1080/men-s-beige-textured-oversized-parachute-pants-646482-1758531469-1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Beige"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2026-04-01T14:50:24.699Z"
+  },
+  {
+    "id": "prod_men_s_white_cotton_linen_shirt_026",
+    "title": "Men's White Cotton Linen Shirt",
+    "description": "Men's White Cotton Linen Shirt",
+    "brand": "Bewakoof",
+    "gender": "Men",
+    "categoryId": "cat_8",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t1080/1500953_2026-04-01t13-00-23_1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Beige"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2026-01-09T10:32:29.231Z"
+  },
+  {
+    "id": "prod_men_s_mellow_mauve_cotton_linen_shirt_027",
+    "title": "Men's Mellow Mauve Cotton Linen Shirt",
+    "description": "Men's Mellow Mauve Cotton Linen Shirt",
+    "brand": "Bewakoof",
+    "gender": "Men",
+    "categoryId": "cat_8",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t1080/1500955_2026-04-01t12-31-28_1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Beige"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2026-02-16T02:54:23.966Z"
+  },
+  {
+    "id": "prod_men_s_jet_black_cotton_linen_shirt_028",
+    "title": "Men's Jet Black Cotton Linen Shirt",
+    "description": "Men's Jet Black Cotton Linen Shirt",
+    "brand": "Bewakoof",
+    "gender": "Men",
+    "categoryId": "cat_8",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t1080/1500950_2026-04-01t12-51-17_1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Beige"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2026-01-21T19:12:15.808Z"
+  },
+  {
+    "id": "prod_men_s_light_blue_washed_slim_straight_fit_stretchable_mid_rise_jeans_029",
+    "title": "Men's Light Blue Washed Slim Straight Fit Stretchable Mid-Rise Jeans",
+    "description": "Men's Light Blue Washed Slim Straight Fit Stretchable Mid-Rise Jeans",
+    "brand": "Bewakoof",
+    "gender": "Men",
+    "categoryId": "cat_7",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t1080/men-s-light-blue-slim-straight-fit-stretchable-mid-rise-jeans-662623-1754227604-1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Beige"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2026-03-06T10:49:39.678Z"
+  },
+  {
+    "id": "prod_men_s_beige_textured_oversized_parachute_pants_025_dup_29",
+    "title": "Men's Beige Textured Oversized Parachute Pants",
+    "description": "Men's Beige Textured Oversized Parachute Pants",
+    "brand": "Bewakoof",
+    "gender": "Men",
+    "categoryId": "cat_7",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t1080/1003097_2026-03-30t07-11-57_1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Beige"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2026-03-01T08:46:09.292Z"
+  },
+  {
+    "id": "prod_men_s_beige_textured_oversized_parachute_pants_025_dup_30",
+    "title": "Men's Beige Textured Oversized Parachute Pants",
+    "description": "Men's Beige Textured Oversized Parachute Pants",
+    "brand": "Bewakoof",
+    "gender": "Men",
+    "categoryId": "cat_7",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t1080/men-s-blue-baggy-fit-carpenter-mid-rise-jeans-625027-1751010062-1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Beige"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2026-01-20T00:20:26.881Z"
+  },
+  {
+    "id": "prod_men_s_beige_textured_oversized_parachute_pants_025_dup_31",
+    "title": "Men's Beige Textured Oversized Parachute Pants",
+    "description": "Men's Beige Textured Oversized Parachute Pants",
+    "brand": "Bewakoof",
+    "gender": "Men",
+    "categoryId": "cat_7",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/men-s-gardenia-the-rogue-color-block-oversized-track-pants-666390-1754489685-1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Beige"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2026-04-09T05:57:17.067Z"
+  },
+  {
+    "id": "prod_men_s_beige_textured_oversized_parachute_pants_025_dup_32",
+    "title": "Men's Beige Textured Oversized Parachute Pants",
+    "description": "Men's Beige Textured Oversized Parachute Pants",
+    "brand": "Bewakoof",
+    "gender": "Men",
+    "categoryId": "cat_7",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/men-s-black-go-rogue-color-block-oversized-track-pants-666391-1754630922-1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Beige"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2025-12-20T02:49:03.982Z"
+  },
+  {
+    "id": "prod_men_s_beige_textured_oversized_parachute_pants_025_dup_33",
+    "title": "Men's Beige Textured Oversized Parachute Pants",
+    "description": "Men's Beige Textured Oversized Parachute Pants",
+    "brand": "Bewakoof",
+    "gender": "Men",
+    "categoryId": "cat_7",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/men-s-grey-track-pants-617480-1754575390-1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Beige"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2026-02-22T07:32:39.972Z"
+  },
+  {
+    "id": "prod_men_s_light_grey_oversized_cotton_linen_shorts_025",
+    "title": "Men's Light Grey Oversized Cotton Linen Shorts",
+    "description": "Men's Light Grey Oversized Cotton Linen Shorts",
+    "brand": "Bewakoof",
+    "gender": "Men",
+    "categoryId": "cat_27",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/men-s-light-grey-oversized-cotton-linen-shorts-684284-1758011947-1.jpg",
+      "https://images.bewakoof.com/t1080/men-s-light-grey-oversized-cotton-linen-shorts-684284-1757482995-2.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Light Grey"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2026-03-11T16:51:53.804Z"
+  },
+  {
+    "id": "prod_men_s_khaki_brown_oversized_cotton_linen_shorts_025",
+    "title": "Men's Khaki Brown Oversized Cotton Linen Shorts",
+    "description": "Men's Khaki Brown Oversized Cotton Linen Shorts",
+    "brand": "Bewakoof",
+    "gender": "Men",
+    "categoryId": "cat_27",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t1080/men-s-khaki-brown-oversized-cotton-linen-shorts-684292-1758011941-1.jpg",
+      "https://images.bewakoof.com/t1080/men-s-khaki-brown-oversized-cotton-linen-shorts-684292-1757482936-2.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Khaki Brown"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2026-01-17T08:09:21.307Z"
+  },
+  {
+    "id": "prod_men_s_light_grey_washed_baggy_fit_cargo_shorts_025",
+    "title": "Men's Light Grey Washed Baggy Fit Cargo Shorts",
+    "description": "Men's Light Grey Washed Baggy Fit Cargo Shorts",
+    "brand": "Bewakoof",
+    "gender": "Men",
+    "categoryId": "cat_27",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t1080/671346_2025-12-12t17-06-59_1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Light Grey"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2025-12-30T17:37:33.727Z"
+  },
+  {
+    "id": "prod_men_s_white_all_over_printed_pyjamas_025",
+    "title": "Men's White All Over Printed Pyjamas",
+    "description": "Men's White All Over Printed Pyjamas",
+    "brand": "Bewakoof",
+    "gender": "Men",
+    "categoryId": "cat_28",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t1080/men-s-white-all-over-printed-pyjamas-570812-1741848115-1.jpg",
+      "https://images.bewakoof.com/t1080/men-s-white-all-over-printed-pyjamas-570812-1741848124-3.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "White"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2025-12-23T16:41:43.283Z"
+  },
+  {
+    "id": "prod_men_s_maroon_pyjamas_025",
+    "title": "Men's Maroon Pyjamas",
+    "description": "Men's Maroon Pyjamas",
+    "brand": "Bewakoof",
+    "gender": "Men",
+    "categoryId": "cat_28",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t1080/men-s-maroon-pyjamas-589681-1740047097-1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Maroon"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2025-12-22T10:37:35.023Z"
+  },
+  {
+    "id": "prod_men_s_grey_pyjamas_025",
+    "title": "Men's Grey Pyjamas",
+    "description": "Men's Grey Pyjamas",
+    "brand": "Bewakoof",
+    "gender": "Men",
+    "categoryId": "cat_28",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t1080/men-s-grey-pyjamas-581594-1747894023-1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Grey"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2026-03-29T19:07:58.936Z"
+  },
+  {
+    "id": "prod_women_s_pink_white_camo_printed_oversized_t-shirt_025",
+    "title": "Women's Pink White Camo Printed Oversized T-Shirt",
+    "description": "Women's Pink White Camo Printed Oversized T-Shirt",
+    "brand": "Bewakoof",
+    "gender": "Women",
+    "categoryId": "cat_11",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/women-s-pink-white-camo-printed-oversized-t-shirt-580371-1765193986-1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Pink White"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2026-01-11T13:35:23.427Z"
+  },
+  {
+    "id": "prod_women_s_red_bonjour_paris_graphic_printed_boyfriend_t-shirt_025",
+    "title": "Women's Red Bonjour Paris Graphic Printed Boyfriend T-Shirt",
+    "description": "Women's Red Bonjour Paris Graphic Printed Boyfriend T-Shirt",
+    "brand": "Bewakoof",
+    "gender": "Women",
+    "categoryId": "cat_11",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/women-s-red-bonjour-paris-graphic-printed-boyfriend-t-shirt-305319-1745902553-1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Red"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2025-12-27T04:01:22.044Z"
+  },
+  {
+    "id": "prod_women_s_white_totally_koalified_graphic_printed_oversized_t-shirt_025",
+    "title": "Women's White Totally Koalified Graphic Printed Oversized T-shirt",
+    "description": "Women's White Totally Koalified Graphic Printed Oversized T-shirt",
+    "brand": "Bewakoof",
+    "gender": "Women",
+    "categoryId": "cat_11",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/534839_2025-12-26t11-49-12_1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "White"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2026-02-25T07:07:24.304Z"
+  },
+  {
+    "id": "prod_women_s_green_sundays_we_do_nothing_graphic_printed_boyfriend_t-shirt_025",
+    "title": "Women's Green Sundays We Do Nothing Graphic Printed Boyfriend T-Shirt",
+    "description": "Women's Green Sundays We Do Nothing Graphic Printed Boyfriend T-Shirt",
+    "brand": "Bewakoof",
+    "gender": "Women",
+    "categoryId": "cat_11",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/women-s-green-sundays-we-do-nothing-graphic-printed-boyfriend-t-shirt-612445-1760699327-1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Green"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2026-04-04T23:34:49.985Z"
+  },
+  {
+    "id": "prod_women_s_white_slim_fit_t-shirt_025",
+    "title": "Women's White Slim Fit T-Shirt",
+    "description": "Women's White Slim Fit T-Shirt",
+    "brand": "Bewakoof",
+    "gender": "Women",
+    "categoryId": "cat_11",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/women-s-white-slim-fit-t-shirt-243240-1755668746-1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "White"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2026-03-28T15:30:56.923Z"
+  },
+  {
+    "id": "prod_women_s_black_my_badass_tee_graphic_printed_boyfriend_t-shirt_025",
+    "title": "Women's Black My Badass Tee Graphic Printed Boyfriend T-Shirt",
+    "description": "Women's Black My Badass Tee Graphic Printed Boyfriend T-Shirt",
+    "brand": "Bewakoof",
+    "gender": "Women",
+    "categoryId": "cat_11",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/women-s-black-my-badass-tee-graphic-printed-boyfriend-t-shirt-538536-1744630815-1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Black"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2026-04-03T10:08:56.381Z"
+  },
+  {
+    "id": "prod_women_s_black_tropical_vibes_typography_oversized_t-shirt_025",
+    "title": "Women's Black Tropical Vibes Typography Oversized T-Shirt",
+    "description": "Women's Black Tropical Vibes Typography Oversized T-Shirt",
+    "brand": "Bewakoof",
+    "gender": "Women",
+    "categoryId": "cat_11",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/women-s-black-tropical-vibes-typography-oversized-t-shirt-493433-1741326055-1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Black"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2026-02-08T23:27:12.715Z"
+  },
+  {
+    "id": "prod_women_s_ginger_root_brown_oversized_t-shirt_025",
+    "title": "Women's Ginger Root Brown Oversized T-Shirt",
+    "description": "Women's Ginger Root Brown Oversized T-Shirt",
+    "brand": "Bewakoof",
+    "gender": "Women",
+    "categoryId": "cat_11",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/women-s-ginger-root-brown-oversized-t-shirt-657338-1757595251-1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Ginger Root Brown"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2026-03-31T09:46:38.086Z"
+  },
+  {
+    "id": "prod_women_s_black_baggy_oversized_cargo_parachute_pants_025",
+    "title": "Women's Black Baggy Oversized Cargo Parachute Pants",
+    "description": "Women's Black Baggy Oversized Cargo Parachute Pants",
+    "brand": "Bewakoof",
+    "gender": "Women",
+    "categoryId": "cat_13",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/women-s-black-baggy-oversized-cargo-parachute-pants-628765-1751568695-1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Black"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2025-12-22T23:57:39.997Z"
+  },
+  {
+    "id": "prod_women_s_blue_straight_cargo_pants_025",
+    "title": "Women's Blue Straight Cargo Pants",
+    "description": "Women's Blue Straight Cargo Pants",
+    "brand": "Bewakoof",
+    "gender": "Women",
+    "categoryId": "cat_13",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/women-s-blue-straight-cargo-pants-620014-1747052129-1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Blue"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2026-02-09T20:56:07.736Z"
+  },
+  {
+    "id": "prod_women_s_black_baggy_oversized_cargo_parachute_pants_025_dup_50",
+    "title": "Women's Black Baggy Oversized Cargo Parachute Pants",
+    "description": "Women's Black Baggy Oversized Cargo Parachute Pants",
+    "brand": "Bewakoof",
+    "gender": "Women",
+    "categoryId": "cat_13",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/women-s-black-baggy-oversized-parachute-pants-628274-1739450771-1.png"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Black"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2025-12-23T05:06:07.123Z"
+  },
+  {
+    "id": "prod_women_s_fawn_oversized_korean_pants_025",
+    "title": "Women's Fawn Oversized Korean Pants",
+    "description": "Women's Fawn Oversized Korean Pants",
+    "brand": "Bewakoof",
+    "gender": "Women",
+    "categoryId": "cat_13",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/women-s-fawn-oversized-korean-pants-679400-1755783832-1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Fawn"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2026-03-29T05:45:23.966Z"
+  },
+  {
+    "id": "prod_women_s_black_oversized_joggers_025",
+    "title": "Women's Black Oversized Joggers",
+    "description": "Women's Black Oversized Joggers",
+    "brand": "Bewakoof",
+    "gender": "Women",
+    "categoryId": "cat_14",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/women-s-black-oversized-joggers-609829-1733917062-1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Black"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2026-01-15T16:07:29.506Z"
+  },
+  {
+    "id": "prod_women_s_green_oversized_cargo_joggers_025",
+    "title": "Women's Green Oversized Cargo Joggers",
+    "description": "Women's Green Oversized Cargo Joggers",
+    "brand": "Bewakoof",
+    "gender": "Women",
+    "categoryId": "cat_14",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/women-s-green-oversized-cargo-joggers-585683-1764233010-1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Green"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2026-03-11T08:24:43.163Z"
+  },
+  {
+    "id": "prod_women_s_camel_brown_graphic_printed_super_loose_fit_brushed_cargo_joggers_025",
+    "title": "Women's Camel Brown Graphic Printed Super Loose Fit Brushed Cargo Joggers",
+    "description": "Women's Camel Brown Graphic Printed Super Loose Fit Brushed Cargo Joggers",
+    "brand": "Bewakoof",
+    "gender": "Women",
+    "categoryId": "cat_14",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/women-s-camel-brown-graphic-printed-super-loose-fit-brushed-cargo-joggers-654846-1764843453-1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Camel Brown"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2026-03-07T07:07:37.221Z"
+  },
+  {
+    "id": "prod_women_s_black_gangstar_graphic_printed_super_loose_fit_joggers_025",
+    "title": "Women's Black Gangstar Graphic Printed Super Loose Fit Joggers",
+    "description": "Women's Black Gangstar Graphic Printed Super Loose Fit Joggers",
+    "brand": "Bewakoof",
+    "gender": "Women",
+    "categoryId": "cat_14",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/women-s-black-gangstar-graphic-printed-super-loose-fit-joggers-584749-1756995652-1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Black"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2026-02-25T10:38:36.078Z"
+  },
+  {
+    "id": "prod_women_s_blue_baggy_wide_leg_jeans_025",
+    "title": "Women's Blue Baggy Wide Leg Jeans",
+    "description": "Women's Blue Baggy Wide Leg Jeans",
+    "brand": "Bewakoof",
+    "gender": "Women",
+    "categoryId": "cat_15",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/women-s-blue-baggy-wide-leg-jeans-625175-1747834302-1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Blue"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2025-12-21T11:38:22.355Z"
+  },
+  {
+    "id": "prod_women_s_blue_straight_fit_jeans_025",
+    "title": "Women's Blue Straight Fit Jeans",
+    "description": "Women's Blue Straight Fit Jeans",
+    "brand": "Bewakoof",
+    "gender": "Women",
+    "categoryId": "cat_15",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/women-s-blue-straight-fit-jeans-662194-1758194378-1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Blue"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2026-01-13T18:31:29.979Z"
+  },
+  {
+    "id": "prod_women_s_dark_blue_washed_bootcut_jeans_025",
+    "title": "Women's Dark Blue Washed Bootcut Jeans",
+    "description": "Women's Dark Blue Washed Bootcut Jeans",
+    "brand": "Bewakoof",
+    "gender": "Women",
+    "categoryId": "cat_15",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/women-s-dark-blue-washed-bootcut-jeans-646020-1739266880-1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Dark Blue"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2026-03-26T07:01:16.654Z"
+  },
+  {
+    "id": "prod_women_s_black_washed_straight_fit_distressed_jeans_025",
+    "title": "Women's Black Washed Straight Fit Distressed Jeans",
+    "description": "Women's Black Washed Straight Fit Distressed Jeans",
+    "brand": "Bewakoof",
+    "gender": "Women",
+    "categoryId": "cat_15",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/women-s-black-washed-straight-fit-distressed-jeans-671025-1758692120-1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Black"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2026-03-26T11:27:20.333Z"
+  },
+  {
+    "id": "prod_women_s_light_pink_oversized_cotton_linen_shirt_025",
+    "title": "Women's Light Pink Oversized Cotton Linen Shirt",
+    "description": "Women's Light Pink Oversized Cotton Linen Shirt",
+    "brand": "Bewakoof",
+    "gender": "Women",
+    "categoryId": "cat_16",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/1501032_2026-03-30t09-17-07_1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Light Pink"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2026-02-05T19:37:37.946Z"
+  },
+  {
+    "id": "prod_women_s_white_oversized_cotton_linen_shirt_025",
+    "title": "Women's White Oversized Cotton Linen Shirt",
+    "description": "Women's White Oversized Cotton Linen Shirt",
+    "brand": "Bewakoof",
+    "gender": "Women",
+    "categoryId": "cat_16",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t1080/1501034_2026-03-30t09-17-11_1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "White"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2026-01-06T23:33:36.854Z"
+  },
+  {
+    "id": "prod_women_s_dusty_pink_textured_oversized_shirt_025",
+    "title": "Women's Dusty Pink Textured Oversized Shirt",
+    "description": "Women's Dusty Pink Textured Oversized Shirt",
+    "brand": "Bewakoof",
+    "gender": "Women",
+    "categoryId": "cat_16",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/1004086_2026-03-09t07-36-13_1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Dusty Pink"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2026-02-04T02:45:47.394Z"
+  },
+  {
+    "id": "prod_women_s_black_oversized_crop_linen_shirt_025",
+    "title": "Women's Black Oversized Crop Linen Shirt",
+    "description": "Women's Black Oversized Crop Linen Shirt",
+    "brand": "Bewakoof",
+    "gender": "Women",
+    "categoryId": "cat_16",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/women-s-black-oversized-crop-linen-shirt-628214-1753765929-1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Black"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2025-12-29T18:52:17.237Z"
+  },
+  {
+    "id": "prod_women_s_gardenia_super_loose_fit_co_ordinates_025",
+    "title": "Women's Gardenia Super Loose Fit Co-ordinates",
+    "description": "Women's Gardenia Super Loose Fit Co-ordinates",
+    "brand": "Bewakoof",
+    "gender": "Women",
+    "categoryId": "cat_19",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/628247_2025-12-22t14-04-02_1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Gardenia"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2026-02-10T21:02:32.948Z"
+  },
+  {
+    "id": "prod_women_s_green_super_loose_fit_co_ordinates_025",
+    "title": "Women's Green Super Loose Fit Co-ordinates",
+    "description": "Women's Green Super Loose Fit Co-ordinates",
+    "brand": "Bewakoof",
+    "gender": "Women",
+    "categoryId": "cat_19",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/women-s-green-super-loose-fit-co-ordinates-628245-1738839965-1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Green"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2025-12-21T23:23:55.966Z"
+  },
+  {
+    "id": "prod_women_s_black_super_loose_fit_co_ordinates_025",
+    "title": "Women's Black Super Loose Fit Co-ordinates",
+    "description": "Women's Black Super Loose Fit Co-ordinates",
+    "brand": "Bewakoof",
+    "gender": "Women",
+    "categoryId": "cat_19",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/628249_2025-12-22t14-04-06_1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Black"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2026-01-13T16:08:27.623Z"
+  },
+  {
+    "id": "prod_women_s_orange_super_loose_fit_co_ordinates_025",
+    "title": "Women's Orange Super Loose Fit Co-ordinates",
+    "description": "Women's Orange Super Loose Fit Co-ordinates",
+    "brand": "Bewakoof",
+    "gender": "Women",
+    "categoryId": "cat_19",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/628243_2025-12-22t14-03-53_1.jpg",
+      "https://images.bewakoof.com/t1080/628243_2025-12-22t14-03-54_2.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Orange"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2025-12-18T10:23:00.491Z"
+  },
+  {
+    "id": "prod_women_s_beige_shorts_025",
+    "title": "Women's Beige Shorts",
+    "description": "Women's Beige Shorts",
+    "brand": "Bewakoof",
+    "gender": "Women",
+    "categoryId": "cat_20",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/694339_2026-02-10t08-43-29_1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Beige"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2026-03-06T06:29:31.819Z"
+  },
+  {
+    "id": "prod_women_s_blarney_green_shorts_025",
+    "title": "Women's Blarney Green Shorts",
+    "description": "Women's Blarney Green Shorts",
+    "brand": "Bewakoof",
+    "gender": "Women",
+    "categoryId": "cat_20",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/694341_2026-02-20t13-35-38_1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Blarney Green"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2026-01-04T17:49:32.286Z"
+  },
+  {
+    "id": "prod_women_s_white_shorts_025",
+    "title": "Women's White Shorts",
+    "description": "Women's White Shorts",
+    "brand": "Bewakoof",
+    "gender": "Women",
+    "categoryId": "cat_20",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/women-s-white-shorts-662157-1757939841-1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "White"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2026-03-15T12:43:37.176Z"
+  },
+  {
+    "id": "prod_women_s_shaved_chocolate_brown_shorts_025",
+    "title": "Women's Shaved Chocolate Brown Shorts",
+    "description": "Women's Shaved Chocolate Brown Shorts",
+    "brand": "Bewakoof",
+    "gender": "Women",
+    "categoryId": "cat_20",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/694334_2026-02-10t08-54-36_1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Shaved Chocolate Brown"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2026-01-03T06:46:14.085Z"
+  },
+  {
+    "id": "prod_women_s_off_white_all_over_printed_flared_dress_025",
+    "title": "Women's Off White All Over Printed Flared Dress",
+    "description": "Women's Off White All Over Printed Flared Dress",
+    "brand": "Bewakoof",
+    "gender": "Women",
+    "categoryId": "cat_30",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/1501004_2026-03-09t08-52-07_1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Off White"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2026-01-05T12:59:46.453Z"
+  },
+  {
+    "id": "prod_women_s_blue_all_over_printed_flared_dress_025",
+    "title": "Women's Blue All Over Printed Flared Dress",
+    "description": "Women's Blue All Over Printed Flared Dress",
+    "brand": "Bewakoof",
+    "gender": "Women",
+    "categoryId": "cat_30",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/women-s-blue-all-over-printed-flared-dress-685541-1763105507-1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Blue"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2026-01-14T20:42:26.998Z"
+  },
+  {
+    "id": "prod_women_s_gardenia_all_over_printed_flared_dress_025",
+    "title": "Women's Gardenia All Over Printed Flared Dress",
+    "description": "Women's Gardenia All Over Printed Flared Dress",
+    "brand": "Bewakoof",
+    "gender": "Women",
+    "categoryId": "cat_30",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/women-s-gardenia-all-over-printed-flared-dress-683838-1763040713-1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Gardenia"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2026-04-02T22:34:11.425Z"
+  },
+  {
+    "id": "prod_women_s_multicolor_all_over_printed_relaxed_fit_dress_025",
+    "title": "Women's Multicolor All Over Printed Relaxed Fit Dress",
+    "description": "Women's Multicolor All Over Printed Relaxed Fit Dress",
+    "brand": "Bewakoof",
+    "gender": "Women",
+    "categoryId": "cat_30",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/women-s-multicolor-all-over-printed-relaxed-fit-dress-684816-1763040676-1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Multicolor"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2026-03-09T07:52:58.707Z"
+  },
+  {
+    "id": "prod_women_s_black_oversized_acid_wash_hoodies_025",
+    "title": "Women's Black Oversized Acid Wash Hoodies",
+    "description": "Women's Black Oversized Acid Wash Hoodies",
+    "brand": "Bewakoof",
+    "gender": "Women",
+    "categoryId": "cat_31",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/682740_2025-12-31t05-46-54_1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Black"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2026-03-04T09:38:37.597Z"
+  },
+  {
+    "id": "prod_women_s_pink_oversized_hoodies_025",
+    "title": "Women's Pink Oversized Hoodies",
+    "description": "Women's Pink Oversized Hoodies",
+    "brand": "Bewakoof",
+    "gender": "Women",
+    "categoryId": "cat_31",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t1080/women-s-pink-oversized-hoodies-368340-1736429890-1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Pink"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2026-04-12T05:57:58.896Z"
+  },
+  {
+    "id": "prod_women_s_black_acid_wash_hoodies_025",
+    "title": "Women's Black Acid Wash Hoodies",
+    "description": "Women's Black Acid Wash Hoodies",
+    "brand": "Bewakoof",
+    "gender": "Women",
+    "categoryId": "cat_31",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/women-s-black-acid-wash-oversized-hoodies-596581-1759301098-1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Black"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2026-03-01T23:46:59.613Z"
+  },
+  {
+    "id": "prod_women_s_beige_oversized_hoodies_025",
+    "title": "Women's Beige Oversized Hoodies",
+    "description": "Women's Beige Oversized Hoodies",
+    "brand": "Bewakoof",
+    "gender": "Women",
+    "categoryId": "cat_31",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/women-s-beige-oversized-hoodies-640995-1732727271-1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Beige"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2025-12-22T00:17:15.758Z"
+  },
+  {
+    "id": "prod_women_s_bright_white_embroidered_oversized_sweatshirt_025",
+    "title": "Women's Bright White Embroidered Oversized Sweatshirt",
+    "description": "Women's Bright White Embroidered Oversized Sweatshirt",
+    "brand": "Bewakoof",
+    "gender": "Women",
+    "categoryId": "cat_32",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/women-s-bright-white-embroidered-oversized-sweatshirt-640999-1761025666-1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Bright White"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2026-02-13T04:22:56.133Z"
+  },
+  {
+    "id": "prod_women_s_pink_embroidered_oversized_cropped_sweatshirt_025",
+    "title": "Women's Pink Embroidered Oversized Cropped Sweatshirt",
+    "description": "Women's Pink Embroidered Oversized Cropped Sweatshirt",
+    "brand": "Bewakoof",
+    "gender": "Women",
+    "categoryId": "cat_32",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/women-s-pink-embroidered-oversized-cropped-sweatshirt-640984-1756904647-1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Pink"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2026-01-19T14:32:06.603Z"
+  },
+  {
+    "id": "prod_women_s_salsa_red_oversized_sweatshirt_025",
+    "title": "Women's Salsa Red Oversized Sweatshirt",
+    "description": "Women's Salsa Red Oversized Sweatshirt",
+    "brand": "Bewakoof",
+    "gender": "Women",
+    "categoryId": "cat_32",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/women-s-salsa-red-oversized-sweatshirt-682782-1759130843-1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Salsa Red"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2026-04-06T19:10:39.023Z"
+  },
+  {
+    "id": "prod_women_s_black_all_over_printed_oversized_cropped_sweatshirt_025",
+    "title": "Women's Black All Over Printed Oversized Cropped Sweatshirt",
+    "description": "Women's Black All Over Printed Oversized Cropped Sweatshirt",
+    "brand": "Bewakoof",
+    "gender": "Women",
+    "categoryId": "cat_32",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/women-s-black-all-over-printed-oversized-cropped-sweatshirt-682784-1758887708-1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Black"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2026-04-06T06:23:22.194Z"
+  },
+  {
+    "id": "prod_women_s_taupe_brown_shorts_025",
+    "title": "Women's Taupe Brown Shorts",
+    "description": "Women's Taupe Brown Shorts",
+    "brand": "Bewakoof",
+    "gender": "Women",
+    "categoryId": "cat_20",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/women-s-taupe-brown-shorts-662079-1743757265-1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Taupe Brown"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2026-04-09T09:48:07.868Z"
+  },
+  {
+    "id": "prod_women_s_purple_black_color_block_joggers_025",
+    "title": "Women's Purple Black Color Block Joggers",
+    "description": "Women's Purple Black Color Block Joggers",
+    "brand": "Bewakoof",
+    "gender": "Women",
+    "categoryId": "cat_14",
+    "price": 690,
+    "originalPrice": 790,
+    "isSale": false,
+    "images": [
+      "https://images.bewakoof.com/t640/women-s-purple-black-color-block-joggers-584753-1756986860-1.jpg"
+    ],
+    "sizes": [
+      "S",
+      "M",
+      "L"
+    ],
+    "colors": [
+      "Purple Black"
+    ],
+    "stockBySize": {
+      "S": 13,
+      "M": 19,
+      "L": 32
+    },
+    "specs": {
+      "material": "Cotton",
+      "fit": "Regular Fit",
+      "washCare": [
+        "Machine wash cold",
+        "Do not bleach"
+      ]
+    },
+    "ratings": {
+      "average": 4.8,
+      "count": 175
+    },
+    "createdAt": "2026-03-30T07:47:57.693Z"
+  }
+]

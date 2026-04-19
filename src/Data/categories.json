@@ -1,0 +1,269 @@
+[
+  {
+    "id": "men-root",
+    "name": "Men",
+    "slug": "men",
+    "image": "https://images.unsplash.com/photo-1520946490831-48eb69430369?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80",
+    "parentId": null,
+    "level": 0
+  },
+  {
+    "id": "women-root",
+    "name": "Women",
+    "slug": "women",
+    "image": "https://images.unsplash.com/photo-1520946490831-48eb69430369?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80",
+    "parentId": null,
+    "level": 0
+  },
+  {
+    "id": "kids-root",
+    "name": "Kids",
+    "slug": "kids",
+    "image": "https://images.unsplash.com/photo-1520946490831-48eb69430369?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80",
+    "parentId": null,
+    "level": 0
+  },
+  {
+    "id": "m-top",
+    "name": "Topwear",
+    "slug": "men-topwear",
+    "image": "https://images.bewakoof.com/t640/men-s-grey-oversized-t-shirt-539791-1747030188-1.jpg",
+    "parentId": "men-root",
+    "level": 1
+  },
+  {
+    "id": "m-bottom",
+    "name": "Bottomwear",
+    "slug": "men-bottomwear",
+    "image": "https://images.bewakoof.com/t640/men-s-black-oversized-cargo-joggers-552880-1757414247-1.jpg",
+    "parentId": "men-root",
+    "level": 1
+  },
+  {
+    "id": "w-top",
+    "name": "Topwear",
+    "slug": "women-topwear",
+    "image": "https://images.bewakoof.com/t640/women-s-pink-white-camo-printed-oversized-t-shirt-580371-1765193986-1.jpg",
+    "parentId": "women-root",
+    "level": 1
+  },
+  {
+    "id": "w-bottom",
+    "name": "Bottomwear",
+    "slug": "women-bottomwear",
+    "image": "https://images.bewakoof.com/t640/women-s-black-baggy-oversized-cargo-parachute-pants-628765-1751568695-1.jpg",
+    "parentId": "women-root",
+    "level": 1
+  },
+  {
+    "id": "k-top",
+    "name": "Topwear",
+    "slug": "kids-topwear",
+    "image": "https://images.bewakoof.com/t640/kids-t-shirts.jpg",
+    "parentId": "kids-root",
+    "level": 1
+  },
+  {
+    "id": "k-bottom",
+    "name": "Bottomwear",
+    "slug": "kids-bottomwear",
+    "image": "https://images.bewakoof.com/t640/kids-pants.jpg",
+    "parentId": "kids-root",
+    "level": 1
+  },
+  {
+    "id": "cat_4",
+    "name": "T-Shirts",
+    "slug": "men-t-shirts",
+    "image": "https://images.bewakoof.com/t640/men-s-grey-oversized-t-shirt-539791-1747030188-1.jpg",
+    "parentId": "m-top",
+    "level": 2
+  },
+  {
+    "id": "cat_5",
+    "name": "Joggers",
+    "slug": "men-joggers",
+    "image": "https://images.bewakoof.com/t640/men-s-black-oversized-cargo-joggers-552880-1757414247-1.jpg",
+    "parentId": "m-bottom",
+    "level": 2
+  },
+  {
+    "id": "cat_6",
+    "name": "Polos",
+    "slug": "men-polos",
+    "image": "https://images.bewakoof.com/t640/men-s-navy-blue-polo-t-shirt-685320-1764312952-1.jpg",
+    "parentId": "m-top",
+    "level": 2
+  },
+  {
+    "id": "cat_7",
+    "name": "Pants",
+    "slug": "men-pants",
+    "image": "https://images.bewakoof.com/t640/men-s-jet-black-oversized-cargo-pants-659631-1751566533-1.jpg",
+    "parentId": "m-bottom",
+    "level": 2
+  },
+  {
+    "id": "cat_8",
+    "name": "Shirts",
+    "slug": "men-shirts",
+    "image": "https://images.bewakoof.com/t640/1500978_2026-02-24t07-35-12_1.jpg",
+    "parentId": "m-top",
+    "level": 2
+  },
+  {
+    "id": "cat_9",
+    "name": "Jeans",
+    "slug": "men-jeans",
+    "image": "https://images.bewakoof.com/t640/men-s-light-blue-slim-straight-fit-stretchable-mid-rise-jeans-662623-1754227604-1.jpg",
+    "parentId": "m-bottom",
+    "level": 2
+  },
+  {
+    "id": "cat_11",
+    "name": "T-Shirts",
+    "slug": "women-t-shirts",
+    "image": "https://images.bewakoof.com/t640/women-s-pink-white-camo-printed-oversized-t-shirt-580371-1765193986-1.jpg",
+    "parentId": "w-top",
+    "level": 2
+  },
+  {
+    "id": "cat_13",
+    "name": "Pants",
+    "slug": "women-pants",
+    "image": "https://images.bewakoof.com/t640/women-s-black-baggy-oversized-cargo-parachute-pants-628765-1751568695-1.jpg",
+    "parentId": "w-bottom",
+    "level": 2
+  },
+  {
+    "id": "cat_14",
+    "name": "Joggers",
+    "slug": "women-joggers",
+    "image": "https://images.bewakoof.com/t640/women-s-black-oversized-cargo-joggers-585684-1764334435-1.jpg",
+    "parentId": "w-bottom",
+    "level": 2
+  },
+  {
+    "id": "cat_15",
+    "name": "Jeans",
+    "slug": "women-jeans",
+    "image": "https://images.bewakoof.com/t640/women-s-light-blue-washed-straight-fit-cargo-jeans-671035-1756977298-1.jpg",
+    "parentId": "w-bottom",
+    "level": 2
+  },
+  {
+    "id": "cat_16",
+    "name": "Shirts",
+    "slug": "women-shirts",
+    "image": "https://images.bewakoof.com/t640/1501032_2026-03-30t09-17-07_1.jpg",
+    "parentId": "w-top",
+    "level": 2
+  },
+  {
+    "id": "cat_19",
+    "name": "Co-ord Sets",
+    "slug": "women-co-ord-sets",
+    "image": "https://images.bewakoof.com/t640/628247_2025-12-22t14-04-02_1.jpg",
+    "parentId": "w-top",
+    "level": 2
+  },
+  {
+    "id": "cat_20",
+    "name": "Shorts",
+    "slug": "women-shorts",
+    "image": "https://images.bewakoof.com/t640/694339_2026-02-10t08-43-29_1.jpg",
+    "parentId": "w-bottom",
+    "level": 2
+  },
+  {
+    "id": "cat_21",
+    "name": "T-Shirts",
+    "slug": "kids-t-shirts",
+    "parentId": "k-top",
+    "level": 2
+  },
+  {
+    "id": "cat_22",
+    "name": "Full Sleeves T-Shirts",
+    "slug": "kids-full-sleeves-t-shirts",
+    "parentId": "k-top",
+    "level": 2
+  },
+  {
+    "id": "cat_23",
+    "name": "Pants",
+    "slug": "kids-pants",
+    "parentId": "k-bottom",
+    "level": 2
+  },
+  {
+    "id": "cat_24",
+    "name": "Oversized T-Shirts",
+    "slug": "kids-oversized-t-shirts",
+    "parentId": "k-top",
+    "level": 2
+  },
+  {
+    "id": "cat_25",
+    "name": "Co-ord Sets",
+    "slug": "kids-co-ord-sets",
+    "parentId": "k-top",
+    "level": 2
+  },
+  {
+    "id": "cat_26",
+    "name": "Track Pants",
+    "slug": "men-track-pants",
+    "image": "https://images.bewakoof.com/t640/men-s-black-go-rogue-color-block-oversized-track-pants-666391-1754630922-1.jpg",
+    "parentId": "m-bottom",
+    "level": 2
+  },
+  {
+    "id": "cat_27",
+    "name": "Shorts",
+    "slug": "men-shorts",
+    "image": "https://images.bewakoof.com/t640/men-s-light-grey-oversized-cotton-linen-shorts-684284-1758011947-1.jpg",
+    "parentId": "m-bottom",
+    "level": 2
+  },
+  {
+    "id": "cat_28",
+    "name": "Pyjamas",
+    "slug": "men-pyjamas",
+    "image": "https://images.bewakoof.com/t640/694146_2026-03-23t09-09-57_1.jpg",
+    "parentId": "m-bottom",
+    "level": 2
+  },
+  {
+    "id": "cat_29",
+    "name": "Vests",
+    "slug": "men-vests",
+    "image": "https://images.bewakoof.com/t640/men-s-jet-black-vest-210687-1755589153-1.jpg",
+    "parentId": "m-top",
+    "level": 2
+  },
+  {
+    "id": "cat_30",
+    "name": "Dresses",
+    "slug": "women-dresses",
+    "image": "https://images.bewakoof.com/t640/women-s-blue-all-over-printed-flared-dress-685541-1763105507-1.jpg",
+    "parentId": "w-top",
+    "level": 2
+  },
+  {
+    "id": "cat_31",
+    "name": "hoodies",
+    "slug": "women-hoodies",
+    "image": "https://images.bewakoof.com/t640/women-s-black-acid-wash-oversized-hoodies-596581-1759301098-1.jpg",
+    "parentId": "w-top",
+    "level": 2
+  },
+  {
+    "id": "cat_32",
+    "name": "sweatshirts",
+    "slug": "women-sweatshirts",
+    "image": "https://images.bewakoof.com/t640/women-s-bright-white-embroidered-oversized-sweatshirt-640999-1761025666-1.jpg",
+    "parentId": "w-top",
+    "level": 2
+  }
+]
