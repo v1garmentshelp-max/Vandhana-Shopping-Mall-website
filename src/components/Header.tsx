@@ -16,6 +16,7 @@ import { CiMenuFries } from "react-icons/ci";
 import men from "../assets/icons/Men.webp";
 import women from "../assets/icons/Women.webp";
 import kids from "../assets/icons/Kids.svg";
+import EditTshirtIcon from "../assets/icons/EditTshirtIcon.svg";
 
 const Header: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false); // State for Sidebar
@@ -261,11 +262,12 @@ const Header: React.FC = () => {
               }}
               className="flex items-center pl-1 gap-4 py-3 hover:bg-gray-50 transition-colors rounded-lg"
             >
-              <div className="w-10 h-10 flex items-center justify-center">
-                {/* A generic icon for Customize, e.g. a star or palette, since we don't have a specific customizer icon image */}
-                <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center font-bold text-gray-600 text-lg">
-                  C
-                </div>
+              <div className="w-8 h-8">
+                <img
+                  src={EditTshirtIcon}
+                  alt="Customize"
+                  className="w-full h-full object-cover"
+                />
               </div>
               <span className="font-medium text-gray-900 text-[15px]">
                 Customize
