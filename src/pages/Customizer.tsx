@@ -117,8 +117,8 @@ const Customizer = () => {
 
     const initCanvas = (ref: React.RefObject<HTMLCanvasElement | null>) => {
       const c = new Canvas(ref.current!, {
-        width: 160,
-        height: 300,
+        width: garmentType == "hoodie" ? 160 : 160,
+        height: garmentType == "hoodie" ? 200 : 300,
         preserveObjectStacking: true,
         selection: false,
       });
@@ -608,6 +608,7 @@ const Customizer = () => {
                 <img
                   src={MODELS[garmentType][side]}
                   className="absolute top-0 left-0"
+                  loading="eager"
                   style={{
                     width: "420px",
                     height: "520px",
@@ -619,7 +620,7 @@ const Customizer = () => {
 
                 <div
                   ref={containerRef}
-                  className="absolute z-20 left-1/2 top-[20%] w-[160px] h-[300px] -translate-x-1/2"
+                  className={`absolute z-20 left-1/2  ${garmentType === "hoodie" ? "w-[160px] h-[200px] top-[21%]" : "w-[160px] h-[300px] top-[20%]"} -translate-x-1/2`}
                 >
                   <div
                     className={`absolute inset-0 transition-opacity pointer-events-none ${step === 2 && activeObject ? "border border-dashed border-gray-200/50" : "opacity-0"}`}
