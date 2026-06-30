@@ -1,41 +1,53 @@
+export type ProductGender = "Men" | "Women" | "Kids";
+
+export interface ProductSpec {
+  material?: string;
+  fit?: string;
+  washCare?: string[];
+}
+
+export interface ProductRatings {
+  average: number;
+  count: number;
+}
+
+export interface ProductImage {
+  image_type?: string;
+  image_url?: string;
+  url?: string;
+  secure_url?: string;
+  public_id?: string;
+}
+
 export interface Product {
-  id: string;
+  id: string | number;
+  productId?: string | number;
+  variantId?: string | number;
   title: string;
   description: string;
   brand?: string;
-
-  // High-level grouping for fast filtering
-  gender: "Men" | "Women" | "Kids";
-
-  // Point to the specific leaf category (e.g., the ID for "Cargos")
+  gender: ProductGender;
   categoryId: string;
-
-  // Pricing & Status
   price: number;
   originalPrice?: number;
   isSale?: boolean;
-
-  // Media
-  images: string[]; // Standardized naming to plural
-
-  // Inventory & Variants
+  images: string[];
+  frontImageUrl?: string;
+  backImageUrl?: string;
+  mainImageUrl?: string;
+  imageUrl?: string;
+  barcode?: string;
+  size?: string;
+  colour?: string;
   sizes: string[];
   colors: string[];
   stockBySize: Record<string, number>;
-  // Total stock can be a "getter" or calculated field to avoid sync issues
-
-  // Technical Details
-  specs: {
-    material?: string;
-    fit?: string;
-    washCare?: string[];
-  };
-
-  // Social Proof
-  ratings: {
-    average: number;
-    count: number;
-  };
-
-  createdAt: string; // Date stored as ISO string in JSON
+  specs: ProductSpec;
+  ratings: ProductRatings;
+  createdAt: string;
+  onHand?: number;
+  mrp?: number;
+  salePrice?: number;
+  patternCode?: string;
+  raw?: any;
 }

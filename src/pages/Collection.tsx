@@ -3,14 +3,12 @@ import { useSearchParams } from "react-router";
 import { FiChevronDown, FiChevronUp, FiFilter, FiX } from "react-icons/fi";
 import { FaStar } from "react-icons/fa";
 import { BiSortAlt2 } from "react-icons/bi";
-import productData from "../Data/Products.json";
 import { ProductCard, ProductCardSkeleton } from "../components/ProductCard";
 import type { Product } from "../Models/Product";
 import categories from "../Data/categories.json";
+import { fetchBranchProducts } from "../services/productsApi";
 
-const PRODUCTS = productData as unknown as Product[];
-
-const getFilterConfig = (gender: string) => {
+const getFilterConfig = (gender: string, products: Product[]) => {
   const genderCats = categories.filter(
     (c) => c.name.toLowerCase() === gender.toLowerCase() && c.level === 0,
   );
@@ -28,27 +26,28 @@ const getFilterConfig = (gender: string) => {
     });
   });
 
+  const genderProducts = products.filter(
+    (product) => product.gender.toLowerCase() === gender.toLowerCase(),
+  );
+
+  const brandOptions = Array.from(
+    new Set(genderProducts.map((product) => product.brand || "").filter(Boolean)),
+  );
+
+  const colorOptions = Array.from(
+    new Set(genderProducts.flatMap((product) => product.colors || []).filter(Boolean)),
+  );
+
+  const sizeOptions = Array.from(
+    new Set(genderProducts.flatMap((product) => product.sizes || []).filter(Boolean)),
+  );
+
   return {
     Category: categoryOptions,
-    Sizes: ["S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL", "6XL"],
-    Brand: ["Bewakoof"],
-    Color: [
-      "Black",
-      "White",
-      "Red",
-      "Blue",
-      "Green",
-      "Yellow",
-      "Grey",
-      "Brown",
-    ],
-    Discount: [
-      "10% and above",
-      "20% and above",
-      "30% and above",
-      "40% and above",
-      "50% and above",
-    ],
+    Sizes: sizeOptions.length ? sizeOptions : ["S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL", "6XL"],
+    Brand: brandOptions.length ? brandOptions : ["Vandhana"],
+    Color: colorOptions.length ? colorOptions : ["Black", "White", "Red", "Blue", "Green", "Yellow", "Grey", "Brown"],
+    Discount: ["10% and above", "20% and above", "30% and above", "40% and above", "50% and above"],
     Ratings: [4, 3, 2, 1],
   };
 };
@@ -58,6 +57,7 @@ type SortOption =
   | "New Arrival"
   | "Price : High to Low"
   | "Price : Low to High";
+
 const SORT_OPTIONS: SortOption[] = [
   "Popularity",
   "New Arrival",
@@ -65,8 +65,18 @@ const SORT_OPTIONS: SortOption[] = [
   "Price : Low to High",
 ];
 
+const getDiscountPercent = (product: Product) => {
+  const original = Number(product.originalPrice || product.price || 0);
+  const price = Number(product.price || 0);
+  if (!original || original <= price) return 0;
+  return Math.round(((original - price) / original) * 100);
+};
+
 export default function Collection() {
   const [searchParams] = useSearchParams();
+  const [products, setProducts] = useState<Product[]>([]);
+  const [productsLoading, setProductsLoading] = useState(true);
+  const [productsError, setProductsError] = useState("");
 
   const [activeFilters, setActiveFilters] = useState<Record<string, string[]>>(
     () => {
@@ -79,9 +89,9 @@ export default function Collection() {
 
       if (capitalizedGen) initial["Gender"] = [capitalizedGen];
       if (cat) {
-        const capitalizedGen = initial["Gender"]?.[0];
+        const currentGen = initial["Gender"]?.[0];
         const parentId = categories.find(
-          (c) => c.level === 0 && c.name === capitalizedGen,
+          (c) => c.level === 0 && c.name === currentGen,
         )?.id;
 
         const matched =
@@ -105,23 +115,49 @@ export default function Collection() {
       activeFilters["Gender"]?.[0] ||
         localStorage.getItem("preferred_gender") ||
         "Men",
+      products,
     );
-  }, [activeFilters]);
+  }, [activeFilters, products]);
+
   const [sortBy, setSortBy] = useState<SortOption>("Popularity");
-  const [expandedFilters, setExpandedFilters] = useState<
-    Record<string, boolean>
-  >({
+  const [expandedFilters, setExpandedFilters] = useState<Record<string, boolean>>({
     Gender: true,
     Category: true,
     Sizes: true,
   });
-
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
   const [isMobileSortOpen, setIsMobileSortOpen] = useState(false);
   const [mobileActiveTab, setMobileActiveTab] = useState("Sizes");
   const [visibleCount, setVisibleCount] = useState(12);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const observerTarget = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    let alive = true;
+
+    const loadProducts = async () => {
+      setProductsLoading(true);
+      setProductsError("");
+
+      try {
+        const data = await fetchBranchProducts(3);
+        if (alive) setProducts(data);
+      } catch (err: any) {
+        if (alive) {
+          setProducts([]);
+          setProductsError(err?.message || "Unable to load products");
+        }
+      } finally {
+        if (alive) setProductsLoading(false);
+      }
+    };
+
+    void loadProducts();
+
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   useEffect(() => {
     setVisibleCount(12);
@@ -133,8 +169,7 @@ export default function Collection() {
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting) {
-          // Use setTimeout for a slight simulated delay to show skeletons
+        if (entries[0].isIntersecting && visibleCount < filteredProducts.length) {
           setIsLoadingMore(true);
           setTimeout(() => {
             setVisibleCount((prev) => prev + 12);
@@ -150,7 +185,7 @@ export default function Collection() {
     return () => {
       observer.unobserve(currentTarget);
     };
-  }, [visibleCount, activeFilters, sortBy]);
+  }, [visibleCount, activeFilters, sortBy, products]);
 
   useEffect(() => {
     const cat = searchParams.get("category");
@@ -192,7 +227,6 @@ export default function Collection() {
     }
   }, [searchParams]);
 
-  // Prevent scroll when modal open
   useEffect(() => {
     if (isMobileFilterOpen || isMobileSortOpen) {
       document.body.style.overflow = "hidden";
@@ -214,7 +248,14 @@ export default function Collection() {
     });
   };
 
-  const clearAllFilters = () => setActiveFilters({});
+  const clearAllFilters = () => {
+    const gen = localStorage.getItem("preferred_gender");
+    if (gen) {
+      setActiveFilters({ Gender: [gen] });
+    } else {
+      setActiveFilters({});
+    }
+  };
 
   const filterCount = Object.values(activeFilters).reduce(
     (acc, curr) => acc + curr.length,
@@ -229,7 +270,7 @@ export default function Collection() {
   };
 
   const filteredProducts = useMemo(() => {
-    let result = [...PRODUCTS];
+    let result = [...products];
 
     if (activeFilters["Gender"]?.length) {
       const activeGenders = activeFilters["Gender"].map((g) => g.toLowerCase());
@@ -252,7 +293,6 @@ export default function Collection() {
         selectedCatNames.includes(c.name.toLowerCase()),
       );
 
-      // Filter out categories not under the current gender
       const validCats = currentGenderId
         ? matchedCats.filter((c) => {
             if (c.level === 0) return c.id === currentGenderId;
@@ -279,18 +319,15 @@ export default function Collection() {
         );
 
         if (selectedChildren.length > 0) {
-          // If specific children are selected, ONLY include those
           selectedChildren.forEach((c) => expandedCatIds.add(c.id));
         } else {
-          // Otherwise include all children of the level 1 category
           children.forEach((c) => expandedCatIds.add(c.id));
         }
       });
 
-      // Add any explicitly selected level 2s that weren't caught above
       selectedLevel2Ids.forEach((id) => expandedCatIds.add(id));
 
-      result = result.filter((p) => expandedCatIds.has(p.categoryId));
+      result = result.filter((p) => expandedCatIds.has(String(p.categoryId)));
     }
 
     if (activeFilters["Sizes"]?.length) {
@@ -307,11 +344,19 @@ export default function Collection() {
 
     if (activeFilters["Brand"]?.length) {
       result = result.filter((p) =>
-        activeFilters["Brand"].includes(p.brand || "Bewakoof"),
+        activeFilters["Brand"].includes(p.brand || ""),
       );
     }
 
-    // Sort
+    if (activeFilters["Discount"]?.length) {
+      const required = activeFilters["Discount"].map((item) => {
+        const match = item.match(/\d+/);
+        return match ? Number(match[0]) : 0;
+      });
+      const minRequired = Math.min(...required);
+      result = result.filter((p) => getDiscountPercent(p) >= minRequired);
+    }
+
     switch (sortBy) {
       case "Price : High to Low":
         result.sort((a, b) => b.price - a.price);
@@ -320,14 +365,18 @@ export default function Collection() {
         result.sort((a, b) => a.price - b.price);
         break;
       case "New Arrival":
+        result.sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        );
+        break;
       case "Popularity":
       default:
-        // Assume default order for popularity/new arrival for now
         break;
     }
 
     return result;
-  }, [activeFilters, sortBy]);
+  }, [activeFilters, sortBy, products]);
 
   const FilterCheckboxes = ({
     categoryKey,
@@ -343,8 +392,8 @@ export default function Collection() {
           const optionValue = isObj ? optionObj.value : optionObj.toString();
           const optionLabel = isObj ? optionObj.label : optionObj.toString();
           const isLevel1 = isObj ? optionObj.isLevel1 : false;
-
           const isSelected = activeFilters[categoryKey]?.includes(optionValue);
+
           return (
             <label
               key={`${optionValue}-${idx}`}
@@ -386,13 +435,6 @@ export default function Collection() {
                       {[...Array(5 - optionValue)].map((_, i) => (
                         <FaStar key={i} className="text-[#f5b82e]" size={12} />
                       ))}
-                      {/* {[...Array(5 - optionValue)].map((_, i) => (
-                        <FaRegStar
-                          key={i}
-                          className="text-gray-300"
-                          size={12}
-                        />
-                      ))} */}
                       <span className="ml-1 text-xs opacity-70">&amp; up</span>
                     </div>
                   ) : (
@@ -409,7 +451,6 @@ export default function Collection() {
 
   return (
     <div className="bg-white min-h-screen font-montserrat">
-      {/* HEADER BAR */}
       <div className="border-b border-gray-200 sticky top-0 bg-white z-30">
         <div className="max-w-[1440px] mx-auto px-4 md:px-8 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -422,7 +463,6 @@ export default function Collection() {
             </span>
           </div>
 
-          {/* Desktop Sort */}
           <div className="hidden lg:flex items-center gap-3">
             <span className="text-sm font-medium text-gray-500">Sort by :</span>
             <div className="relative group">
@@ -446,10 +486,14 @@ export default function Collection() {
         </div>
       </div>
 
-      {/* MAIN CONTENT */}
       <div className="max-w-[1440px] mx-auto px-4 md:px-8 py-6 relative">
+        {productsError ? (
+          <div className="mb-4 rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm font-medium text-red-700">
+            {productsError}
+          </div>
+        ) : null}
+
         <div className="flex gap-8 items-start">
-          {/* DESKTOP SIDEBAR */}
           <aside
             className="hidden lg:block w-64 shrink-0 sticky top-24 h-[calc(100vh-100px)] overflow-y-auto overscroll-contain pr-2"
             style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
@@ -459,7 +503,7 @@ export default function Collection() {
                 Filters
                 {filterCount > 0 && (
                   <span className="text-black text-base ml-1">
-                    ({filterCount - 1})
+                    ({Math.max(filterCount - 1, 0)})
                   </span>
                 )}
               </h2>
@@ -502,9 +546,16 @@ export default function Collection() {
             </div>
           </aside>
 
-          {/* PRODUCT GRID */}
           <div className="flex-1 w-full">
-            {filteredProducts.length > 0 ? (
+            {productsLoading ? (
+              <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+                {Array.from({ length: 8 }).map((_, idx) => (
+                  <div key={`loading-${idx}`} className="min-w-0">
+                    <ProductCardSkeleton />
+                  </div>
+                ))}
+              </div>
+            ) : filteredProducts.length > 0 ? (
               <>
                 <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
                   {filteredProducts.slice(0, visibleCount).map((product) => (
@@ -518,7 +569,6 @@ export default function Collection() {
                       </div>
                     ))}
                 </div>
-                {/* Intersection Observer Target */}
                 {visibleCount < filteredProducts.length && (
                   <div
                     ref={observerTarget}
@@ -547,7 +597,6 @@ export default function Collection() {
         </div>
       </div>
 
-      {/* MOBILE STICKY BOTTOM BAR */}
       <div className="lg:hidden fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 z-40 grid grid-cols-2 divide-x divide-gray-200 py-3 shadow-[0_-4px_10px_rgba(0,0,0,0.05)]">
         <button
           onClick={() => setIsMobileSortOpen(true)}
@@ -571,7 +620,6 @@ export default function Collection() {
         </button>
       </div>
 
-      {/* MOBILE SORT MODAL */}
       {isMobileSortOpen && (
         <div className="lg:hidden fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm transition-all">
           <div className="w-full bg-white rounded-t-3xl pt-6 pb-8 px-6 animate-in slide-in-from-bottom-full duration-300 shadow-[0_-10px_40px_rgba(0,0,0,0.1)]">
@@ -611,7 +659,6 @@ export default function Collection() {
         </div>
       )}
 
-      {/* MOBILE FILTER MODAL */}
       <div
         className={`lg:hidden fixed inset-0 z-50 bg-white flex flex-col transition-all duration-300 ${
           isMobileFilterOpen
@@ -631,9 +678,7 @@ export default function Collection() {
           </button>
         </div>
 
-        {/* 2 Pane Layout */}
         <div className="flex-1 flex overflow-hidden bg-[#f9f9f9]">
-          {/* Left Tabs */}
           <div
             className="w-1/3 border-r border-gray-200 overflow-y-auto"
             style={{ scrollbarWidth: "none" }}
@@ -663,7 +708,6 @@ export default function Collection() {
             })}
           </div>
 
-          {/* Right Checkboxes */}
           <div className="w-2/3 bg-white p-4 overflow-y-auto">
             <FilterCheckboxes
               categoryKey={mobileActiveTab}
@@ -672,7 +716,6 @@ export default function Collection() {
           </div>
         </div>
 
-        {/* Footer Actions */}
         <div className="p-4 bg-white border-t border-gray-200 flex gap-3 shadow-[0_-10px_20px_rgba(0,0,0,0.05)] z-10">
           <button
             onClick={clearAllFilters}

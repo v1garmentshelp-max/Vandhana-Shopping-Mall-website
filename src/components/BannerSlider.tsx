@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
+import { Link } from "react-router";
 import useEmblaCarousel from "embla-carousel-react";
 import Autoplay from "embla-carousel-autoplay";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -17,13 +18,15 @@ interface BannerSliderProps {
   className?: string;
 }
 
+const isExternalLink = (link: string) => /^(https?:)?\/\//.test(link);
+
 const BannerSlider: React.FC<BannerSliderProps> = ({
   title,
   slides,
   className,
 }) => {
   const [emblaRef, emblaApi] = useEmblaCarousel(
-    { loop: true, align: "start" }, // align start is better for 2-column layouts
+    { loop: true, align: "start" },
     [
       Autoplay({
         delay: 5000,
@@ -40,10 +43,12 @@ const BannerSlider: React.FC<BannerSliderProps> = ({
     () => emblaApi && emblaApi.scrollPrev(),
     [emblaApi],
   );
+
   const scrollNext = useCallback(
     () => emblaApi && emblaApi.scrollNext(),
     [emblaApi],
   );
+
   const scrollTo = useCallback(
     (index: number) => emblaApi && emblaApi.scrollTo(index),
     [emblaApi],
@@ -56,16 +61,38 @@ const BannerSlider: React.FC<BannerSliderProps> = ({
 
   useEffect(() => {
     if (!emblaApi) return;
+
     setScrollSnaps(emblaApi.scrollSnapList());
     emblaApi.on("select", onSelect);
     emblaApi.on("reInit", onSelect);
+
+    return () => {
+      emblaApi.off("select", onSelect);
+      emblaApi.off("reInit", onSelect);
+    };
   }, [emblaApi, onSelect]);
 
   if (!slides || slides.length === 0) return null;
 
+  const renderSlideContent = (slide: BannerSlide, index: number) => (
+    <div className="rounded-2xl overflow-hidden shadow-sm transition-transform duration-500">
+      <picture>
+        {slide.mobileImage && (
+          <source media="(max-width: 767px)" srcSet={slide.mobileImage} />
+        )}
+        <img
+          loading={index === 0 ? "eager" : "lazy"}
+          src={slide.desktopImage}
+          alt={slide.alt || "Banner"}
+          className="w-full h-full object-cover aspect-video md:aspect-auto"
+        />
+      </picture>
+    </div>
+  );
+
   return (
     <section
-      className={`py-8 lg:py-10 w-full overflow-hidden bg-white ${className}`}
+      className={`py-8 lg:py-10 w-full overflow-hidden bg-white ${className || ""}`}
     >
       {title && (
         <div className="w-full px-2 mx-auto mb-2 md:mb-8">
@@ -76,41 +103,36 @@ const BannerSlider: React.FC<BannerSliderProps> = ({
       )}
 
       <div className="relative group w-full px-2 lg:px-6">
-        {/* Carousel Viewport */}
         <div className="overflow-hidden w-full" ref={emblaRef}>
-          <div className="flex -ml-2  ">
-            {slides.map((slide, index) => (
-              <div
-                key={slide.id}
-                className="flex-[0_0_100%] lg:flex-[0_0_50%] min-w-0 pl-2 relative"
-              >
-                <a
-                  href={slide.link || "#"}
-                  className="block w-full group/banner"
+          <div className="flex -ml-2">
+            {slides.map((slide, index) => {
+              const link = slide.link || "/collections";
+
+              return (
+                <div
+                  key={slide.id}
+                  className="flex-[0_0_100%] lg:flex-[0_0_50%] min-w-0 pl-2 relative"
                 >
-                  <div className="rounded-2xl overflow-hidden shadow-sm transition-transform duration-500">
-                    <picture>
-                      {slide.mobileImage && (
-                        <source
-                          media="(max-width: 767px)"
-                          srcSet={slide.mobileImage}
-                        />
-                      )}
-                      <img
-                        loading={index === 0 ? "eager" : "lazy"}
-                        src={slide.desktopImage}
-                        alt={slide.alt || "Banner"}
-                        className="w-full h-full object-cover aspect-video md:aspect-auto"
-                      />
-                    </picture>
-                  </div>
-                </a>
-              </div>
-            ))}
+                  {isExternalLink(link) ? (
+                    <a
+                      href={link}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="block w-full group/banner"
+                    >
+                      {renderSlideContent(slide, index)}
+                    </a>
+                  ) : (
+                    <Link to={link} className="block w-full group/banner">
+                      {renderSlideContent(slide, index)}
+                    </Link>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
 
-        {/* Navigation Arrows - Hidden on Mobile */}
         <button
           onClick={scrollPrev}
           className="absolute top-1/2 left-10 md:left-14 -translate-y-1/2 w-12 h-12 hidden md:flex items-center justify-center text-white rounded-full transition-all z-10 cursor-pointer opacity-0 group-hover:opacity-100"
@@ -127,7 +149,6 @@ const BannerSlider: React.FC<BannerSliderProps> = ({
           <ChevronRight size={32} strokeWidth={2} />
         </button>
 
-        {/* Pagination Dots */}
         <div className="flex justify-center gap-2 mt-6">
           {scrollSnaps.map((_, index) => (
             <button

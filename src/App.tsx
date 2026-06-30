@@ -16,6 +16,7 @@ import Profile from "./pages/Profile";
 import ScrollToTop from "./components/ScrollToTop";
 import Kids from "./pages/Kids";
 import Customizer from "./pages/Customizer";
+import Checkout from "./pages/Checkout";
 
 function AppContent() {
   const location = useLocation();
@@ -38,7 +39,7 @@ function AppContent() {
       <ScrollToTop />
       <Header />
       <Routes>
-        <Route path="/" index element={<Home />} />
+        <Route path="/" element={<Home />} />
         <Route path="/men" element={<Men />} />
         <Route path="/women" element={<Women />} />
         <Route path="/kids" element={<Kids />} />
@@ -50,18 +51,17 @@ function AppContent() {
         <Route path="/auth" element={<Auth />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="*" element={<NotFound />} />
+        <Route path="/checkout" element={<Checkout />} />
       </Routes>
       {!isCustomizePage && <Footer />}
     </>
   );
 }
 
-function App() {
+export default function App() {
   return (
     <BrowserRouter>
       <AppContent />
     </BrowserRouter>
   );
 }
-
-export default App;

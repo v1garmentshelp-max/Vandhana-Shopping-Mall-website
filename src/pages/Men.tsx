@@ -1,6 +1,5 @@
 import FeaturesSection from "../components/FeaturesSection";
 import NamedSection from "../components/NamedSection";
-import products from "../Data/Products.json";
 import HeroProductSection from "../components/HeroProductSection";
 import BannerSlider from "../components/BannerSlider";
 import type { BannerSlide } from "../components/BannerSlider";
@@ -9,7 +8,7 @@ import banner2 from "../assets/offers-poster-4.jpeg";
 import banner3 from "../assets/offers-poster-1.jpeg";
 import banner4 from "../assets/offers-poster-2.jpeg";
 import HeroCarousel, { type Banner } from "../components/HeroCarousel";
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import CategoriesSection from "../components/CategoriesSection";
 import type { Category } from "../Models/Category";
 import categories from "../Data/categories.json";
@@ -21,6 +20,7 @@ import poster4 from "../assets/hero-poster-4.jpeg";
 import poster5 from "../assets/hero-poster-5.jpeg";
 import poster6 from "../assets/hero-poster-6.jpeg";
 import { CollectionTabs } from "../components/CollectionTabs";
+import { fetchProductsByGender } from "../services/productsApi";
 
 const HERO_BANNERS: Banner[] = [
   {
@@ -85,57 +85,89 @@ const bannerSlides: BannerSlide[] = [
 ];
 
 const Men = () => {
+  const [typedProducts, setTypedProducts] = useState<Product[]>([]);
+
   useEffect(() => {
     localStorage.setItem("preferred_gender", "Men");
     localStorage.setItem("preferred_gender_url", "/men");
   }, []);
 
+  useEffect(() => {
+    let alive = true;
+
+    const loadProducts = async () => {
+      try {
+        const data = await fetchProductsByGender("Men", 3);
+        if (alive) setTypedProducts(data);
+      } catch {
+        if (alive) setTypedProducts([]);
+      }
+    };
+
+    void loadProducts();
+
+    return () => {
+      alive = false;
+    };
+  }, []);
+
   const menCatId = categories.find(
     (c: Category) => c.name === "Men" && c.level === 0,
   )?.id;
+
   const menTopId = categories.find(
     (c: Category) => c.name === "Topwear" && c.parentId === menCatId,
   )?.id;
+
   const menBottomId = categories.find(
     (c: Category) => c.name === "Bottomwear" && c.parentId === menCatId,
   )?.id;
+
   const menCategories = categories.filter(
     (category: Category) =>
       category.parentId === menTopId || category.parentId === menBottomId,
   );
 
-  const typedProducts = products as unknown as Product[];
+  const newDrops = useMemo(() => {
+    return typedProducts
+      .filter((product: Product) => product.gender === "Men")
+      .slice(0, 10);
+  }, [typedProducts]);
 
-  const newDrops = typedProducts
-    .filter((product: Product) => product.gender === "Men")
-    .slice(0, 10);
+  const joggers = useMemo(() => {
+    const joggerCatIds = categories
+      .filter((c: Category) => c.name.toLowerCase() === "joggers")
+      .map((c) => c.id);
 
-  const joggerCatIds = categories
-    .filter((c: Category) => c.name.toLowerCase() === "joggers")
-    .map((c) => c.id);
-  const joggers = typedProducts.filter(
-    (product: Product) =>
-      product.gender === "Men" && joggerCatIds.includes(product.categoryId),
-  );
+    return typedProducts.filter(
+      (product: Product) =>
+        product.gender === "Men" && joggerCatIds.includes(String(product.categoryId)),
+    );
+  }, [typedProducts]);
 
-  const vestCatIds = categories
-    .filter((c: Category) => c.name.toLowerCase() === "vests")
-    .map((c) => c.id);
-  const vests = typedProducts.filter(
-    (product: Product) =>
-      product.gender === "Men" && vestCatIds.includes(product.categoryId),
-  );
+  const vests = useMemo(() => {
+    const vestCatIds = categories
+      .filter((c: Category) => c.name.toLowerCase() === "vests")
+      .map((c) => c.id);
 
-  const topwearCat = categories.filter(
-    (category: Category) => category.parentId === menTopId,
-  );
+    return typedProducts.filter(
+      (product: Product) =>
+        product.gender === "Men" && vestCatIds.includes(String(product.categoryId)),
+    );
+  }, [typedProducts]);
 
-  const topwearCatIds = topwearCat.map((category: Category) => category.id);
+  const topwear = useMemo(() => {
+    const topwearCat = categories.filter(
+      (category: Category) => category.parentId === menTopId,
+    );
 
-  const topwear = typedProducts.filter(
-    (product: Product) =>
-      product.gender === "Men" && topwearCatIds.includes(product.categoryId),
-  );
+    const topwearCatIds = topwearCat.map((category: Category) => category.id);
+
+    return typedProducts.filter(
+      (product: Product) =>
+        product.gender === "Men" && topwearCatIds.includes(String(product.categoryId)),
+    );
+  }, [typedProducts, menTopId]);
 
   return (
     <div className="w-full bg-white">
@@ -151,7 +183,6 @@ const Men = () => {
       />
       <NamedSection title="JOGGERS" productData={joggers} />
       <NamedSection title="TOPWEAR" productData={topwear} />
-      {/* <Hero /> */}
       <CollectionTabs />
       <FeaturesSection className="my-4" />
     </div>

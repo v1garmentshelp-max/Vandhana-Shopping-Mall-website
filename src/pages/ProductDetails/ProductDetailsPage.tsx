@@ -1,11 +1,7 @@
 import ProductDetails from "./ProductDetails";
 
 const ProductDetailsPage = () => {
-  return (
-    <>
-      <ProductDetails />
-    </>
-  );
+  return <ProductDetails />;
 };
 
 export default ProductDetailsPage;

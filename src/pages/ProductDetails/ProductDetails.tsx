@@ -1,14 +1,16 @@
-import React, { useState, useEffect, useRef } from "react";
-import { useParams } from "react-router";
-import productData from "../../Data/Products.json";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate, useParams } from "react-router";
 import categoriesData from "../../Data/categories.json";
 import type { Category } from "../../Models/Category";
 import type { Product } from "../../Models/Product";
 import CarouselModule from "react-multi-carousel";
 import "react-multi-carousel/lib/styles.css";
 import NamedSection from "../../components/NamedSection";
+import { fetchProductById, fetchProductsByGender } from "../../services/productsApi";
+import { addToCart } from "../../services/cartApi";
 
 const Carousel = (CarouselModule as any).default || CarouselModule;
+
 import {
   FiChevronLeft,
   FiChevronRight,
@@ -22,6 +24,70 @@ import {
   FiShare2,
 } from "react-icons/fi";
 import { FaRegStar, FaStar, FaStarHalfAlt } from "react-icons/fa";
+
+const API_BASE = "https://vandhana-shopping-mall-backend.vercel.app";
+
+type StoredUser = {
+  id?: number;
+  name?: string;
+  email?: string;
+  mobile?: string;
+  type?: string;
+};
+
+type OptionGroup = {
+  name: string;
+  values: string[];
+};
+
+const getStoredUser = (): StoredUser | null => {
+  const raw =
+    localStorage.getItem("user") || sessionStorage.getItem("user") || null;
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+};
+
+const getWishlistKey = (userId: number) => `wishlist_product_ids_${userId}`;
+
+const readWishlistIds = (userId: number): number[] => {
+  try {
+    const raw = localStorage.getItem(getWishlistKey(userId));
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.map(Number).filter(Boolean) : [];
+  } catch {
+    return [];
+  }
+};
+
+const writeWishlistIds = (userId: number, ids: number[]) => {
+  localStorage.setItem(getWishlistKey(userId), JSON.stringify(ids));
+  window.dispatchEvent(new Event("wishlist-updated"));
+};
+
+const getBackendProductId = (product: Product | null) => {
+  const value = product?.variantId || product?.id || "";
+  const parsed = Number(String(value).trim());
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+};
+
+const getCartVariantId = (product: Product) => {
+  const value = product.variantId || product.id;
+  const parsed = Number(String(value).trim());
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+};
+
+const getStockCount = (product: Product) => {
+  const fromStockBySize = Object.values(product.stockBySize || {}).reduce(
+    (sum, value) => sum + Number(value || 0),
+    0,
+  );
+  return fromStockBySize || Number(product.onHand || 0) || 0;
+};
 
 const CustomLeftArrow = ({ onClick }: any) => (
   <button
@@ -42,115 +108,181 @@ const CustomRightArrow = ({ onClick }: any) => (
 );
 
 const ProductDetails: React.FC = () => {
+  const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const [product, setProduct] = useState<Product | null>(null);
+  const [recommendedProducts, setRecommendedProducts] = useState<Product[]>([]);
+  const [loadingProduct, setLoadingProduct] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
-
-  const [selectedOptions, setSelectedOptions] = useState<
-    Record<string, string>
-  >({});
+  const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
   const [quantity, setQuantity] = useState(1);
   const [isAdding, setIsAdding] = useState(false);
   const [cartError, setCartError] = useState("");
+  const [cartMessage, setCartMessage] = useState("");
+  const [isWishlisted, setIsWishlisted] = useState(false);
+  const [isUpdatingWishlist, setIsUpdatingWishlist] = useState(false);
   const mainCarouselRef = useRef<any>(null);
   const lightboxCarouselRef = useRef<any>(null);
   const actionContainerRef = useRef<HTMLDivElement>(null);
   const desktopThumbContainerRef = useRef<HTMLDivElement>(null);
   const mobileThumbCarouselRef = useRef<any>(null);
 
+  const backendProductId = useMemo(() => getBackendProductId(product), [product]);
+
   useEffect(() => {
-    // Desktop thumb auto-scroll
     if (desktopThumbContainerRef.current) {
-      const activeThumb = desktopThumbContainerRef.current.children[
-        selectedIndex
-      ] as HTMLElement;
+      const activeThumb = desktopThumbContainerRef.current.children[selectedIndex] as HTMLElement;
       if (activeThumb) {
         activeThumb.scrollIntoView({ behavior: "smooth", block: "nearest" });
       }
     }
 
-    // Mobile thumb carousel sync
     if (mobileThumbCarouselRef.current) {
       mobileThumbCarouselRef.current.goToSlide(selectedIndex);
     }
   }, [selectedIndex]);
 
   useEffect(() => {
-    // In a real app we'd fetch this from the API or context
-    const foundProduct = (productData as unknown as Product[]).find(
-      (p) => p.id === id,
-    );
-    if (foundProduct) {
-      setProduct(foundProduct as Product);
+    let alive = true;
 
-      try {
-        const stored: string[] = JSON.parse(
-          localStorage.getItem("recentlyViewed") || "[]",
-        );
-        const updated = [
-          foundProduct.id,
-          ...stored.filter((item: string) => item !== foundProduct.id),
-        ].slice(0, 20);
-        localStorage.setItem("recentlyViewed", JSON.stringify(updated));
-      } catch (err) {
-        console.error("Failed to save recently viewed:", err);
+    const loadProduct = async () => {
+      if (!id) {
+        setLoadingProduct(false);
+        setProduct(null);
+        return;
       }
 
-      const initialOptions: Record<string, string> = {};
-      if (foundProduct.colors?.length)
-        initialOptions["Color"] = foundProduct.colors[0];
-      if (foundProduct.sizes?.length)
-        initialOptions["Size"] = foundProduct.sizes[0];
-      setSelectedOptions(initialOptions);
-    }
+      setLoadingProduct(true);
+      setLoadError("");
+
+      try {
+        const foundProduct = await fetchProductById(id, 3);
+
+        if (!alive) return;
+
+        if (!foundProduct) {
+          setProduct(null);
+          setLoadError("Product not found");
+          return;
+        }
+
+        setProduct(foundProduct);
+        setSelectedIndex(0);
+        setLightboxIndex(0);
+
+        try {
+          const stored: string[] = JSON.parse(localStorage.getItem("recentlyViewed") || "[]");
+          const currentId = String(foundProduct.id);
+          const updated = [
+            currentId,
+            ...stored.filter((item: string) => item !== currentId),
+          ].slice(0, 20);
+          localStorage.setItem("recentlyViewed", JSON.stringify(updated));
+        } catch { }
+
+        const initialOptions: Record<string, string> = {};
+        if (foundProduct.colors?.length) initialOptions["Color"] = foundProduct.colors[0];
+        if (foundProduct.sizes?.length) initialOptions["Size"] = foundProduct.sizes[0];
+        setSelectedOptions(initialOptions);
+      } catch (err: any) {
+        if (alive) {
+          setProduct(null);
+          setLoadError(err?.message || "Unable to load product");
+        }
+      } finally {
+        if (alive) setLoadingProduct(false);
+      }
+    };
+
+    void loadProduct();
+
+    return () => {
+      alive = false;
+    };
   }, [id]);
 
-  const recommendedProducts = React.useMemo(() => {
-    if (!product) return [];
+  useEffect(() => {
+    let alive = true;
 
-    const categories = categoriesData as Category[];
-    const productCategories = [
-      product.gender.toLowerCase(),
-      categories
-        .find((c: Category) => c.id === product.categoryId)
-        ?.name?.toLowerCase() || "",
-    ];
+    const loadRecommended = async () => {
+      if (!product) {
+        setRecommendedProducts([]);
+        return;
+      }
 
-    const validGenders = categories
-      ?.filter((c: Category) => c.level === 0)
-      .map((c: Category) => c.name.toLowerCase());
-    const mainGender = productCategories.find((c) => validGenders.includes(c));
+      try {
+        const allProducts = await fetchProductsByGender(product.gender, 3);
+        if (!alive) return;
 
-    const allProducts = productData as unknown as Product[];
-
-    return allProducts
-      .filter((p) => p.id !== product.id)
-      .map((p) => {
         const categories = categoriesData as Category[];
-        const targetCategories = [
-          p.gender.toLowerCase(),
-          categories.find((c) => c.id === p.categoryId)?.name?.toLowerCase() ||
-            "",
+        const productCategories = [
+          product.gender.toLowerCase(),
+          categories.find((c: Category) => c.id === product.categoryId)?.name?.toLowerCase() || "",
         ];
 
-        const hasSameGender = mainGender
-          ? targetCategories.includes(mainGender)
-          : true;
+        const validGenders = categories
+          ?.filter((c: Category) => c.level === 0)
+          .map((c: Category) => c.name.toLowerCase());
 
-        const matchScore = targetCategories.filter((c) =>
-          productCategories.includes(c),
-        ).length;
-        return { product: p, matchScore, hasSameGender };
-      })
-      .filter((item) => item.hasSameGender && item.matchScore > 1)
-      .sort((a, b) => b.matchScore - a.matchScore)
-      .slice(0, 10)
-      .map((item) => item.product);
+        const mainGender = productCategories.find((c) => validGenders.includes(c));
+
+        const recommended = allProducts
+          .filter((p) => String(p.id) !== String(product.id))
+          .map((p) => {
+            const targetCategories = [
+              p.gender.toLowerCase(),
+              categories.find((c) => c.id === p.categoryId)?.name?.toLowerCase() || "",
+            ];
+
+            const hasSameGender = mainGender ? targetCategories.includes(mainGender) : true;
+            const matchScore = targetCategories.filter((c) => productCategories.includes(c)).length;
+
+            return { product: p, matchScore, hasSameGender };
+          })
+          .filter((item) => item.hasSameGender && item.matchScore > 0)
+          .sort((a, b) => b.matchScore - a.matchScore)
+          .slice(0, 10)
+          .map((item) => item.product);
+
+        setRecommendedProducts(recommended);
+      } catch {
+        if (alive) setRecommendedProducts([]);
+      }
+    };
+
+    void loadRecommended();
+
+    return () => {
+      alive = false;
+    };
   }, [product]);
 
-  if (!product) {
+  useEffect(() => {
+    const syncWishlistState = () => {
+      const user = getStoredUser();
+      const userId = Number(user?.id || 0);
+
+      if (!userId || !backendProductId) {
+        setIsWishlisted(false);
+        return;
+      }
+
+      const ids = readWishlistIds(userId);
+      setIsWishlisted(ids.includes(backendProductId));
+    };
+
+    syncWishlistState();
+    window.addEventListener("wishlist-updated", syncWishlistState);
+
+    return () => {
+      window.removeEventListener("wishlist-updated", syncWishlistState);
+    };
+  }, [backendProductId]);
+
+  if (loadingProduct) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         Loading...
@@ -158,17 +290,32 @@ const ProductDetails: React.FC = () => {
     );
   }
 
+  if (!product) {
+    return (
+      <div className="min-h-screen flex flex-col gap-4 items-center justify-center text-center px-4">
+        <h1 className="text-2xl font-bold text-gray-900">Product not found</h1>
+        <p className="text-gray-500">{loadError || "Unable to load this product."}</p>
+        <button
+          onClick={() => navigate("/collections")}
+          className="px-8 py-3 bg-primary text-black font-bold uppercase text-sm"
+        >
+          Back to collections
+        </button>
+      </div>
+    );
+  }
+
   const currentPrice = product.price;
   const currentCompareAtPrice = product.originalPrice || product.price;
   const formatMoney = (val: number) => `₹${val}`;
+  const availableStock = getStockCount(product);
   const currentVariant = {
-    available:
-      Object.values(product.stockBySize || {}).reduce((a, b) => a + b, 0) > 0,
+    available: availableStock > 0,
     price: currentPrice,
   };
-  const displayImages = product.images;
+  const displayImages = product.images?.length ? product.images : ["/placeholder.svg"];
 
-  const options_with_values = [];
+  const options_with_values: OptionGroup[] = [];
   if (product.colors && product.colors.length > 0) {
     options_with_values.push({ name: "Color", values: product.colors });
   }
@@ -180,6 +327,9 @@ const ProductDetails: React.FC = () => {
     ...product,
     options_with_values,
   };
+
+  const selectedSize = selectedOptions["Size"] || product.sizes?.[0] || product.size || "";
+  const selectedColor = selectedOptions["Color"] || product.colors?.[0] || product.colour || "";
 
   const handleOptionChange = (name: string, val: string) => {
     setSelectedOptions((prev) => ({ ...prev, [name]: val }));
@@ -194,42 +344,172 @@ const ProductDetails: React.FC = () => {
       Green: "#22c55e",
       Yellow: "#eab308",
       Gray: "#6b7280",
+      Grey: "#6b7280",
       Brown: "#78350f",
+      Pink: "#ec4899",
+      Olive: "#808000",
+      "P Olive": "#808000",
+      "P OLIVE": "#808000",
+      "Sky Blue": "#87ceeb",
+      "SKY BLUE": "#87ceeb",
     };
 
     const isHex = /^#([0-9A-F]{3}){1,2}$/i.test(val);
 
     if (isHex) return val;
     if (map[val]) return map[val];
-    return val;
+    return "#d1d5db";
   };
 
   const handleQuantityChange = (type: "plus" | "minus") => {
-    setQuantity((q) => (type === "plus" ? q + 1 : Math.max(1, q - 1)));
+    setQuantity((q) => {
+      if (type === "minus") return Math.max(1, q - 1);
+      if (availableStock > 0) return Math.min(availableStock, q + 1);
+      return q + 1;
+    });
   };
 
-  const handleAddToCart = () => {
+  const addProductToCart = async () => {
+    const user = getStoredUser();
+    const userId = Number(user?.id || 0);
+
+    if (!userId) {
+      navigate("/auth");
+      return false;
+    }
+
     if (!currentVariant.available) {
       setCartError("Product is out of stock.");
-      return;
+      setCartMessage("");
+      return false;
     }
+
+    if (!selectedSize || !selectedColor) {
+      setCartError("Please select size and color.");
+      setCartMessage("");
+      return false;
+    }
+
+    const variantId = getCartVariantId(product);
+
+    if (!variantId) {
+      setCartError("Product variant id not found.");
+      setCartMessage("");
+      return false;
+    }
+
+    await addToCart({
+      user_id: userId,
+      product_id: variantId,
+      variant_id: variantId,
+      selected_size: selectedSize,
+      selected_color: selectedColor,
+      quantity,
+    });
+
     setCartError("");
-    setIsAdding(true);
-    setTimeout(() => {
-      setIsAdding(false);
-      alert(`${quantity} x ${product.title} added to cart`);
-    }, 1000);
+    setCartMessage("Added to cart successfully.");
+    return true;
   };
 
-  const handleBuyNow = () => {
-    if (!currentVariant.available) {
-      setCartError("Product is out of stock.");
+  const handleAddToCart = async () => {
+    if (isAdding) return;
+
+    setIsAdding(true);
+
+    try {
+      await addProductToCart();
+    } catch (err: any) {
+      setCartError(err?.message || "Unable to add to cart");
+      setCartMessage("");
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
+  const handleBuyNow = async () => {
+    if (isAdding) return;
+
+    setIsAdding(true);
+
+    try {
+      const added = await addProductToCart();
+      if (added) navigate("/cart");
+    } catch (err: any) {
+      setCartError(err?.message || "Unable to add to cart");
+      setCartMessage("");
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
+  const handleWishlistToggle = async () => {
+    const user = getStoredUser();
+    const userId = Number(user?.id || 0);
+
+    if (!userId) {
+      navigate("/auth");
       return;
     }
-    alert("Proceeding to checkout...");
+
+    if (!backendProductId || isUpdatingWishlist) return;
+
+    setIsUpdatingWishlist(true);
+
+    try {
+      if (isWishlisted) {
+        const res = await fetch(`${API_BASE}/api/wishlist`, {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            user_id: userId,
+            product_id: backendProductId,
+            variant_id: backendProductId,
+          }),
+        });
+
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok) {
+          throw new Error(data?.message || "Unable to remove from wishlist");
+        }
+
+        const ids = readWishlistIds(userId).filter((item) => item !== backendProductId);
+        writeWishlistIds(userId, ids);
+        setIsWishlisted(false);
+      } else {
+        const res = await fetch(`${API_BASE}/api/wishlist`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            user_id: userId,
+            product_id: backendProductId,
+            variant_id: backendProductId,
+            actual_product_id: product.productId,
+          }),
+        });
+
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok) {
+          throw new Error(data?.message || "Unable to add to wishlist");
+        }
+
+        const ids = Array.from(new Set([...readWishlistIds(userId), backendProductId]));
+        writeWishlistIds(userId, ids);
+        setIsWishlisted(true);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsUpdatingWishlist(false);
+    }
   };
 
-  // Carousel Configurations
   const mainResponsive = {
     desktop: { breakpoint: { max: 3000, min: 0 }, items: 1 },
   };
@@ -246,8 +526,6 @@ const ProductDetails: React.FC = () => {
   const handleThumbClick = (index: number) => {
     setSelectedIndex(index);
     if (mainCarouselRef.current) {
-      // react-multi-carousel infinite mode adds cloned slides.
-      // For items: 1, it usually prepends 2 cloned items.
       mainCarouselRef.current.goToSlide(index + 2);
     }
   };
@@ -280,9 +558,7 @@ const ProductDetails: React.FC = () => {
         {[...Array(fullStars)].map((_, i) => (
           <FaStar key={`full-${i}`} size={14} />
         ))}
-
         {hasHalfStar && <FaStarHalfAlt size={14} />}
-
         {[...Array(emptyStars)].map((_, i) => (
           <FaRegStar key={`empty-${i}`} size={14} />
         ))}
@@ -294,23 +570,20 @@ const ProductDetails: React.FC = () => {
     <div className="w-full bg-white font-montserrat py-6 pt-4 md:py-8 lg:py-16 lg:pt-8">
       <div className="max-w-7xl mx-auto px-4 md:px-8 xl:px-12">
         <div className="flex flex-col lg:flex-row gap-8 lg:gap-14">
-          {/* LEFT: Image Gallery */}
           <div className="flex-1 flex flex-col lg:flex-row gap-4 min-w-0">
-            {/* Vertical Thumbnails (Desktop) */}
-            {product.images.length > 1 && (
+            {displayImages.length > 1 && (
               <div
                 ref={desktopThumbContainerRef}
                 className="hidden lg:flex flex-col w-20 lg:w-22 shrink-0 -mt-2 overflow-y-auto h-[450px] xl:h-[600px] gap-3 py-2 scrollbar-none"
                 style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
               >
-                {product.images.map((src: string, index: number) => (
+                {displayImages.map((src: string, index: number) => (
                   <div
                     key={index}
-                    className={`w-full aspect-3/4 rounded-[9px] shrink-0 cursor-pointer overflow-hidden transition-all ${
-                      index === selectedIndex
+                    className={`w-full aspect-3/4 rounded-[9px] shrink-0 cursor-pointer overflow-hidden transition-all ${index === selectedIndex
                         ? "opacity-100 border border-[#292d35] p-[3px]"
                         : "opacity-60 hover:opacity-100"
-                    }`}
+                      }`}
                     onClick={() => handleThumbClick(index)}
                   >
                     <img
@@ -324,7 +597,6 @@ const ProductDetails: React.FC = () => {
               </div>
             )}
 
-            {/* Main Image Carousel */}
             <div className="group flex-1 relative bg-white aspect-3/4 xl:aspect-4/5 overflow-hidden min-w-0 z-0">
               <Carousel
                 ref={mainCarouselRef}
@@ -334,8 +606,7 @@ const ProductDetails: React.FC = () => {
                 customRightArrow={<CustomRightArrow />}
                 afterChange={(_prev: number, state: any) => {
                   const realIndex =
-                    (state.currentSlide - 2 + product.images.length) %
-                    product.images.length;
+                    (state.currentSlide - 2 + displayImages.length) % displayImages.length;
                   if (realIndex !== selectedIndex) {
                     setSelectedIndex(realIndex);
                   }
@@ -344,7 +615,7 @@ const ProductDetails: React.FC = () => {
                 containerClass="h-full w-full"
                 sliderClass="h-full"
               >
-                {product.images.map((src: string, index: number) => (
+                {displayImages.map((src: string, index: number) => (
                   <div
                     className="w-full h-full relative cursor-pointer"
                     key={index}
@@ -366,7 +637,6 @@ const ProductDetails: React.FC = () => {
                 ))}
               </Carousel>
 
-              {/* Floating Image Actions (Desktop/Mobile) */}
               <div className="absolute top-3 right-3 md:top-4 md:right-4 flex flex-col gap-3 z-10">
                 <button
                   onClick={handleShare}
@@ -376,25 +646,23 @@ const ProductDetails: React.FC = () => {
                   <FiShare2 size={18} />
                 </button>
                 <button
-                  // onClick={(e) => {
-                  //   e.preventDefault();
-                  //   toggleWishlist(product);
-                  //   if (isFav) {
-                  //     toast.success("Removed from Wishlist");
-                  //   } else {
-                  //     toast.success("Added to Wishlist");
-                  //   }
-                  // }}
+                  onClick={handleWishlistToggle}
                   aria-label="Toggle wishlist"
-                  className={`w-10 h-10 md:w-11 md:h-11 bg-white/90 backdrop-blur-md rounded-full flex items-center justify-center shadow-md hover:scale-110 transition-transform cursor-pointer ${"text-gray-700 hover:text-black"}`}
+                  disabled={isUpdatingWishlist}
+                  className={`w-10 h-10 md:w-11 md:h-11 bg-white/90 backdrop-blur-md rounded-full flex items-center justify-center shadow-md hover:scale-110 transition-transform cursor-pointer disabled:opacity-60 ${isWishlisted
+                      ? "text-red-500 hover:text-red-500"
+                      : "text-gray-700 hover:text-black"
+                    }`}
                 >
-                  <FiHeart size={18} />
+                  <FiHeart
+                    size={18}
+                    className={isWishlisted ? "fill-red-500" : ""}
+                  />
                 </button>
               </div>
             </div>
 
-            {/* Horizontal Thumbnails (Mobile) */}
-            {product.images.length > 1 && (
+            {displayImages.length > 1 && (
               <div className="lg:hidden mt-4">
                 <Carousel
                   ref={mobileThumbCarouselRef}
@@ -403,14 +671,13 @@ const ProductDetails: React.FC = () => {
                   partialVisible={true}
                   itemClass="pr-3"
                 >
-                  {product.images.map((src: string, index: number) => (
+                  {displayImages.map((src: string, index: number) => (
                     <div
                       key={index}
-                      className={`w-full aspect-3/4 cursor-pointer overflow-hidden transition-all snap-start ${
-                        index === selectedIndex
+                      className={`w-full aspect-3/4 cursor-pointer overflow-hidden transition-all snap-start ${index === selectedIndex
                           ? "opacity-100 border border-black"
                           : "opacity-60"
-                      }`}
+                        }`}
                       onClick={() => handleThumbClick(index)}
                     >
                       <img
@@ -424,13 +691,16 @@ const ProductDetails: React.FC = () => {
               </div>
             )}
           </div>
-          {/* RIGHT: Product Info */}
+
           <div className="flex-1 flex flex-col py-2 min-w-0">
             <h1 className="text-2xl lg:text-3xl font-semibold text-gray-900 mb-2">
               {product.title}
             </h1>
 
-            {/* Price & Reviews Row */}
+            <p className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">
+              {product.brand}
+            </p>
+
             <div className="flex items-center flex-wrap gap-4 mb-4">
               <span className="text-2xl font-bold text-gray-900">
                 {formatMoney(currentPrice)}
@@ -443,9 +713,7 @@ const ProductDetails: React.FC = () => {
                   </span>
                   <span className="text-base font-bold text-green-600 tracking-tight">
                     {Math.round(
-                      ((currentCompareAtPrice - currentPrice) /
-                        currentCompareAtPrice) *
-                        100,
+                      ((currentCompareAtPrice - currentPrice) / currentCompareAtPrice) * 100,
                     )}
                     % OFF
                   </span>
@@ -454,7 +722,6 @@ const ProductDetails: React.FC = () => {
 
               <span className="text-gray-300 hidden sm:inline">|</span>
 
-              {/* Dummy static reviews per mockup */}
               <div className="flex items-center gap-1 text-[#f5b82e]">
                 <RatingStars rating={product.ratings?.average || 0} />
                 <span className="text-gray-500 text-sm ml-2 font-medium">
@@ -463,18 +730,14 @@ const ProductDetails: React.FC = () => {
               </div>
             </div>
 
-            {/* Description Snippet */}
             <div
               className="prose prose-sm text-gray-500 leading-relaxed mb-4"
               dangerouslySetInnerHTML={{ __html: product.description }}
             ></div>
 
-            {/* Variants */}
             <div className="flex flex-col gap-6 mb-6">
               {enhancedProduct.options_with_values?.map((option) => {
-                const isColor = ["color", "colour"].includes(
-                  option.name.toLowerCase(),
-                );
+                const isColor = ["color", "colour"].includes(option.name.toLowerCase());
 
                 return (
                   <div key={option.name} className="flex flex-col gap-3">
@@ -482,47 +745,36 @@ const ProductDetails: React.FC = () => {
                       <span className="text-sm font-bold text-gray-900 uppercase tracking-widest">
                         {option.name}
                       </span>
-                      {/* {option.name.toLowerCase().includes("size") && (
-                        <button className="flex items-center gap-1 text-xs font-bold font-source-sans uppercase text-gray-500 hover:text-black transition cursor-pointer">
-                          <BiRuler size={14} /> Size Guide
-                        </button>
-                      )} */}
                     </div>
 
                     <div className="flex flex-wrap gap-3">
                       {option.values.map((val) => {
                         const isSelected = selectedOptions[option.name] === val;
 
-                        // Color Swatches
                         if (isColor) {
                           return (
                             <button
                               key={val}
-                              onClick={() =>
-                                handleOptionChange(option.name, val)
-                              }
+                              onClick={() => handleOptionChange(option.name, val)}
                               title={val}
-                              className={`w-8 h-8 rounded-full border border-gray-100 transition-all ${
-                                isSelected
+                              className={`w-8 h-8 rounded-full border border-gray-100 transition-all ${isSelected
                                   ? "ring-2 ring-gray-400 ring-offset-2 scale-110"
                                   : "hover:scale-110"
-                              }`}
+                                }`}
                               style={{ backgroundColor: getColorHex(val) }}
                               aria-label={`Select Color ${val}`}
                             />
                           );
                         }
 
-                        // Size Pills
                         return (
                           <button
                             key={val}
                             onClick={() => handleOptionChange(option.name, val)}
-                            className={`min-w-12 px-4 py-2.5 rounded-sm text-sm font-source-sans font-bold uppercase tracking-wider transition-all border ${
-                              isSelected
+                            className={`min-w-12 px-4 py-2.5 rounded-sm text-sm font-source-sans font-bold uppercase tracking-wider transition-all border ${isSelected
                                 ? "bg-gray-900 text-white border-gray-900"
                                 : "bg-white text-gray-800 border-gray-300 hover:border-gray-900"
-                            }`}
+                              }`}
                           >
                             {val}
                           </button>
@@ -534,9 +786,7 @@ const ProductDetails: React.FC = () => {
               })}
             </div>
 
-            {/* Add to Cart Area */}
             <div className="flex flex-col gap-4 mb-2">
-              {/* Quantity */}
               <div className="flex items-center">
                 <button
                   onClick={() => handleQuantityChange("minus")}
@@ -558,21 +808,14 @@ const ProductDetails: React.FC = () => {
                 </button>
               </div>
 
-              {/* Action Buttons */}
-              <div
-                ref={actionContainerRef}
-                className="md:flex hidden flex-col sm:flex-row gap-3 w-full"
-              >
+              <div ref={actionContainerRef} className="md:flex hidden flex-col sm:flex-row gap-3 w-full">
                 <button
                   onClick={handleAddToCart}
-                  disabled={
-                    isAdding || (currentVariant && !currentVariant.available)
-                  }
+                  disabled={isAdding || (currentVariant && !currentVariant.available)}
                   className={`flex-1 cursor-pointer py-3.5 flex items-center justify-center gap-2 rounded-sm font-bold uppercase tracking-wider text-sm font-source-sans transition-all shadow-sm border
-                    ${
-                      currentVariant && !currentVariant.available
-                        ? "bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed"
-                        : "bg-white text-gray-900 border-gray-900 hover:bg-gray-50"
+                    ${currentVariant && !currentVariant.available
+                      ? "bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed"
+                      : "bg-white text-gray-900 border-gray-900 hover:bg-gray-50"
                     }
                   `}
                 >
@@ -587,27 +830,22 @@ const ProductDetails: React.FC = () => {
                 </button>
                 <button
                   onClick={handleBuyNow}
-                  disabled={currentVariant && !currentVariant.available}
+                  disabled={isAdding || (currentVariant && !currentVariant.available)}
                   className={`flex-1 py-3.5 cursor-pointer flex items-center justify-center gap-2 rounded-sm font-bold uppercase tracking-wider text-sm font-source-sans transition-all shadow-sm border
-                    ${
-                      currentVariant && !currentVariant.available
-                        ? "bg-gray-200 text-gray-400 border-transparent cursor-not-allowed"
-                        : "bg-primary/90 hover:bg-primary text-black border-primary"
+                    ${currentVariant && !currentVariant.available
+                      ? "bg-gray-200 text-gray-400 border-transparent cursor-not-allowed"
+                      : "bg-primary/90 hover:bg-primary text-black border-primary"
                     }
                   `}
                 >
                   <span>Buy Now</span>
                 </button>
               </div>
-
-              {/* (Secondary Actions Block Removed per user preference) */}
             </div>
 
-            {cartError && (
-              <p className="text-red-500 text-sm mt-2">{cartError}</p>
-            )}
+            {cartError && <p className="text-red-500 text-sm mt-2">{cartError}</p>}
+            {cartMessage && <p className="text-green-600 text-sm mt-2">{cartMessage}</p>}
 
-            {/* Additional Info Links */}
             <div className="flex flex-col gap-3 mt-6 pt-6 border-t border-gray-100 text-gray-600 text-sm font-medium">
               <div className="flex items-center gap-3">
                 <FiTruck size={18} />
@@ -621,28 +859,25 @@ const ProductDetails: React.FC = () => {
         </div>
       </div>
 
-      {/* RECOMMENDATIONS SECTION */}
-      <div className="mt-12 md:mt-20 border-t border-gray-100 pt-8 md:pt-16">
-        <NamedSection
-          title="You May Also Like"
-          productData={recommendedProducts}
-          autoplay={false}
-        />
-      </div>
+      {!!recommendedProducts.length && (
+        <div className="mt-12 md:mt-20 border-t border-gray-100 pt-8 md:pt-16">
+          <NamedSection
+            title="You May Also Like"
+            productData={recommendedProducts}
+            autoplay={false}
+          />
+        </div>
+      )}
 
-      {/* Sticky Mobile Action Bar */}
-      <div
-        className={`fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 p-3 z-50 md:hidden transition-transform duration-300 shadow-[0_-4px_10px_rgba(0,0,0,0.05)] ${"translate-y-0"}`}
-      >
+      <div className="fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 p-3 z-50 md:hidden transition-transform duration-300 translate-y-0">
         <div className="flex flex-row gap-3 w-full mx-auto">
           <button
             onClick={handleAddToCart}
             disabled={isAdding || (currentVariant && !currentVariant.available)}
             className={`flex-1 py-2 flex items-center justify-center gap-2 rounded-sm font-bold uppercase tracking-wider text-sm font-source-sans transition-all border
-              ${
-                currentVariant && !currentVariant.available
-                  ? "bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed"
-                  : "bg-white text-gray-900 border-gray-900 hover:bg-gray-50 hover:text-red-500 hover:border-red-500"
+              ${currentVariant && !currentVariant.available
+                ? "bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed"
+                : "bg-white text-gray-900 border-gray-900 hover:bg-gray-50 hover:text-red-500 hover:border-red-500"
               }
             `}
           >
@@ -650,29 +885,24 @@ const ProductDetails: React.FC = () => {
           </button>
           <button
             onClick={handleBuyNow}
-            disabled={currentVariant && !currentVariant.available}
+            disabled={isAdding || (currentVariant && !currentVariant.available)}
             className={`flex-[1.5] py-2 flex items-center justify-center gap-2 rounded-sm font-bold uppercase tracking-wider text-md font-source-sans transition-all border
-              ${
-                currentVariant && !currentVariant.available
-                  ? "bg-gray-200 text-gray-400 border-transparent cursor-not-allowed"
-                  : "bg-primary text-black border-primary hover:bg-red-600 hover:border-red-600"
+              ${currentVariant && !currentVariant.available
+                ? "bg-gray-200 text-gray-400 border-transparent cursor-not-allowed"
+                : "bg-primary text-black border-primary hover:bg-red-600 hover:border-red-600"
               }
             `}
           >
-            {currentVariant?.price
-              ? `Buy at ${formatMoney(currentPrice)}`
-              : "Buy Now"}
+            {currentVariant?.price ? `Buy at ${formatMoney(currentPrice)}` : "Buy Now"}
           </button>
         </div>
       </div>
 
-      {/* Lightbox / Zoom Modal */}
       <div
-        className={`fixed inset-0 bg-white flex flex-col items-center justify-between pt-16 pb-8 px-4 h-dvh w-full transition-all duration-300 ${
-          isLightboxOpen
+        className={`fixed inset-0 bg-white flex flex-col items-center justify-between pt-16 pb-8 px-4 h-dvh w-full transition-all duration-300 ${isLightboxOpen
             ? "z-9999 opacity-100 pointer-events-auto"
             : "-z-50 opacity-0 pointer-events-none"
-        }`}
+          }`}
       >
         <button
           onClick={() => setIsLightboxOpen(false)}
@@ -681,7 +911,6 @@ const ProductDetails: React.FC = () => {
           <FiX size={24} />
         </button>
 
-        {/* Main Large Image Carousel */}
         <div className="flex-1 w-full max-w-5xl flex items-center justify-center relative mb-6 overflow-hidden">
           <Carousel
             ref={lightboxCarouselRef}
@@ -691,8 +920,7 @@ const ProductDetails: React.FC = () => {
             customRightArrow={<CustomRightArrow />}
             afterChange={(_prev: number, state: any) => {
               const realIndex =
-                (state.currentSlide - 2 + displayImages.length) %
-                displayImages.length;
+                (state.currentSlide - 2 + displayImages.length) % displayImages.length;
               if (realIndex !== lightboxIndex) {
                 setLightboxIndex(realIndex);
               }
@@ -717,7 +945,6 @@ const ProductDetails: React.FC = () => {
           </Carousel>
         </div>
 
-        {/* Thumbnails */}
         {displayImages.length > 1 && (
           <div
             className="h-20 md:h-24 max-w-2xl w-full flex justify-center gap-3 md:gap-4 overflow-x-auto pb-2 scrollbar-none"
@@ -732,11 +959,10 @@ const ProductDetails: React.FC = () => {
                     lightboxCarouselRef.current.goToSlide(idx + 2);
                   }
                 }}
-                className={`h-full aspect-3/4 shrink-0 cursor-pointer border-2 transition-all ${
-                  idx === lightboxIndex
+                className={`h-full aspect-3/4 shrink-0 cursor-pointer border-2 transition-all ${idx === lightboxIndex
                     ? "border-black"
                     : "border-transparent opacity-60 hover:opacity-100"
-                }`}
+                  }`}
               >
                 <img
                   src={src}

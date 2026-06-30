@@ -36,10 +36,11 @@ const NamedSection = ({
     if (emblaApi) emblaApi.scrollNext();
   }, [emblaApi]);
 
+  if (!Array.isArray(productData) || productData.length === 0) return null;
+
   return (
     <section className="py-6 bg-white overflow-hidden px-2">
       <Wrapper className="px-0!">
-        {/* Section Header */}
         <div className="mb-4 md:mb-8 flex flex-wrap flex-row md:items-end justify-between gap-6 md:gap-0">
           <div className="max-w-2xl">
             {title && (
@@ -58,32 +59,31 @@ const NamedSection = ({
             )}
           </div>
 
-          {/* Navigation Buttons */}
-          <div className="flex items-center gap-3">
-            <button
-              onClick={scrollPrev}
-              className="p-1 flex items-center justify-center rounded-full border border-gray-200 text-primary hover:bg-black hover:text-white hover:border-black transition-all bg-black cursor-pointer"
-              aria-label="Previous slide"
-            >
-              <ChevronLeft size={24} />
-            </button>
-            <button
-              onClick={scrollNext}
-              className="p-1 flex items-center justify-center rounded-full border border-gray-200 text-primary hover:bg-black hover:text-white hover:border-black transition-all bg-black cursor-pointer"
-              aria-label="Next slide"
-            >
-              <ChevronRight size={24} />
-            </button>
-          </div>
+          {productData.length > 1 && (
+            <div className="flex items-center gap-3">
+              <button
+                onClick={scrollPrev}
+                className="p-1 flex items-center justify-center rounded-full border border-gray-200 text-primary hover:bg-black hover:text-white hover:border-black transition-all bg-black cursor-pointer"
+                aria-label="Previous slide"
+              >
+                <ChevronLeft size={24} />
+              </button>
+              <button
+                onClick={scrollNext}
+                className="p-1 flex items-center justify-center rounded-full border border-gray-200 text-primary hover:bg-black hover:text-white hover:border-black transition-all bg-black cursor-pointer"
+                aria-label="Next slide"
+              >
+                <ChevronRight size={24} />
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* 2. Carousel Viewport */}
         <div className="embla overflow-hidden" ref={emblaRef}>
-          {/* 3. Carousel Container (The "Track") */}
           <div className="flex -ml-2">
             {productData.map((product) => (
               <div
-                key={product.title}
+                key={`${product.id}-${product.barcode || ""}`}
                 className="flex-[0_0_46%] min-w-0 pl-2 sm:flex-[0_0_45%] md:flex-[0_0_28%] lg:flex-[0_0_21%]"
               >
                 <ProductCard {...product} />

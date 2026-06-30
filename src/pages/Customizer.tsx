@@ -13,13 +13,13 @@ import {
   Underline,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router";
 import { MdOutlineTextFields } from "react-icons/md";
 import { FiUpload } from "react-icons/fi";
 import SweatShirt from "../assets/icons/SweatShirt.svg";
 import Hoodie from "../assets/icons/Hoodie.svg";
 import Tshirt from "../assets/icons/Tshirt.svg";
 import { GrPowerCycle } from "react-icons/gr";
-
 import crewFront from "../assets/T-Shirt Models/crew_front.png";
 import crewBack from "../assets/T-Shirt Models/crew_back.png";
 import hoodieFront from "../assets/T-Shirt Models/mens_hoodie_front.png";
@@ -28,9 +28,21 @@ import longsleeveFront from "../assets/T-Shirt Models/mens_longsleeve_front.png"
 import longsleeveBack from "../assets/T-Shirt Models/mens_longsleeve_back.png";
 import { Canvas, FabricImage, IText, type FabricObject } from "fabric";
 import { flip, offset, shift, useFloating } from "@floating-ui/react";
+import { addToCart } from "../services/cartApi";
 
 type Side = "front" | "back";
 type GarmentType = "crew" | "hoodie" | "longsleeve";
+
+type StoredUser = {
+  id?: number;
+  name?: string;
+  email?: string;
+  mobile?: string;
+  type?: string;
+};
+
+const CUSTOM_PRODUCT_PRICE = 799;
+const CUSTOM_PRODUCT_ORIGINAL_PRICE = 999;
 
 const COLORS = [
   { name: "White", code: "#ffffff" },
@@ -57,12 +69,26 @@ const MODELS: Record<GarmentType, Record<Side, string>> = {
   longsleeve: { front: longsleeveFront, back: longsleeveBack },
 };
 
+const getStoredUser = (): StoredUser | null => {
+  const raw =
+    localStorage.getItem("user") || sessionStorage.getItem("user") || null;
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+};
+
 const Customizer = () => {
+  const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [side, setSide] = useState<Side>("front");
   const [garmentType, setGarmentType] = useState<GarmentType>("crew");
   const [selectedColor, setSelectedColor] = useState(COLORS[0].code);
   const [size, setSize] = useState("");
+  const [isAdding, setIsAdding] = useState(false);
+  const [cartError, setCartError] = useState("");
 
   const canvasFrontRef = useRef<HTMLCanvasElement>(null);
   const canvasBackRef = useRef<HTMLCanvasElement>(null);
@@ -73,7 +99,6 @@ const Customizer = () => {
   const [isInteracting, setIsInteracting] = useState(false);
   const [showFontMenu, setShowFontMenu] = useState(false);
 
-  // Floating UI
   const { refs, floatingStyles } = useFloating({
     placement: "top",
     middleware: [offset(16), flip(), shift({ padding: 16 })],
@@ -83,62 +108,37 @@ const Customizer = () => {
     return side === "front" ? fabricFrontRef.current : fabricBackRef.current;
   }, [side]);
 
-  // Sync toolbar when properties change
   const [, setTick] = useState(0);
   const forceUpdate = () => setTick((t) => t + 1);
 
-  // --- FABRIC INIT & EVENTS ---
   useEffect(() => {
     if (!canvasFrontRef.current || !canvasBackRef.current) return;
-    if (fabricFrontRef.current || fabricBackRef.current) return; // Prevent multiple initializations!
+    if (fabricFrontRef.current || fabricBackRef.current) return;
 
     const initCanvas = (ref: React.RefObject<HTMLCanvasElement | null>) => {
       const c = new Canvas(ref.current!, {
         width: 160,
         height: 300,
         preserveObjectStacking: true,
-        selection: false, // disable group selection to avoid complex bounding boxes
+        selection: false,
       });
 
       c.on("selection:created", () => {
         setActiveObject(c.getActiveObject() || null);
       });
+
       c.on("selection:updated", () => {
         setActiveObject(c.getActiveObject() || null);
       });
+
       c.on("selection:cleared", () => {
         setActiveObject(null);
       });
 
-      // const constrainBounds = (e: any) => {
-      //   const obj = e.target;
-      //   if (!obj) return;
-      //   obj.setCoords();
-      //   const br = obj.getBoundingRect();
-
-      //   if (br.left < 0)
-      //     obj.left = Math.max(
-      //       obj.left as number,
-      //       (obj.left as number) - br.left,
-      //     );
-      //   if (br.top < 0)
-      //     obj.top = Math.max(obj.top as number, (obj.top as number) - br.top);
-      //   if (br.left + br.width > c.width!)
-      //     obj.left = Math.min(
-      //       obj.left as number,
-      //       (obj.left as number) - (br.left + br.width - c.width!),
-      //     );
-      //   if (br.top + br.height > c.height!)
-      //     obj.top = Math.min(
-      //       obj.top as number,
-      //       (obj.top as number) - (br.top + br.height - c.height!),
-      //     );
-      // };
-
       c.on("object:moving", () => {
         setIsInteracting(true);
-        // constrainBounds(e);
       });
+
       c.on("object:scaling", () => setIsInteracting(true));
       c.on("object:rotating", () => setIsInteracting(true));
       c.on("mouse:up", () => setIsInteracting(false));
@@ -149,9 +149,8 @@ const Customizer = () => {
 
     fabricFrontRef.current = initCanvas(canvasFrontRef);
     fabricBackRef.current = initCanvas(canvasBackRef);
-  }, [step]); // re-evaluate when step changes to catch the newly rendered canvas refs
+  }, [step]);
 
-  // Cleanup on true unmount
   useEffect(() => {
     return () => {
       fabricFrontRef.current?.dispose();
@@ -161,12 +160,12 @@ const Customizer = () => {
     };
   }, []);
 
-  // Sync floating UI reference when active object changes
   useEffect(() => {
     if (!activeObject || !containerRef.current) {
       refs.setReference(null);
       return;
     }
+
     const canvasEl = containerRef.current;
 
     const virtualEl = {
@@ -185,20 +184,20 @@ const Customizer = () => {
         } as DOMRect;
       },
     };
+
     refs.setReference(virtualEl);
   }, [activeObject, isInteracting, showFontMenu, refs, side]);
 
   const handleNext = () => step < 3 && setStep(step + 1);
+
   const goToPreview = () => {
     const c = getActiveCanvas();
     if (!c) return;
-
     c.discardActiveObject();
-
     c.renderAll();
-
     setStep(3);
   };
+
   const handleBack = () => step > 1 && setStep(step - 1);
 
   const toggleSide = (newSide: Side) => {
@@ -226,19 +225,20 @@ const Customizer = () => {
       cornerSize: 10,
       padding: 5,
     });
+
     const c = getActiveCanvas();
     if (!c) return;
     c.add(text);
     c.setActiveObject(text);
     text.enterEditing();
     text.selectAll();
-
     c.renderAll();
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const reader = new FileReader();
+
       reader.onload = (event) => {
         if (event.target?.result) {
           FabricImage.fromURL(event.target.result as string).then((img) => {
@@ -255,6 +255,7 @@ const Customizer = () => {
               cornerSize: 10,
               padding: 5,
             });
+
             const c = getActiveCanvas();
             if (!c) return;
             c.add(img);
@@ -263,8 +264,10 @@ const Customizer = () => {
           });
         }
       };
+
       reader.readAsDataURL(e.target.files[0]);
     }
+
     e.target.value = "";
   };
 
@@ -277,11 +280,13 @@ const Customizer = () => {
 
   const duplicateActive = () => {
     if (!activeObject) return;
+
     activeObject.clone([]).then((cloned: FabricObject) => {
       cloned.set({
         left: (cloned.left || 0) + 20,
         top: (cloned.top || 0) + 20,
       });
+
       const c = getActiveCanvas();
       if (!c) return;
       c.add(cloned);
@@ -292,6 +297,7 @@ const Customizer = () => {
 
   const deleteActive = () => {
     if (!activeObject) return;
+
     const c = getActiveCanvas();
     if (!c) return;
     c.remove(activeObject);
@@ -301,6 +307,7 @@ const Customizer = () => {
 
   const bringForward = () => {
     if (!activeObject) return;
+
     const c = getActiveCanvas();
     if (!c) return;
     c.bringObjectForward(activeObject);
@@ -312,24 +319,24 @@ const Customizer = () => {
 
   const cycleAlign = () => {
     if (!activeObject || activeObject.type !== "i-text") return;
+
     const current = (activeObject as IText).textAlign || "left";
     const nextMap: Record<string, string> = {
       left: "center",
       center: "right",
       right: "left",
     };
+
     updateActiveProps({ textAlign: nextMap[current] });
   };
 
   const exportDesignOnly = (fabricCanvas: Canvas | null) => {
     if (!fabricCanvas) return null;
 
-    const dataUrl = fabricCanvas.toDataURL({
+    return fabricCanvas.toDataURL({
       format: "png",
-      multiplier: 2, // 2x quality for better resolution
+      multiplier: 2,
     });
-
-    return dataUrl;
   };
 
   const exportCanvasWithShirt = async (
@@ -342,6 +349,7 @@ const Customizer = () => {
       const canvas = document.createElement("canvas");
       canvas.width = 420;
       canvas.height = 520;
+
       const ctx = canvas.getContext("2d");
       if (!ctx) {
         resolve(null);
@@ -353,29 +361,31 @@ const Customizer = () => {
 
       const img = new Image();
       img.crossOrigin = "anonymous";
+
       img.onload = () => {
         ctx.drawImage(img, 0, 0, 420, 520);
 
         const fabricImage = new Image();
+
         fabricImage.onload = () => {
           const workAreaX = (420 - 160) / 2;
           const workAreaY = 520 * 0.2;
 
-          // The fabric exported image might be larger because of multiplier: 2,
-          // but we draw it into a 160x300 space explicitly using dx, dy, dWidth, dHeight
           ctx.drawImage(fabricImage, workAreaX, workAreaY, 160, 300);
-
           resolve(canvas.toDataURL("image/png", 1.0));
         };
+
         fabricImage.src = fabricCanvas.toDataURL({
           format: "png",
           quality: 1,
           multiplier: 2,
         });
       };
+
       img.onerror = () => {
         resolve(null);
       };
+
       img.src = MODELS[garmentType][sideToExport];
     });
   };
@@ -384,7 +394,6 @@ const Customizer = () => {
     const frontFabric = fabricFrontRef.current;
     const backFabric = fabricBackRef.current;
 
-    // Discard active objects before exporting so bounding boxes are not visible
     const cActive = getActiveCanvas();
     if (cActive) {
       cActive.discardActiveObject();
@@ -392,15 +401,13 @@ const Customizer = () => {
     }
 
     return {
-      size: size,
+      size,
       color: selectedColor,
-      garmentType: garmentType,
-
+      garmentType,
       design: {
         front: await exportCanvasWithShirt("front", frontFabric),
         back: await exportCanvasWithShirt("back", backFabric),
       },
-
       designOnly: {
         front: exportDesignOnly(frontFabric),
         back: exportDesignOnly(backFabric),
@@ -409,18 +416,51 @@ const Customizer = () => {
   };
 
   const handleAddToCart = async () => {
+    if (!size || isAdding) return;
+
+    const user = getStoredUser();
+    const userId = Number(user?.id || 0);
+
+    if (!userId) {
+      navigate("/auth");
+      return;
+    }
+
+    setIsAdding(true);
+    setCartError("");
+
     try {
       const payload = await buildPayload();
-      console.log("Cart Payload:", payload);
-    } catch (err) {
-      console.error("Error adding to cart", err);
+      const displayImage =
+        payload.design.front ||
+        payload.design.back ||
+        MODELS[garmentType].front;
+
+      await addToCart({
+        user_id: userId,
+        selected_size: size,
+        selected_color: selectedColor,
+        quantity: 1,
+        is_custom: true,
+        custom_title: `Custom ${garmentType}`,
+        custom_brand: "V1Garments",
+        custom_image_url: displayImage,
+        custom_price: CUSTOM_PRODUCT_PRICE,
+        custom_original_price: CUSTOM_PRODUCT_ORIGINAL_PRICE,
+        custom_payload: payload,
+      });
+
+      navigate("/cart");
+    } catch (err: any) {
+      setCartError(err?.message || "Unable to add custom product to cart");
+    } finally {
+      setIsAdding(false);
     }
   };
 
   return (
     <div className="font-poppins bg-[#f5f5f5] h-[calc(100vh-48px)] lg:h-[calc(100vh-72px)] flex justify-center">
       <div className="w-full max-w-[530px] h-full bg-white shadow-xl flex flex-col">
-        {/* Stepper */}
         <div className="bg-[#e9ecef] pt-8 pb-5 px-8 flex justify-between relative border-b border-gray-200 shrink-0">
           <div className="absolute top-[48px] left-[60px] right-[60px] h-[2px] bg-gray-300 z-0">
             <div
@@ -428,6 +468,7 @@ const Customizer = () => {
               style={{ width: step === 1 ? "0%" : step === 2 ? "50%" : "100%" }}
             />
           </div>
+
           <div
             className="flex flex-col items-center z-10 gap-2 w-20 cursor-pointer"
             onClick={() => setStep(1)}
@@ -441,6 +482,7 @@ const Customizer = () => {
               Pick Color & Size
             </span>
           </div>
+
           <div
             className="flex flex-col items-center z-10 gap-2 w-20 cursor-pointer"
             onClick={() => (size ? setStep(2) : null)}
@@ -456,10 +498,8 @@ const Customizer = () => {
               Finalise Design
             </span>
           </div>
-          <div
-            className="flex flex-col items-center z-10 gap-2 w-20 cursor-pointer"
-            // onClick={() => (size && step >= 2 ? setStep(3) : null)}
-          >
+
+          <div className="flex flex-col items-center z-10 gap-2 w-20 cursor-pointer">
             <div
               className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${step >= 3 ? "bg-green-500 text-white shadow-sm" : "bg-white text-gray-500 border border-gray-300"}`}
             >
@@ -473,11 +513,9 @@ const Customizer = () => {
           </div>
         </div>
 
-        {/* Scrollable Content (Fixed Height Removed) */}
         <div className="flex-1 overflow-y-auto hidescrollbar bg-white">
           {step === 1 && (
             <div className="p-6 space-y-4">
-              {/* Garment Select */}
               <div>
                 <h3 className="font-medium text-base text-gray-900 mb-2">
                   Select Garment
@@ -504,7 +542,6 @@ const Customizer = () => {
                 </div>
               </div>
 
-              {/* Color Select — UNCHANGED */}
               <div>
                 <h3 className="font-medium text-base text-gray-900 mb-2">
                   Select Color
@@ -535,7 +572,6 @@ const Customizer = () => {
                 </div>
               </div>
 
-              {/* Size Select */}
               <div>
                 <h3 className="font-medium text-base text-gray-900 mb-2">
                   Select Size
@@ -561,29 +597,26 @@ const Customizer = () => {
 
           {step >= 2 && (
             <div className="flex relative justify-center h-full items-start w-full overflow-hidden py-0">
-              {/* FIXED SIZE CONTAINER (DO NOT MAKE RESPONSIVE) */}
               <div
                 className="relative"
                 style={{
-                  width: "420px", // FIXED shirt width for all screens
-                  height: "520px", // FIXED height for all screens
+                  width: "420px",
+                  height: "520px",
                   overflow: "hidden",
                 }}
               >
-                {/* SHIRT IMAGE – NEVER RESIZE */}
                 <img
                   src={MODELS[garmentType][side]}
                   className="absolute top-0 left-0"
                   style={{
-                    width: "420px", // Always same
-                    height: "520px", // Always same
+                    width: "420px",
+                    height: "520px",
                     objectFit: "cover",
                     backgroundColor: selectedColor,
                     pointerEvents: "none",
                   }}
                 />
 
-                {/* work area */}
                 <div
                   ref={containerRef}
                   className="absolute z-20 left-1/2 top-[20%] w-[160px] h-[300px] -translate-x-1/2"
@@ -592,7 +625,6 @@ const Customizer = () => {
                     className={`absolute inset-0 transition-opacity pointer-events-none ${step === 2 && activeObject ? "border border-dashed border-gray-200/50" : "opacity-0"}`}
                   />
 
-                  {/* Dual Canvas setup for Fabric.js rendering front & back */}
                   <div
                     className={`absolute inset-0 overflow-visible ${step !== 2 ? "pointer-events-none select-none" : ""}`}
                   >
@@ -617,7 +649,7 @@ const Customizer = () => {
                   </div>
                 </div>
               </div>
-              {/* Floating UI Toolbar */}
+
               {activeObject && step === 2 && !isInteracting && (
                 <div
                   ref={refs.setFloating}
@@ -641,6 +673,7 @@ const Customizer = () => {
                           </span>
                           <ChevronDown size={14} className="text-gray-500" />
                         </div>
+
                         {showFontMenu && (
                           <div className="absolute top-10 left-0 bg-white rounded-xl shadow-xl border border-gray-100 py-2 transition-all flex flex-col z-50 w-40 overflow-y-auto hidescrollbar">
                             {FONTS.map((font) => (
@@ -720,6 +753,7 @@ const Customizer = () => {
                         >
                           <Bold size={16} />
                         </button>
+
                         <button
                           onClick={() =>
                             updateActiveProps({
@@ -733,6 +767,7 @@ const Customizer = () => {
                         >
                           <Italic size={16} />
                         </button>
+
                         <button
                           onClick={() =>
                             updateActiveProps({
@@ -743,6 +778,7 @@ const Customizer = () => {
                         >
                           <Underline size={16} />
                         </button>
+
                         <button
                           onClick={() =>
                             updateActiveProps({
@@ -753,9 +789,10 @@ const Customizer = () => {
                         >
                           <Strikethrough size={16} />
                         </button>
+
                         <button
                           onClick={cycleAlign}
-                          className={`p-1.5 rounded transition-colors text-gray-600 hover:text-black hover:bg-gray-100`}
+                          className="p-1.5 rounded transition-colors text-gray-600 hover:text-black hover:bg-gray-100"
                         >
                           {(activeObject as IText).textAlign === "left" && (
                             <AlignLeft size={16} />
@@ -784,6 +821,7 @@ const Customizer = () => {
                     >
                       <Layers size={16} />
                     </button>
+
                     <button
                       onClick={duplicateActive}
                       title="Duplicate"
@@ -791,6 +829,7 @@ const Customizer = () => {
                     >
                       <CopyPlus size={16} />
                     </button>
+
                     <button
                       onClick={deleteActive}
                       title="Delete"
@@ -801,7 +840,7 @@ const Customizer = () => {
                   </div>
                 </div>
               )}
-              {/* FLIP BUTTON */}
+
               <button
                 onClick={() => toggleSide(side === "front" ? "back" : "front")}
                 className="cursor-pointer absolute flex flex-col items-center justify-center gap-2 top-3 right-3 bg-black/10 backdrop-blur-md px-3 py-1 rounded"
@@ -813,7 +852,6 @@ const Customizer = () => {
           )}
         </div>
 
-        {/* Sticky Footer (Fixes Mobile Cutoff) */}
         <div className="sticky bottom-0 left-0 right-0 bg-white border-t border-gray-200 pb-[env(safe-area-inset-bottom)]">
           {step === 1 && (
             <div className="p-4">
@@ -861,6 +899,7 @@ const Customizer = () => {
                 >
                   Back
                 </button>
+
                 <button
                   onClick={goToPreview}
                   className="flex-1 py-4 bg-[#469e98] text-white font-bold text-sm uppercase border-t border-gray-200"
@@ -870,20 +909,29 @@ const Customizer = () => {
               </div>
             </div>
           )}
+
           {step === 3 && (
             <div className="flex flex-col bg-white">
               <div className="flex flex-col p-4 bg-white">
+                {cartError ? (
+                  <p className="text-red-500 text-xs font-medium mb-2 text-center">
+                    {cartError}
+                  </p>
+                ) : null}
+
                 <button
                   onClick={handleAddToCart}
-                  className="w-full cursor-pointer py-4 rounded-sm bg-[#469e98] text-white font-bold text-sm tracking-widest hover:bg-[#3b8782] transition-colors uppercase"
+                  disabled={isAdding}
+                  className="w-full cursor-pointer py-4 rounded-sm bg-[#469e98] text-white font-bold text-sm tracking-widest hover:bg-[#3b8782] transition-colors uppercase disabled:opacity-60"
                 >
-                  Add To Bag
+                  {isAdding ? "Adding..." : "Add To Bag"}
                 </button>
               </div>
             </div>
           )}
         </div>
       </div>
+
       <style
         dangerouslySetInnerHTML={{
           __html: `
