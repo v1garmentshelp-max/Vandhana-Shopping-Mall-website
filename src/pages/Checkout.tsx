@@ -65,6 +65,11 @@ const getStoredUser = (): StoredUser | null => {
   }
 };
 
+const getNumber = (value: any, fallback = 0) => {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+};
+
 const parseImages = (value: any) => {
   if (Array.isArray(value)) return value.filter(Boolean);
   if (typeof value === "string") {
@@ -79,29 +84,49 @@ const parseImages = (value: any) => {
 };
 
 const normalizeCartItem = (item: CartApiItem): CheckoutItem => {
-  const images = parseImages(item.images);
+  const raw: any = item;
+  const images = parseImages(raw.images);
   const fallbackImage =
-    item.front_image_url ||
-    item.image_url ||
-    item.main_image_url ||
-    item.back_image_url ||
+    raw.front_image_url ||
+    raw.image_url ||
+    raw.main_image_url ||
+    raw.back_image_url ||
     "/placeholder.svg";
 
+  const price = getNumber(
+    raw.final_price_b2c ||
+      raw.sale_price ||
+      raw.price ||
+      raw.selling_price ||
+      raw.discounted_price ||
+      raw.mahaveer_price,
+    0,
+  );
+
+  const originalPrice = getNumber(
+    raw.original_price_b2c ||
+      raw.mrp ||
+      raw.originalPrice ||
+      raw.original_price ||
+      price,
+    price,
+  );
+
   return {
-    cartItemId: item.cart_item_id,
-    id: item.id || item.variant_id || item.product_id || item.cart_item_id || "",
-    productId: item.product_id,
-    variantId: item.variant_id || item.id,
-    title: item.product_name || "Product",
-    brand: item.brand || "",
-    price: Number(item.final_price_b2c || 0),
-    originalPrice: Number(item.original_price_b2c || 0) || undefined,
+    cartItemId: raw.cart_item_id,
+    id: raw.id || raw.variant_id || raw.product_id || raw.cart_item_id || "",
+    productId: raw.product_id,
+    variantId: raw.variant_id || raw.id,
+    title: raw.product_name || raw.name || "Product",
+    brand: raw.brand || raw.brand_name || "",
+    price,
+    originalPrice,
     image: images[0] || fallbackImage,
-    quantity: Math.max(1, Number(item.quantity || 1)),
-    selectedSize: String(item.selected_size || item.size || ""),
-    selectedColor: String(item.selected_color || item.color || ""),
-    eanCode: item.ean_code || null,
-    isCustom: Boolean(item.is_custom),
+    quantity: Math.max(1, Number(raw.quantity || raw.qty || 1)),
+    selectedSize: String(raw.selected_size || raw.size || ""),
+    selectedColor: String(raw.selected_color || raw.color || raw.colour || ""),
+    eanCode: raw.ean_code || raw.barcode || null,
+    isCustom: Boolean(raw.is_custom),
   };
 };
 
@@ -629,7 +654,7 @@ export default function Checkout() {
             <div className="space-y-4 max-h-[360px] overflow-y-auto pr-1">
               {cartItems.map((item) => (
                 <div
-                  key={`${item.cartItemId || item.id}-${item.selectedSize}-${item.selectedColor}`}
+                  key={`${item.cartItemId || item.id}-${item.variantId}-${item.selectedSize}-${item.selectedColor}`}
                   className="flex gap-3"
                 >
                   <div className="w-16 h-20 rounded-lg bg-gray-100 overflow-hidden shrink-0">

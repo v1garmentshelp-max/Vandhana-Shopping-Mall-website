@@ -33,22 +33,54 @@ const toGender = (value: any): ProductGender => {
   return "Men";
 };
 
+const splitValues = (value: any): string[] => {
+  if (!value) return [];
+
+  if (Array.isArray(value)) {
+    return value
+      .flatMap((item) => splitValues(item))
+      .map((item) => String(item || "").trim())
+      .filter(Boolean);
+  }
+
+  return String(value || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+};
+
 const uniqueStrings = (items: any[]) => {
   const seen = new Set<string>();
   const out: string[] = [];
+
   items.forEach((item) => {
     const value = String(item || "").trim();
     if (!value) return;
+
     const key = value.toLowerCase();
     if (seen.has(key)) return;
+
     seen.add(key);
     out.push(value);
   });
+
   return out;
+};
+
+const sortVariantValues = (items: any[]) => {
+  return uniqueStrings(items).sort((a, b) => {
+    const na = parseFloat(String(a).replace(/[^\d.]/g, ""));
+    const nb = parseFloat(String(b).replace(/[^\d.]/g, ""));
+
+    if (Number.isFinite(na) && Number.isFinite(nb) && na !== nb) return na - nb;
+
+    return String(a).localeCompare(String(b), undefined, { numeric: true });
+  });
 };
 
 const parseImages = (value: any): ProductImage[] => {
   if (!value) return [];
+
   if (Array.isArray(value)) {
     return value
       .map((item) => {
@@ -57,9 +89,11 @@ const parseImages = (value: any): ProductImage[] => {
       })
       .filter(Boolean);
   }
+
   if (typeof value === "string") {
     try {
       const parsed = JSON.parse(value);
+
       if (Array.isArray(parsed)) {
         return parsed
           .map((item) => {
@@ -74,6 +108,7 @@ const parseImages = (value: any): ProductImage[] => {
       }
     }
   }
+
   return [];
 };
 
@@ -120,6 +155,7 @@ const findCategoryId = (gender: ProductGender, productName: string) => {
     { keys: ["pant", "trouser"], targets: ["pants", "trousers"] },
     { keys: ["hoodie"], targets: ["hoodies"] },
     { keys: ["sweatshirt"], targets: ["sweatshirts"] },
+    { keys: ["night dress"], targets: ["night dress", "nightwear", "sleepwear"] },
   ];
 
   for (const alias of aliases) {
@@ -128,6 +164,7 @@ const findCategoryId = (gender: ProductGender, productName: string) => {
         const exact = leafCategories.find(
           (c) => normalizeText(c.name) === normalizeText(target),
         );
+
         if (exact) return exact.id;
 
         const partial = leafCategories.find(
@@ -135,6 +172,7 @@ const findCategoryId = (gender: ProductGender, productName: string) => {
             normalizeText(c.name).includes(normalizeText(target)) ||
             normalizeText(target).includes(normalizeText(c.name)),
         );
+
         if (partial) return partial.id;
       }
     }
@@ -147,21 +185,149 @@ const findCategoryId = (gender: ProductGender, productName: string) => {
   return direct?.id || leafCategories[0]?.id || "";
 };
 
+const normalizeVariant = (variant: any, row: any) => {
+  const productId = variant?.product_id || variant?.productId || row?.product_id || row?.productId || row?.id || null;
+  const variantId = variant?.variant_id || variant?.variantId || variant?.id || row?.variant_id || row?.variantId || row?.primary_variant_id || row?.id || null;
+  const size = String(variant?.size || variant?.selected_size || "").trim();
+  const colour = String(variant?.colour || variant?.color || variant?.selected_color || "").trim();
+  const barcode = String(variant?.barcode || variant?.ean_code || variant?.eanCode || "").trim();
+
+  const mrp = toNumber(
+    variant?.mrp ||
+      variant?.original_price_b2c ||
+      variant?.originalPrice ||
+      row?.mrp ||
+      row?.original_price_b2c ||
+      row?.originalPrice ||
+      row?.price,
+    0,
+  );
+
+  const salePrice = toNumber(
+    variant?.final_price_b2c ||
+      variant?.sale_price ||
+      variant?.price ||
+      variant?.selling_price ||
+      variant?.discounted_price ||
+      variant?.mahaveer_price ||
+      row?.final_price_b2c ||
+      row?.sale_price ||
+      row?.price ||
+      row?.salePrice,
+    mrp,
+  );
+
+  const rawImages = parseImages(variant?.images);
+  const frontFromArray = imageUrlFromRecord(
+    rawImages.find((img) => normalizeText(img?.image_type).includes("front")),
+  );
+  const backFromArray = imageUrlFromRecord(
+    rawImages.find((img) => normalizeText(img?.image_type).includes("back")),
+  );
+  const mainFromArray = imageUrlFromRecord(
+    rawImages.find((img) => normalizeText(img?.image_type).includes("main")),
+  );
+
+  const frontImageUrl = String(variant?.front_image_url || variant?.frontImageUrl || frontFromArray || "").trim();
+  const backImageUrl = String(variant?.back_image_url || variant?.backImageUrl || backFromArray || "").trim();
+  const mainImageUrl = String(variant?.main_image_url || variant?.mainImageUrl || mainFromArray || "").trim();
+  const imageUrl = String(variant?.image_url || variant?.imageUrl || frontImageUrl || mainImageUrl || row?.image_url || row?.imageUrl || "").trim();
+
+  const images = uniqueStrings([
+    frontImageUrl,
+    backImageUrl,
+    mainImageUrl,
+    imageUrl,
+    ...rawImages.map(imageUrlFromRecord),
+  ]);
+
+  return {
+    id: String(variantId || barcode || ""),
+    variant_id: variantId,
+    variantId,
+    product_id: productId,
+    productId,
+    size,
+    colour,
+    color: colour,
+    barcode,
+    ean_code: barcode,
+    eanCode: barcode,
+    mrp,
+    original_price_b2c: toNumber(variant?.original_price_b2c || variant?.mrp || mrp, mrp),
+    final_price_b2c: salePrice,
+    original_price_b2b: toNumber(variant?.original_price_b2b || variant?.mrp || mrp, mrp),
+    final_price_b2b: toNumber(variant?.final_price_b2b || variant?.cost_price || variant?.sale_price || salePrice, salePrice),
+    sale_price: salePrice,
+    price: salePrice,
+    selling_price: toNumber(variant?.selling_price || salePrice, salePrice),
+    discounted_price: toNumber(variant?.discounted_price || salePrice, salePrice),
+    mahaveer_price: toNumber(variant?.mahaveer_price || salePrice, salePrice),
+    base_sale_price: toNumber(variant?.base_sale_price || variant?.original_sale_price || variant?.sale_price || salePrice, salePrice),
+    original_sale_price: toNumber(variant?.original_sale_price || variant?.base_sale_price || variant?.sale_price || salePrice, salePrice),
+    cost_price: toNumber(variant?.cost_price || 0, 0),
+    b2c_discount_pct: toNumber(variant?.b2c_discount_pct || row?.b2c_discount_pct || 0, 0),
+    b2b_discount_pct: toNumber(variant?.b2b_discount_pct || row?.b2b_discount_pct || 0, 0),
+    on_hand: toNumber(variant?.on_hand || variant?.stock || variant?.qty || variant?.quantity || 0, 0),
+    reserved: toNumber(variant?.reserved || 0, 0),
+    available_qty: toNumber(variant?.available_qty || variant?.on_hand || variant?.stock || variant?.qty || variant?.quantity || 0, 0),
+    in_stock: Boolean(variant?.in_stock ?? true),
+    image_url: imageUrl,
+    imageUrl,
+    front_image_url: frontImageUrl,
+    frontImageUrl,
+    back_image_url: backImageUrl,
+    backImageUrl,
+    main_image_url: mainImageUrl,
+    mainImageUrl,
+    images: images.length ? images : [],
+    raw: variant,
+  };
+};
+
 const normalizeProduct = (row: any): Product => {
   const productName = String(row.product_name || row.name || row.title || "Product").trim();
   const brandName = String(row.brand_name || row.brand || "Vandhana").trim();
   const gender = toGender(row.gender);
-  const size = String(row.size || row.selected_size || "").trim();
-  const colour = String(row.colour || row.color || row.selected_color || "").trim();
+
+  const actualProductId = row.product_id || row.productId || row.actual_product_id || row.parent_product_id || row.id || null;
+  const actualVariantId = row.variant_id || row.variantId || row.primary_variant_id || null;
   const barcode = String(row.barcode || row.ean_code || row.eanCode || "").trim();
 
-  const actualProductId = row.product_id || row.productId || row.actual_product_id || row.parent_product_id || null;
-  const actualVariantId = row.variant_id || row.variantId || row.id || null;
-  const id = String(actualVariantId || barcode || actualProductId || "");
+  const rawVariants = Array.isArray(row.variants) && row.variants.length ? row.variants : [row];
+  const variants = rawVariants.map((variant: any) => normalizeVariant(variant, row));
 
-  const mrp = toNumber(row.mrp || row.original_price_b2c || row.originalPrice || row.price, 0);
-  const salePrice = toNumber(row.sale_price || row.final_price_b2c || row.price || row.salePrice, mrp);
-  const onHand = toNumber(row.on_hand || row.stock || row.qty || row.quantity, 0);
+  const selectedVariant =
+    variants.find((variant: any) => String(variant.variant_id || "") === String(actualVariantId || "")) ||
+    variants[0];
+
+  const sizeList = sortVariantValues([
+    ...splitValues(row.sizes),
+    ...splitValues(row.size),
+    ...variants.map((variant: any) => variant.size),
+  ]);
+
+  const colorList = sortVariantValues([
+    ...splitValues(row.colors),
+    ...splitValues(row.colours),
+    ...splitValues(row.color),
+    ...splitValues(row.colour),
+    ...variants.map((variant: any) => variant.colour || variant.color),
+  ]);
+
+  const onHand = variants.reduce((sum: number, variant: any) => sum + toNumber(variant.on_hand || variant.available_qty || 0, 0), 0);
+
+  const mrp = toNumber(selectedVariant?.mrp || row.mrp || row.original_price_b2c || row.originalPrice || row.price, 0);
+  const salePrice = toNumber(
+    selectedVariant?.final_price_b2c ||
+      selectedVariant?.sale_price ||
+      selectedVariant?.price ||
+      row.final_price_b2c ||
+      row.sale_price ||
+      row.price ||
+      row.salePrice,
+    mrp,
+  );
 
   const rawImages = parseImages(row.images);
   const frontFromArray = imageUrlFromRecord(
@@ -174,10 +340,12 @@ const normalizeProduct = (row: any): Product => {
     rawImages.find((img) => normalizeText(img?.image_type).includes("main")),
   );
 
-  const frontImageUrl = String(row.front_image_url || row.frontImageUrl || frontFromArray || "").trim();
-  const backImageUrl = String(row.back_image_url || row.backImageUrl || backFromArray || "").trim();
-  const mainImageUrl = String(row.main_image_url || row.mainImageUrl || mainFromArray || "").trim();
-  const imageUrl = String(row.image_url || row.imageUrl || frontImageUrl || mainImageUrl || "").trim();
+  const frontImageUrl = String(row.front_image_url || row.frontImageUrl || selectedVariant?.front_image_url || frontFromArray || "").trim();
+  const backImageUrl = String(row.back_image_url || row.backImageUrl || selectedVariant?.back_image_url || backFromArray || "").trim();
+  const mainImageUrl = String(row.main_image_url || row.mainImageUrl || selectedVariant?.main_image_url || mainFromArray || "").trim();
+  const imageUrl = String(row.image_url || row.imageUrl || selectedVariant?.image_url || frontImageUrl || mainImageUrl || "").trim();
+
+  const variantImages = variants.flatMap((variant: any) => splitValues(variant.images || []).concat([variant.image_url, variant.front_image_url, variant.back_image_url, variant.main_image_url]));
 
   const images = uniqueStrings([
     frontImageUrl,
@@ -185,12 +353,21 @@ const normalizeProduct = (row: any): Product => {
     mainImageUrl,
     imageUrl,
     ...rawImages.map(imageUrlFromRecord),
+    ...variantImages,
   ]);
 
-  return {
-    id,
-    productId: actualProductId || undefined,
-    variantId: actualVariantId || id,
+  const stockBySize = variants.reduce((acc: Record<string, number>, variant: any) => {
+    const size = String(variant.size || "").trim();
+    if (!size) return acc;
+    acc[size] = (acc[size] || 0) + toNumber(variant.available_qty || variant.on_hand || 0, 0);
+    return acc;
+  }, {});
+
+  const normalized: any = {
+    id: String(actualProductId || selectedVariant?.product_id || selectedVariant?.productId || selectedVariant?.variant_id || barcode || ""),
+    productId: actualProductId || selectedVariant?.product_id || selectedVariant?.productId || undefined,
+    variantId: selectedVariant?.variant_id || selectedVariant?.variantId || actualVariantId || undefined,
+    primaryVariantId: row.primary_variant_id || actualVariantId || selectedVariant?.variant_id || undefined,
     title: productName,
     description: String(row.description || `${brandName} ${productName}`).trim(),
     brand: brandName,
@@ -204,15 +381,16 @@ const normalizeProduct = (row: any): Product => {
     backImageUrl,
     mainImageUrl,
     imageUrl,
-    barcode,
-    size,
-    colour,
-    sizes: uniqueStrings([size]),
-    colors: uniqueStrings([colour]),
-    stockBySize: size ? { [size]: onHand } : {},
+    barcode: selectedVariant?.barcode || barcode,
+    size: selectedVariant?.size || sizeList[0] || "",
+    colour: selectedVariant?.colour || colorList[0] || "",
+    sizes: sizeList,
+    colors: colorList,
+    colours: colorList,
+    stockBySize,
     specs: {
       material: row.material || "",
-      fit: row.fit || "",
+      fit: row.fit || row.fit_type || "",
       washCare: [],
     },
     ratings: {
@@ -224,8 +402,13 @@ const normalizeProduct = (row: any): Product => {
     mrp,
     salePrice,
     patternCode: String(row.pattern_code || row.patternCode || "").trim(),
+    variants,
+    variantCount: variants.length,
+    variant_count: variants.length,
     raw: row,
   };
+
+  return normalized as Product;
 };
 
 export const fetchBranchProducts = async (branchId = DEFAULT_BRANCH_ID): Promise<Product[]> => {
@@ -261,10 +444,21 @@ export const fetchProductById = async (
   const target = String(id || "").trim();
 
   return (
-    products.find((product) => String(product.id || "").trim() === target) ||
-    products.find((product) => String(product.variantId || "").trim() === target) ||
-    products.find((product) => String(product.barcode || "").trim() === target) ||
-    products.find((product) => String(product.productId || "").trim() === target) ||
+    products.find((product: any) => String(product.id || "").trim() === target) ||
+    products.find((product: any) => String(product.productId || "").trim() === target) ||
+    products.find((product: any) => String(product.variantId || "").trim() === target) ||
+    products.find((product: any) => String(product.primaryVariantId || "").trim() === target) ||
+    products.find((product: any) => String(product.barcode || "").trim() === target) ||
+    products.find((product: any) =>
+      Array.isArray(product.variants) &&
+      product.variants.some(
+        (variant: any) =>
+          String(variant.variant_id || "").trim() === target ||
+          String(variant.id || "").trim() === target ||
+          String(variant.barcode || "").trim() === target ||
+          String(variant.ean_code || "").trim() === target,
+      ),
+    ) ||
     null
   );
 };
