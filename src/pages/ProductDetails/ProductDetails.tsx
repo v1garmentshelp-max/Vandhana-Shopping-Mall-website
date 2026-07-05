@@ -8,9 +8,6 @@ import "react-multi-carousel/lib/styles.css";
 import NamedSection from "../../components/NamedSection";
 import { fetchProductById, fetchProductsByGender } from "../../services/productsApi";
 import { addToCart } from "../../services/cartApi";
-
-const Carousel = (CarouselModule as any).default || CarouselModule;
-
 import {
   FiChevronLeft,
   FiChevronRight,
@@ -25,6 +22,7 @@ import {
 } from "react-icons/fi";
 import { FaRegStar, FaStar, FaStarHalfAlt } from "react-icons/fa";
 
+const Carousel = (CarouselModule as any).default || CarouselModule;
 const API_BASE = "https://vandhana-shopping-mall-backend.vercel.app";
 
 type StoredUser = {
@@ -76,8 +74,7 @@ type ProductVariantOption = {
 };
 
 const getStoredUser = (): StoredUser | null => {
-  const raw =
-    localStorage.getItem("user") || sessionStorage.getItem("user") || null;
+  const raw = localStorage.getItem("user") || sessionStorage.getItem("user") || null;
   if (!raw) return null;
   try {
     return JSON.parse(raw);
@@ -366,7 +363,12 @@ const ProductDetails: React.FC = () => {
   const mobileThumbCarouselRef = useRef<any>(null);
 
   const backendProductId = useMemo(() => getBackendProductId(product), [product]);
-  const variantOptions = useMemo(() => getProductVariants(product), [product]);
+  const allVariantOptions = useMemo(() => getProductVariants(product), [product]);
+  const availableVariantOptions = useMemo(
+    () => allVariantOptions.filter((variant) => getVariantStockCount(variant) > 0),
+    [allVariantOptions],
+  );
+  const variantOptions = availableVariantOptions.length ? availableVariantOptions : allVariantOptions;
   const selectedSize = selectedOptions["Size"] || "";
   const selectedColor = selectedOptions["Color"] || "";
 
@@ -385,24 +387,18 @@ const ProductDetails: React.FC = () => {
     [variantOptions, selectedSize, selectedColor],
   );
 
-  const sizeValues = useMemo(
-    () =>
-      sortVariantValues([
-        ...variantOptions.map((variant) => variant.size),
-        ...((product as any)?.sizes || []),
-      ]),
-    [variantOptions, product],
+  const colorValues = useMemo(
+    () => sortVariantValues(variantOptions.map((variant) => getVariantColor(variant))),
+    [variantOptions],
   );
 
-  const colorValues = useMemo(
-    () =>
-      sortVariantValues([
-        ...variantOptions.map((variant) => getVariantColor(variant)),
-        ...((product as any)?.colors || []),
-        ...((product as any)?.colours || []),
-      ]),
-    [variantOptions, product],
-  );
+  const sizeValues = useMemo(() => {
+    const filtered = selectedColor
+      ? variantOptions.filter((variant) => sameValue(getVariantColor(variant), selectedColor))
+      : variantOptions;
+
+    return sortVariantValues(filtered.map((variant) => variant.size));
+  }, [variantOptions, selectedColor]);
 
   useEffect(() => {
     if (desktopThumbContainerRef.current) {
@@ -457,20 +453,22 @@ const ProductDetails: React.FC = () => {
           return;
         }
 
-        const variants = getProductVariants(foundProduct);
+        const allVariants = getProductVariants(foundProduct);
+        const availableVariants = allVariants.filter((variant) => getVariantStockCount(variant) > 0);
+        const variants = availableVariants.length ? availableVariants : allVariants;
         const firstVariant = variants[0];
         const initialOptions: Record<string, string> = {};
-
-        if (firstVariant?.size) {
-          initialOptions["Size"] = firstVariant.size;
-        } else if (foundProduct.sizes?.length) {
-          initialOptions["Size"] = foundProduct.sizes[0];
-        }
 
         if (firstVariant?.colour || firstVariant?.color) {
           initialOptions["Color"] = firstVariant.colour || firstVariant.color;
         } else if (foundProduct.colors?.length) {
           initialOptions["Color"] = foundProduct.colors[0];
+        }
+
+        if (firstVariant?.size) {
+          initialOptions["Size"] = firstVariant.size;
+        } else if (foundProduct.sizes?.length) {
+          initialOptions["Size"] = foundProduct.sizes[0];
         }
 
         setProduct(foundProduct);
@@ -504,6 +502,56 @@ const ProductDetails: React.FC = () => {
       alive = false;
     };
   }, [id]);
+
+  useEffect(() => {
+    if (!variantOptions.length) return;
+
+    setSelectedOptions((prev) => {
+      const currentColor = prev["Color"] || "";
+      const currentSize = prev["Size"] || "";
+      const exact = findExactVariant(variantOptions, currentSize, currentColor);
+
+      if (exact) return prev;
+
+      const colorMatch = currentColor
+        ? variantOptions.find((variant) => sameValue(getVariantColor(variant), currentColor))
+        : null;
+
+      const sizeMatch = currentSize
+        ? variantOptions.find((variant) => sameValue(variant.size, currentSize))
+        : null;
+
+      const nextVariant = colorMatch || sizeMatch || variantOptions[0];
+      const nextColor = getVariantColor(nextVariant);
+      const nextSize = nextVariant?.size || "";
+
+      const next: Record<string, string> = { ...prev };
+
+      if (nextColor) next["Color"] = nextColor;
+      else delete next["Color"];
+
+      if (nextSize) next["Size"] = nextSize;
+      else delete next["Size"];
+
+      if (sameValue(currentColor, next["Color"]) && sameValue(currentSize, next["Size"])) return prev;
+
+      return next;
+    });
+  }, [variantOptions]);
+
+  useEffect(() => {
+    if (!selectedColor || !sizeValues.length) return;
+
+    setSelectedOptions((prev) => {
+      const currentSize = prev["Size"] || "";
+      if (sizeValues.some((size) => sameValue(size, currentSize))) return prev;
+
+      return {
+        ...prev,
+        Size: sizeValues[0],
+      };
+    });
+  }, [selectedColor, sizeValues]);
 
   useEffect(() => {
     setQuantity(1);
@@ -647,10 +695,47 @@ const ProductDetails: React.FC = () => {
     setCartError("");
     setCartMessage("");
 
-    setSelectedOptions((prev) => ({
-      ...prev,
-      [name]: val,
-    }));
+    setSelectedOptions((prev) => {
+      const next: Record<string, string> = {
+        ...prev,
+        [name]: val,
+      };
+
+      const key = name.toLowerCase();
+
+      if (key === "color" || key === "colour") {
+        const matchingColorVariants = variantOptions.filter((variant) =>
+          sameValue(getVariantColor(variant), val),
+        );
+
+        const validSizes = sortVariantValues(matchingColorVariants.map((variant) => variant.size));
+        const currentSize = next["Size"] || "";
+
+        if (validSizes.length && !validSizes.some((size) => sameValue(size, currentSize))) {
+          next["Size"] = validSizes[0];
+        }
+
+        if (!validSizes.length) {
+          delete next["Size"];
+        }
+      }
+
+      if (key === "size") {
+        const matchingSizeVariants = variantOptions.filter((variant) =>
+          sameValue(variant.size, val),
+        );
+
+        const currentColor = next["Color"] || "";
+
+        if (currentColor && !matchingSizeVariants.some((variant) => sameValue(getVariantColor(variant), currentColor))) {
+          const nextColor = sortVariantValues(matchingSizeVariants.map((variant) => getVariantColor(variant)))[0] || "";
+          if (nextColor) next["Color"] = nextColor;
+          else delete next["Color"];
+        }
+      }
+
+      return next;
+    });
   };
 
   const getColorHex = (val: string) => {

@@ -55,7 +55,7 @@ const uniqueStrings = (items: any[]) => {
 
   items.forEach((item) => {
     const value = String(item || "").trim();
-    if (!value) return;
+    if (!value || value === "[object Object]") return;
 
     const key = value.toLowerCase();
     if (seen.has(key)) return;
@@ -185,34 +185,142 @@ const findCategoryId = (gender: ProductGender, productName: string) => {
   return direct?.id || leafCategories[0]?.id || "";
 };
 
+const getRawVariants = (row: any) => {
+  if (Array.isArray(row?.variants) && row.variants.length) return row.variants;
+  return [row];
+};
+
+const getRowGroupKey = (row: any) => {
+  const productId = String(row?.product_id || row?.productId || "").trim();
+  if (productId) return `product:${productId}`;
+
+  const name = normalizeText(row?.product_name || row?.name || row?.title || "");
+  const brand = normalizeText(row?.brand_name || row?.brand || "");
+  const gender = normalizeText(row?.gender || "");
+  const pattern = normalizeText(row?.pattern_code || row?.patternCode || "");
+  const fit = normalizeText(row?.fit_type || row?.fitType || "");
+  const mark = normalizeText(row?.mark_code || row?.markCode || "");
+
+  if (name || brand) return `details:${gender}|${brand}|${name}|${pattern}|${fit}|${mark}`;
+
+  return `id:${String(row?.id || row?.barcode || row?.ean_code || "").trim()}`;
+};
+
+const getVariantMergeKey = (variant: any, row: any) => {
+  const barcode = String(variant?.barcode || variant?.ean_code || variant?.eanCode || row?.barcode || row?.ean_code || "").trim();
+  if (barcode) return `barcode:${barcode.toLowerCase()}`;
+
+  const id = String(variant?.variant_id || variant?.variantId || variant?.id || row?.variant_id || row?.variantId || "").trim();
+  if (id) return `variant:${id}`;
+
+  const size = String(variant?.size || row?.size || "").trim().toLowerCase();
+  const colour = String(variant?.colour || variant?.color || row?.colour || row?.color || "").trim().toLowerCase();
+
+  return `combo:${size}|${colour}`;
+};
+
+const mergeRawRows = (rows: any[]) => {
+  const groups = new Map<string, any>();
+
+  for (const row of Array.isArray(rows) ? rows : []) {
+    const key = getRowGroupKey(row);
+
+    if (!groups.has(key)) {
+      groups.set(key, {
+        ...row,
+        variants: [],
+        _variantMap: new Map<string, any>(),
+      });
+    }
+
+    const group = groups.get(key);
+
+    const rowImages = uniqueStrings([
+      row?.front_image_url,
+      row?.frontImageUrl,
+      row?.back_image_url,
+      row?.backImageUrl,
+      row?.main_image_url,
+      row?.mainImageUrl,
+      row?.image_url,
+      row?.imageUrl,
+      ...parseImages(row?.images).map(imageUrlFromRecord),
+    ]);
+
+    group.images = uniqueStrings([...(group.images || []), ...rowImages]);
+
+    for (const variant of getRawVariants(row)) {
+      const variantKey = getVariantMergeKey(variant, row);
+
+      const mergedVariant = {
+        ...row,
+        ...variant,
+        product_id: variant?.product_id || variant?.productId || row?.product_id || row?.productId || row?.id,
+        productId: variant?.productId || variant?.product_id || row?.productId || row?.product_id || row?.id,
+        variant_id: variant?.variant_id || variant?.variantId || variant?.id || row?.variant_id || row?.variantId,
+        variantId: variant?.variantId || variant?.variant_id || variant?.id || row?.variantId || row?.variant_id,
+        barcode: variant?.barcode || variant?.ean_code || variant?.eanCode || row?.barcode || row?.ean_code || row?.eanCode || "",
+        ean_code: variant?.ean_code || variant?.barcode || variant?.eanCode || row?.ean_code || row?.barcode || row?.eanCode || "",
+        size: variant?.size || row?.size || "",
+        colour: variant?.colour || variant?.color || row?.colour || row?.color || "",
+        color: variant?.color || variant?.colour || row?.color || row?.colour || "",
+        image_url: variant?.image_url || variant?.imageUrl || row?.image_url || row?.imageUrl || "",
+        front_image_url: variant?.front_image_url || variant?.frontImageUrl || row?.front_image_url || row?.frontImageUrl || "",
+        back_image_url: variant?.back_image_url || variant?.backImageUrl || row?.back_image_url || row?.backImageUrl || "",
+        main_image_url: variant?.main_image_url || variant?.mainImageUrl || row?.main_image_url || row?.mainImageUrl || "",
+      };
+
+      if (!group._variantMap.has(variantKey)) {
+        group._variantMap.set(variantKey, mergedVariant);
+      } else {
+        group._variantMap.set(variantKey, {
+          ...group._variantMap.get(variantKey),
+          ...mergedVariant,
+        });
+      }
+    }
+  }
+
+  return Array.from(groups.values()).map((group) => {
+    const variants = Array.from(group._variantMap.values());
+    delete group._variantMap;
+    return {
+      ...group,
+      variants,
+      variant_count: variants.length,
+      variantCount: variants.length,
+    };
+  });
+};
+
 const normalizeVariant = (variant: any, row: any) => {
   const productId = variant?.product_id || variant?.productId || row?.product_id || row?.productId || row?.id || null;
-  const variantId = variant?.variant_id || variant?.variantId || variant?.id || row?.variant_id || row?.variantId || row?.primary_variant_id || row?.id || null;
+  const variantId = variant?.variant_id || variant?.variantId || variant?.id || row?.variant_id || row?.variantId || row?.primary_variant_id || null;
   const size = String(variant?.size || variant?.selected_size || "").trim();
   const colour = String(variant?.colour || variant?.color || variant?.selected_color || "").trim();
   const barcode = String(variant?.barcode || variant?.ean_code || variant?.eanCode || "").trim();
 
   const mrp = toNumber(
-    variant?.mrp ||
-      variant?.original_price_b2c ||
-      variant?.originalPrice ||
-      row?.mrp ||
-      row?.original_price_b2c ||
-      row?.originalPrice ||
+    variant?.mrp ??
+      variant?.original_price_b2c ??
+      variant?.originalPrice ??
+      row?.mrp ??
+      row?.original_price_b2c ??
+      row?.originalPrice ??
       row?.price,
     0,
   );
 
   const salePrice = toNumber(
-    variant?.final_price_b2c ||
-      variant?.sale_price ||
-      variant?.price ||
-      variant?.selling_price ||
-      variant?.discounted_price ||
-      variant?.mahaveer_price ||
-      row?.final_price_b2c ||
-      row?.sale_price ||
-      row?.price ||
+    variant?.final_price_b2c ??
+      variant?.sale_price ??
+      variant?.price ??
+      variant?.selling_price ??
+      variant?.discounted_price ??
+      variant?.mahaveer_price ??
+      row?.final_price_b2c ??
+      row?.sale_price ??
+      row?.price ??
       row?.salePrice,
     mrp,
   );
@@ -241,6 +349,26 @@ const normalizeVariant = (variant: any, row: any) => {
     ...rawImages.map(imageUrlFromRecord),
   ]);
 
+  const onHand = toNumber(
+    variant?.on_hand ??
+      variant?.onHand ??
+      variant?.stock ??
+      variant?.qty ??
+      variant?.quantity ??
+      row?.on_hand ??
+      row?.onHand ??
+      row?.stock ??
+      0,
+    0,
+  );
+
+  const availableQty = toNumber(
+    variant?.available_qty ??
+      variant?.availableQty ??
+      onHand,
+    onHand,
+  );
+
   return {
     id: String(variantId || barcode || ""),
     variant_id: variantId,
@@ -254,24 +382,24 @@ const normalizeVariant = (variant: any, row: any) => {
     ean_code: barcode,
     eanCode: barcode,
     mrp,
-    original_price_b2c: toNumber(variant?.original_price_b2c || variant?.mrp || mrp, mrp),
+    original_price_b2c: toNumber(variant?.original_price_b2c ?? variant?.mrp ?? mrp, mrp),
     final_price_b2c: salePrice,
-    original_price_b2b: toNumber(variant?.original_price_b2b || variant?.mrp || mrp, mrp),
-    final_price_b2b: toNumber(variant?.final_price_b2b || variant?.cost_price || variant?.sale_price || salePrice, salePrice),
+    original_price_b2b: toNumber(variant?.original_price_b2b ?? variant?.mrp ?? mrp, mrp),
+    final_price_b2b: toNumber(variant?.final_price_b2b ?? variant?.cost_price ?? variant?.sale_price ?? salePrice, salePrice),
     sale_price: salePrice,
     price: salePrice,
-    selling_price: toNumber(variant?.selling_price || salePrice, salePrice),
-    discounted_price: toNumber(variant?.discounted_price || salePrice, salePrice),
-    mahaveer_price: toNumber(variant?.mahaveer_price || salePrice, salePrice),
-    base_sale_price: toNumber(variant?.base_sale_price || variant?.original_sale_price || variant?.sale_price || salePrice, salePrice),
-    original_sale_price: toNumber(variant?.original_sale_price || variant?.base_sale_price || variant?.sale_price || salePrice, salePrice),
-    cost_price: toNumber(variant?.cost_price || 0, 0),
-    b2c_discount_pct: toNumber(variant?.b2c_discount_pct || row?.b2c_discount_pct || 0, 0),
-    b2b_discount_pct: toNumber(variant?.b2b_discount_pct || row?.b2b_discount_pct || 0, 0),
-    on_hand: toNumber(variant?.on_hand || variant?.stock || variant?.qty || variant?.quantity || 0, 0),
-    reserved: toNumber(variant?.reserved || 0, 0),
-    available_qty: toNumber(variant?.available_qty || variant?.on_hand || variant?.stock || variant?.qty || variant?.quantity || 0, 0),
-    in_stock: Boolean(variant?.in_stock ?? true),
+    selling_price: toNumber(variant?.selling_price ?? salePrice, salePrice),
+    discounted_price: toNumber(variant?.discounted_price ?? salePrice, salePrice),
+    mahaveer_price: toNumber(variant?.mahaveer_price ?? salePrice, salePrice),
+    base_sale_price: toNumber(variant?.base_sale_price ?? variant?.original_sale_price ?? variant?.sale_price ?? salePrice, salePrice),
+    original_sale_price: toNumber(variant?.original_sale_price ?? variant?.base_sale_price ?? variant?.sale_price ?? salePrice, salePrice),
+    cost_price: toNumber(variant?.cost_price ?? 0, 0),
+    b2c_discount_pct: toNumber(variant?.b2c_discount_pct ?? row?.b2c_discount_pct ?? 0, 0),
+    b2b_discount_pct: toNumber(variant?.b2b_discount_pct ?? row?.b2b_discount_pct ?? 0, 0),
+    on_hand: onHand,
+    reserved: toNumber(variant?.reserved ?? 0, 0),
+    available_qty: availableQty,
+    in_stock: variant?.in_stock === undefined ? availableQty > 0 : Boolean(variant?.in_stock),
     image_url: imageUrl,
     imageUrl,
     front_image_url: frontImageUrl,
@@ -295,27 +423,18 @@ const normalizeProduct = (row: any): Product => {
   const barcode = String(row.barcode || row.ean_code || row.eanCode || "").trim();
 
   const rawVariants = Array.isArray(row.variants) && row.variants.length ? row.variants : [row];
-  const variants = rawVariants.map((variant: any) => normalizeVariant(variant, row));
+  const allVariants = rawVariants.map((variant: any) => normalizeVariant(variant, row));
+  const availableVariants = allVariants.filter((variant: any) => toNumber(variant.available_qty ?? variant.on_hand ?? 0, 0) > 0);
+  const variants = availableVariants.length ? availableVariants : allVariants;
 
   const selectedVariant =
     variants.find((variant: any) => String(variant.variant_id || "") === String(actualVariantId || "")) ||
     variants[0];
 
-  const sizeList = sortVariantValues([
-    ...splitValues(row.sizes),
-    ...splitValues(row.size),
-    ...variants.map((variant: any) => variant.size),
-  ]);
+  const sizeList = sortVariantValues(variants.map((variant: any) => variant.size));
+  const colorList = sortVariantValues(variants.map((variant: any) => variant.colour || variant.color));
 
-  const colorList = sortVariantValues([
-    ...splitValues(row.colors),
-    ...splitValues(row.colours),
-    ...splitValues(row.color),
-    ...splitValues(row.colour),
-    ...variants.map((variant: any) => variant.colour || variant.color),
-  ]);
-
-  const onHand = variants.reduce((sum: number, variant: any) => sum + toNumber(variant.on_hand || variant.available_qty || 0, 0), 0);
+  const onHand = variants.reduce((sum: number, variant: any) => sum + toNumber(variant.available_qty ?? variant.on_hand ?? 0, 0), 0);
 
   const mrp = toNumber(selectedVariant?.mrp || row.mrp || row.original_price_b2c || row.originalPrice || row.price, 0);
   const salePrice = toNumber(
@@ -345,7 +464,13 @@ const normalizeProduct = (row: any): Product => {
   const mainImageUrl = String(row.main_image_url || row.mainImageUrl || selectedVariant?.main_image_url || mainFromArray || "").trim();
   const imageUrl = String(row.image_url || row.imageUrl || selectedVariant?.image_url || frontImageUrl || mainImageUrl || "").trim();
 
-  const variantImages = variants.flatMap((variant: any) => splitValues(variant.images || []).concat([variant.image_url, variant.front_image_url, variant.back_image_url, variant.main_image_url]));
+  const variantImages = variants.flatMap((variant: any) => [
+    variant.image_url,
+    variant.front_image_url,
+    variant.back_image_url,
+    variant.main_image_url,
+    ...parseImages(variant.images).map(imageUrlFromRecord),
+  ]);
 
   const images = uniqueStrings([
     frontImageUrl,
@@ -359,7 +484,7 @@ const normalizeProduct = (row: any): Product => {
   const stockBySize = variants.reduce((acc: Record<string, number>, variant: any) => {
     const size = String(variant.size || "").trim();
     if (!size) return acc;
-    acc[size] = (acc[size] || 0) + toNumber(variant.available_qty || variant.on_hand || 0, 0);
+    acc[size] = (acc[size] || 0) + toNumber(variant.available_qty ?? variant.on_hand ?? 0, 0);
     return acc;
   }, {});
 
@@ -425,7 +550,8 @@ export const fetchBranchProducts = async (branchId = DEFAULT_BRANCH_ID): Promise
     throw new Error(data?.message || "Unable to load products");
   }
 
-  return Array.isArray(data) ? data.map(normalizeProduct).filter((product) => product.id) : [];
+  const groupedRows = mergeRawRows(Array.isArray(data) ? data : []);
+  return groupedRows.map(normalizeProduct).filter((product) => product.id);
 };
 
 export const fetchProductsByGender = async (
