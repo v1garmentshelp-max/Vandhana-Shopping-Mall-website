@@ -670,7 +670,6 @@ const ProductDetails: React.FC = () => {
       "p olive": "#808000",
       "sky blue": "#87ceeb",
       "ice blue": "#d9f2ff",
-      biscuit: "#d2b48c",
       khaki: "#bdb76b",
       chocolate: "#7b3f00",
       wine: "#722f37",
