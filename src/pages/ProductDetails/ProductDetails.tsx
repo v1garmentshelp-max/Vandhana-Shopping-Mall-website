@@ -111,6 +111,12 @@ const getNumber = (value: any, fallback = 0) => {
 
 const getString = (value: any) => String(value || "").trim();
 
+const sameValue = (a: any, b: any) =>
+  String(a || "").trim().toLowerCase() === String(b || "").trim().toLowerCase();
+
+const getVariantColor = (variant?: ProductVariantOption | null) =>
+  String(variant?.colour || variant?.color || "").trim();
+
 const getBackendProductId = (product: Product | null) => {
   const p: any = product || {};
   const value = p.productId || p.product_id || p.id || "";
@@ -132,23 +138,6 @@ const getVariantIdValue = (variant?: ProductVariantOption | null, product?: Prod
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 };
 
-const getStockCount = (product: Product, variant?: ProductVariantOption | null) => {
-  if (variant) {
-    const variantStock =
-      getNumber(variant.available_qty, NaN) ||
-      getNumber(variant.on_hand, NaN) ||
-      0;
-    if (variantStock > 0) return variantStock;
-  }
-
-  const fromStockBySize = Object.values(product.stockBySize || {}).reduce(
-    (sum, value) => sum + Number(value || 0),
-    0,
-  );
-
-  return fromStockBySize || Number((product as any).available_qty || product.onHand || 0) || 0;
-};
-
 const parseImages = (value: any) => {
   if (Array.isArray(value)) return value.filter(Boolean);
   if (typeof value === "string") {
@@ -164,6 +153,7 @@ const parseImages = (value: any) => {
 
 const imageListFromVariant = (variant?: ProductVariantOption | null) => {
   if (!variant) return [];
+
   const images = parseImages(variant.images)
     .map((item: any) => {
       if (typeof item === "string") return item;
@@ -233,14 +223,9 @@ const normalizeVariant = (item: any, product: any): ProductVariantOption => {
 
 const getProductVariants = (product: Product | null): ProductVariantOption[] => {
   if (!product) return [];
-
   const p: any = product;
   const rawVariants = Array.isArray(p.variants) ? p.variants : [];
-
-  if (rawVariants.length) {
-    return rawVariants.map((item: any) => normalizeVariant(item, p));
-  }
-
+  if (rawVariants.length) return rawVariants.map((item: any) => normalizeVariant(item, p));
   return [normalizeVariant(p, p)];
 };
 
@@ -270,34 +255,73 @@ const sortVariantValues = (values: string[]) => {
   });
 };
 
-const findSelectedVariant = (
+const findExactVariant = (
   variants: ProductVariantOption[],
   selectedSize: string,
   selectedColor: string,
 ) => {
   if (!variants.length) return null;
 
-  const exact = variants.find(
-    (variant) =>
-      String(variant.size || "").toLowerCase() === String(selectedSize || "").toLowerCase() &&
-      String(variant.colour || variant.color || "").toLowerCase() === String(selectedColor || "").toLowerCase(),
+  return (
+    variants.find((variant) => {
+      const sizeOk = selectedSize ? sameValue(variant.size, selectedSize) : true;
+      const colorOk = selectedColor ? sameValue(getVariantColor(variant), selectedColor) : true;
+      return sizeOk && colorOk;
+    }) || null
   );
+};
 
+const findVariantByColor = (variants: ProductVariantOption[], selectedColor: string) => {
+  if (!selectedColor) return null;
+  return variants.find((variant) => sameValue(getVariantColor(variant), selectedColor)) || null;
+};
+
+const findVariantBySize = (variants: ProductVariantOption[], selectedSize: string) => {
+  if (!selectedSize) return null;
+  return variants.find((variant) => sameValue(variant.size, selectedSize)) || null;
+};
+
+const findPriceVariant = (
+  variants: ProductVariantOption[],
+  selectedSize: string,
+  selectedColor: string,
+) => {
+  if (!variants.length) return null;
+
+  const exact = findExactVariant(variants, selectedSize, selectedColor);
   if (exact) return exact;
 
-  const bySize = variants.find(
-    (variant) => String(variant.size || "").toLowerCase() === String(selectedSize || "").toLowerCase(),
-  );
-
+  const bySize = findVariantBySize(variants, selectedSize);
   if (bySize) return bySize;
 
-  const byColor = variants.find(
-    (variant) => String(variant.colour || variant.color || "").toLowerCase() === String(selectedColor || "").toLowerCase(),
-  );
-
+  const byColor = findVariantByColor(variants, selectedColor);
   if (byColor) return byColor;
 
   return variants[0];
+};
+
+const findImageVariant = (
+  variants: ProductVariantOption[],
+  selectedSize: string,
+  selectedColor: string,
+) => {
+  if (!variants.length) return null;
+
+  const exact = findExactVariant(variants, selectedSize, selectedColor);
+  if (exact) return exact;
+
+  const byColor = findVariantByColor(variants, selectedColor);
+  if (byColor) return byColor;
+
+  const bySize = findVariantBySize(variants, selectedSize);
+  if (bySize) return bySize;
+
+  return variants[0];
+};
+
+const getVariantStockCount = (variant?: ProductVariantOption | null) => {
+  if (!variant) return 0;
+  return getNumber(variant.available_qty, 0) || getNumber(variant.on_hand, 0) || 0;
 };
 
 const CustomLeftArrow = ({ onClick }: any) => (
@@ -343,11 +367,41 @@ const ProductDetails: React.FC = () => {
 
   const backendProductId = useMemo(() => getBackendProductId(product), [product]);
   const variantOptions = useMemo(() => getProductVariants(product), [product]);
-  const selectedSize = selectedOptions["Size"] || variantOptions[0]?.size || "";
-  const selectedColor = selectedOptions["Color"] || variantOptions[0]?.colour || variantOptions[0]?.color || "";
-  const selectedVariant = useMemo(
-    () => findSelectedVariant(variantOptions, selectedSize, selectedColor),
+  const selectedSize = selectedOptions["Size"] || "";
+  const selectedColor = selectedOptions["Color"] || "";
+
+  const exactSelectedVariant = useMemo(
+    () => findExactVariant(variantOptions, selectedSize, selectedColor),
     [variantOptions, selectedSize, selectedColor],
+  );
+
+  const priceVariant = useMemo(
+    () => findPriceVariant(variantOptions, selectedSize, selectedColor),
+    [variantOptions, selectedSize, selectedColor],
+  );
+
+  const imageVariant = useMemo(
+    () => findImageVariant(variantOptions, selectedSize, selectedColor),
+    [variantOptions, selectedSize, selectedColor],
+  );
+
+  const sizeValues = useMemo(
+    () =>
+      sortVariantValues([
+        ...variantOptions.map((variant) => variant.size),
+        ...((product as any)?.sizes || []),
+      ]),
+    [variantOptions, product],
+  );
+
+  const colorValues = useMemo(
+    () =>
+      sortVariantValues([
+        ...variantOptions.map((variant) => getVariantColor(variant)),
+        ...((product as any)?.colors || []),
+        ...((product as any)?.colours || []),
+      ]),
+    [variantOptions, product],
   );
 
   useEffect(() => {
@@ -362,6 +416,22 @@ const ProductDetails: React.FC = () => {
       mobileThumbCarouselRef.current.goToSlide(selectedIndex);
     }
   }, [selectedIndex]);
+
+  useEffect(() => {
+    if (imageVariant?.variant_id) {
+      setSelectedIndex(0);
+      setLightboxIndex(0);
+
+      setTimeout(() => {
+        if (mainCarouselRef.current) {
+          mainCarouselRef.current.goToSlide(2);
+        }
+        if (mobileThumbCarouselRef.current) {
+          mobileThumbCarouselRef.current.goToSlide(0);
+        }
+      }, 0);
+    }
+  }, [imageVariant?.variant_id]);
 
   useEffect(() => {
     let alive = true;
@@ -391,16 +461,16 @@ const ProductDetails: React.FC = () => {
         const firstVariant = variants[0];
         const initialOptions: Record<string, string> = {};
 
-        if (firstVariant?.colour || firstVariant?.color) {
-          initialOptions["Color"] = firstVariant.colour || firstVariant.color;
-        } else if (foundProduct.colors?.length) {
-          initialOptions["Color"] = foundProduct.colors[0];
-        }
-
         if (firstVariant?.size) {
           initialOptions["Size"] = firstVariant.size;
         } else if (foundProduct.sizes?.length) {
           initialOptions["Size"] = foundProduct.sizes[0];
+        }
+
+        if (firstVariant?.colour || firstVariant?.color) {
+          initialOptions["Color"] = firstVariant.colour || firstVariant.color;
+        } else if (foundProduct.colors?.length) {
+          initialOptions["Color"] = foundProduct.colors[0];
         }
 
         setProduct(foundProduct);
@@ -437,7 +507,7 @@ const ProductDetails: React.FC = () => {
 
   useEffect(() => {
     setQuantity(1);
-  }, [selectedVariant?.variant_id]);
+  }, [priceVariant?.variant_id]);
 
   useEffect(() => {
     let alive = true;
@@ -540,34 +610,23 @@ const ProductDetails: React.FC = () => {
     );
   }
 
-  const availableStock = getStockCount(product, selectedVariant);
-  const currentPrice = getNumber(selectedVariant?.final_price_b2c ?? selectedVariant?.sale_price ?? product.price);
-  const currentCompareAtPrice = getNumber(selectedVariant?.original_price_b2c ?? selectedVariant?.mrp ?? product.originalPrice ?? product.price, currentPrice);
+  const availableStock = getVariantStockCount(exactSelectedVariant || priceVariant);
+  const currentPrice = getNumber(priceVariant?.final_price_b2c ?? priceVariant?.sale_price ?? product.price);
+  const currentCompareAtPrice = getNumber(priceVariant?.original_price_b2c ?? priceVariant?.mrp ?? product.originalPrice ?? product.price, currentPrice);
   const currentVariant = {
     available: availableStock > 0,
     price: currentPrice,
   };
+
   const formatMoney = (val: number) =>
     `₹${Number(val || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
 
-  const selectedVariantImages = imageListFromVariant(selectedVariant);
+  const selectedVariantImages = imageListFromVariant(imageVariant);
   const displayImages = selectedVariantImages.length
     ? selectedVariantImages
     : product.images?.length
       ? product.images
       : ["/placeholder.svg"];
-
-  const sizeValues = sortVariantValues([
-    ...variantOptions.map((variant) => variant.size),
-    ...(product.sizes || []),
-  ]);
-
-  const colorValues = sortVariantValues([
-    ...variantOptions
-      .filter((variant) => !selectedSize || String(variant.size).toLowerCase() === String(selectedSize).toLowerCase())
-      .map((variant) => variant.colour || variant.color),
-    ...(product.colors || []),
-  ]);
 
   const options_with_values: OptionGroup[] = [];
 
@@ -588,46 +647,10 @@ const ProductDetails: React.FC = () => {
     setCartError("");
     setCartMessage("");
 
-    setSelectedOptions((prev) => {
-      const next = { ...prev, [name]: val };
-      const lowerName = name.toLowerCase();
-
-      if (lowerName === "size") {
-        const sameColorExists = variantOptions.some(
-          (variant) =>
-            String(variant.size || "").toLowerCase() === String(val || "").toLowerCase() &&
-            String(variant.colour || variant.color || "").toLowerCase() === String(prev["Color"] || "").toLowerCase(),
-        );
-
-        if (!sameColorExists) {
-          const firstColorForSize = variantOptions.find(
-            (variant) => String(variant.size || "").toLowerCase() === String(val || "").toLowerCase(),
-          );
-          if (firstColorForSize?.colour || firstColorForSize?.color) {
-            next["Color"] = firstColorForSize.colour || firstColorForSize.color;
-          }
-        }
-      }
-
-      if (lowerName === "color" || lowerName === "colour") {
-        const sameSizeExists = variantOptions.some(
-          (variant) =>
-            String(variant.colour || variant.color || "").toLowerCase() === String(val || "").toLowerCase() &&
-            String(variant.size || "").toLowerCase() === String(prev["Size"] || "").toLowerCase(),
-        );
-
-        if (!sameSizeExists) {
-          const firstSizeForColor = variantOptions.find(
-            (variant) => String(variant.colour || variant.color || "").toLowerCase() === String(val || "").toLowerCase(),
-          );
-          if (firstSizeForColor?.size) {
-            next["Size"] = firstSizeForColor.size;
-          }
-        }
-      }
-
-      return next;
-    });
+    setSelectedOptions((prev) => ({
+      ...prev,
+      [name]: val,
+    }));
   };
 
   const getColorHex = (val: string) => {
@@ -667,6 +690,7 @@ const ProductDetails: React.FC = () => {
       pista: "#93c572",
       ston: "#8f8f8f",
       stone: "#8f8f8f",
+      biscuit: "#d2b48c",
     };
 
     const isHex = /^#([0-9A-F]{3}){1,2}$/i.test(val);
@@ -693,19 +717,31 @@ const ProductDetails: React.FC = () => {
       return false;
     }
 
-    if (!currentVariant.available) {
+    if (sizeValues.length > 0 && !selectedSize) {
+      setCartError("Please select size.");
+      setCartMessage("");
+      return false;
+    }
+
+    if (colorValues.length > 0 && !selectedColor) {
+      setCartError("Please select color.");
+      setCartMessage("");
+      return false;
+    }
+
+    if (!exactSelectedVariant) {
+      setCartError("Selected size and color combination is not available.");
+      setCartMessage("");
+      return false;
+    }
+
+    if (getVariantStockCount(exactSelectedVariant) <= 0) {
       setCartError("Product is out of stock.");
       setCartMessage("");
       return false;
     }
 
-    if (!selectedSize || !selectedColor) {
-      setCartError("Please select size and color.");
-      setCartMessage("");
-      return false;
-    }
-
-    const variantId = getVariantIdValue(selectedVariant, product);
+    const variantId = getVariantIdValue(exactSelectedVariant, product);
     const realProductId = Number((product as any).productId || (product as any).product_id || product.id || 0) || variantId;
 
     if (!variantId) {
@@ -773,7 +809,7 @@ const ProductDetails: React.FC = () => {
     setIsUpdatingWishlist(true);
 
     try {
-      const variantId = getVariantIdValue(selectedVariant, product) || backendProductId;
+      const variantId = getVariantIdValue(exactSelectedVariant || imageVariant || priceVariant, product) || backendProductId;
 
       if (isWishlisted) {
         const res = await fetch(`${API_BASE}/api/wishlist`, {
@@ -1134,9 +1170,9 @@ const ProductDetails: React.FC = () => {
               <div ref={actionContainerRef} className="md:flex hidden flex-col sm:flex-row gap-3 w-full">
                 <button
                   onClick={handleAddToCart}
-                  disabled={isAdding || (currentVariant && !currentVariant.available)}
+                  disabled={isAdding || !currentVariant.available}
                   className={`flex-1 cursor-pointer py-3.5 flex items-center justify-center gap-2 rounded-sm font-bold uppercase tracking-wider text-sm font-source-sans transition-all shadow-sm border ${
-                    currentVariant && !currentVariant.available
+                    !currentVariant.available
                       ? "bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed"
                       : "bg-white text-gray-900 border-gray-900 hover:bg-gray-50"
                   }`}
@@ -1152,9 +1188,9 @@ const ProductDetails: React.FC = () => {
                 </button>
                 <button
                   onClick={handleBuyNow}
-                  disabled={isAdding || (currentVariant && !currentVariant.available)}
+                  disabled={isAdding || !currentVariant.available}
                   className={`flex-1 py-3.5 cursor-pointer flex items-center justify-center gap-2 rounded-sm font-bold uppercase tracking-wider text-sm font-source-sans transition-all shadow-sm border ${
-                    currentVariant && !currentVariant.available
+                    !currentVariant.available
                       ? "bg-gray-200 text-gray-400 border-transparent cursor-not-allowed"
                       : "bg-primary/90 hover:bg-primary text-black border-primary"
                   }`}
@@ -1194,9 +1230,9 @@ const ProductDetails: React.FC = () => {
         <div className="flex flex-row gap-3 w-full mx-auto">
           <button
             onClick={handleAddToCart}
-            disabled={isAdding || (currentVariant && !currentVariant.available)}
+            disabled={isAdding || !currentVariant.available}
             className={`flex-1 py-2 flex items-center justify-center gap-2 rounded-sm font-bold uppercase tracking-wider text-sm font-source-sans transition-all border ${
-              currentVariant && !currentVariant.available
+              !currentVariant.available
                 ? "bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed"
                 : "bg-white text-gray-900 border-gray-900 hover:bg-gray-50 hover:text-red-500 hover:border-red-500"
             }`}
@@ -1205,9 +1241,9 @@ const ProductDetails: React.FC = () => {
           </button>
           <button
             onClick={handleBuyNow}
-            disabled={isAdding || (currentVariant && !currentVariant.available)}
+            disabled={isAdding || !currentVariant.available}
             className={`flex-[1.5] py-2 flex items-center justify-center gap-2 rounded-sm font-bold uppercase tracking-wider text-md font-source-sans transition-all border ${
-              currentVariant && !currentVariant.available
+              !currentVariant.available
                 ? "bg-gray-200 text-gray-400 border-transparent cursor-not-allowed"
                 : "bg-primary text-black border-primary hover:bg-red-600 hover:border-red-600"
             }`}
