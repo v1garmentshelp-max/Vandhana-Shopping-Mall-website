@@ -26,11 +26,60 @@ const toNumber = (value: any, fallback = 0) => {
   return Number.isFinite(n) ? n : fallback;
 };
 
+const roundMoney = (value: number) => {
+  return Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100;
+};
+
+const clampDiscount = (value: any) => {
+  const n = toNumber(value, 0);
+  if (n < 0) return 0;
+  if (n > 100) return 100;
+  return n;
+};
+
+const calculateDiscountedPrice = (original: any, discount: any, fallback = 0) => {
+  const base = toNumber(original, fallback);
+  const pct = clampDiscount(discount);
+  if (!base) return toNumber(fallback, 0);
+  if (!pct) return base;
+  return roundMoney(base - (base * pct) / 100);
+};
+
+const firstValue = (...values: any[]) => {
+  for (const value of values) {
+    if (value !== undefined && value !== null && String(value).trim() !== "") return value;
+  }
+  return "";
+};
+
+const firstPositiveDiscount = (...values: any[]) => {
+  for (const value of values) {
+    const n = clampDiscount(value);
+    if (n > 0) return n;
+  }
+  return 0;
+};
+
 const toGender = (value: any): ProductGender => {
   const s = normalizeText(value);
   if (s.includes("women")) return "Women";
   if (s.includes("kid")) return "Kids";
   return "Men";
+};
+
+const isGroupedValue = (value: any) => {
+  const s = String(value || "").trim();
+  if (!s) return false;
+  if (s.includes(",")) return true;
+  if (s.split(/\s+/).length > 4) return true;
+  return false;
+};
+
+const cleanSingleValue = (value: any) => {
+  const s = String(value || "").trim();
+  if (!s) return "";
+  if (isGroupedValue(s)) return "";
+  return s;
 };
 
 const splitValues = (value: any): string[] => {
@@ -39,13 +88,13 @@ const splitValues = (value: any): string[] => {
   if (Array.isArray(value)) {
     return value
       .flatMap((item) => splitValues(item))
-      .map((item) => String(item || "").trim())
+      .map((item) => cleanSingleValue(item))
       .filter(Boolean);
   }
 
   return String(value || "")
     .split(",")
-    .map((item) => item.trim())
+    .map((item) => cleanSingleValue(item))
     .filter(Boolean);
 };
 
@@ -54,7 +103,7 @@ const uniqueStrings = (items: any[]) => {
   const out: string[] = [];
 
   items.forEach((item) => {
-    const value = String(item || "").trim();
+    const value = cleanSingleValue(item);
     if (!value || value === "[object Object]") return;
 
     const key = value.toLowerCase();
@@ -213,8 +262,8 @@ const getVariantMergeKey = (variant: any, row: any) => {
   const id = String(variant?.variant_id || variant?.variantId || variant?.id || row?.variant_id || row?.variantId || "").trim();
   if (id) return `variant:${id}`;
 
-  const size = String(variant?.size || row?.size || "").trim().toLowerCase();
-  const colour = String(variant?.colour || variant?.color || row?.colour || row?.color || "").trim().toLowerCase();
+  const size = cleanSingleValue(variant?.size || row?.size || "").toLowerCase();
+  const colour = cleanSingleValue(variant?.colour || variant?.color || row?.colour || row?.color || "").toLowerCase();
 
   return `combo:${size}|${colour}`;
 };
@@ -250,6 +299,11 @@ const mergeRawRows = (rows: any[]) => {
     group.images = uniqueStrings([...(group.images || []), ...rowImages]);
 
     for (const variant of getRawVariants(row)) {
+      const size = cleanSingleValue(variant?.size || row?.size || "");
+      const colour = cleanSingleValue(variant?.colour || variant?.color || row?.colour || row?.color || "");
+
+      if (!size && !colour && isGroupedValue(variant?.size || row?.size || variant?.colour || row?.colour || "")) continue;
+
       const variantKey = getVariantMergeKey(variant, row);
 
       const mergedVariant = {
@@ -261,9 +315,9 @@ const mergeRawRows = (rows: any[]) => {
         variantId: variant?.variantId || variant?.variant_id || variant?.id || row?.variantId || row?.variant_id,
         barcode: variant?.barcode || variant?.ean_code || variant?.eanCode || row?.barcode || row?.ean_code || row?.eanCode || "",
         ean_code: variant?.ean_code || variant?.barcode || variant?.eanCode || row?.ean_code || row?.barcode || row?.eanCode || "",
-        size: variant?.size || row?.size || "",
-        colour: variant?.colour || variant?.color || row?.colour || row?.color || "",
-        color: variant?.color || variant?.colour || row?.color || row?.colour || "",
+        size,
+        colour,
+        color: colour,
         image_url: variant?.image_url || variant?.imageUrl || row?.image_url || row?.imageUrl || "",
         front_image_url: variant?.front_image_url || variant?.frontImageUrl || row?.front_image_url || row?.frontImageUrl || "",
         back_image_url: variant?.back_image_url || variant?.backImageUrl || row?.back_image_url || row?.backImageUrl || "",
@@ -293,37 +347,121 @@ const mergeRawRows = (rows: any[]) => {
   });
 };
 
+const getB2CDiscount = (variant: any, row: any) => {
+  const variantDiscount = firstPositiveDiscount(
+    variant?.b2c_discount_pct,
+    variant?.discount_b2c,
+    variant?.b2c_discount,
+    variant?.discount_percentage,
+    variant?.discount_percent,
+    variant?.discount,
+  );
+
+  if (variantDiscount > 0) return variantDiscount;
+
+  return firstPositiveDiscount(
+    row?.b2c_discount_pct,
+    row?.discount_b2c,
+    row?.b2c_discount,
+    row?.discount_percentage,
+    row?.discount_percent,
+    row?.discount,
+  );
+};
+
+const getB2BDiscount = (variant: any, row: any) => {
+  const variantDiscount = firstPositiveDiscount(
+    variant?.b2b_discount_pct,
+    variant?.discount_b2b,
+    variant?.b2b_discount,
+    variant?.discount_percentage_b2b,
+  );
+
+  if (variantDiscount > 0) return variantDiscount;
+
+  return firstPositiveDiscount(
+    row?.b2b_discount_pct,
+    row?.discount_b2b,
+    row?.b2b_discount,
+    row?.discount_percentage_b2b,
+  );
+};
+
+const getOriginalB2C = (variant: any, row: any) => {
+  return toNumber(
+    firstValue(
+      variant?.original_price_b2c,
+      variant?.b2c_original_price,
+      variant?.mrp,
+      variant?.original_price,
+      variant?.originalPrice,
+      row?.original_price_b2c,
+      row?.b2c_original_price,
+      row?.mrp,
+      row?.original_price,
+      row?.originalPrice,
+      row?.price,
+      row?.salePrice,
+      0,
+    ),
+    0,
+  );
+};
+
+const getOriginalB2B = (variant: any, row: any, fallback: number) => {
+  return toNumber(
+    firstValue(
+      variant?.original_price_b2b,
+      variant?.b2b_original_price,
+      variant?.cost_price,
+      row?.original_price_b2b,
+      row?.b2b_original_price,
+      row?.cost_price,
+      fallback,
+    ),
+    fallback,
+  );
+};
+
+const getDirectB2CPrice = (variant: any, row: any, fallback: number) => {
+  return toNumber(
+    firstValue(
+      variant?.final_price_b2c,
+      variant?.b2c_final_price,
+      variant?.sale_price,
+      variant?.price,
+      variant?.selling_price,
+      variant?.discounted_price,
+      variant?.mahaveer_price,
+      row?.final_price_b2c,
+      row?.b2c_final_price,
+      row?.sale_price,
+      row?.price,
+      row?.selling_price,
+      row?.discounted_price,
+      row?.mahaveer_price,
+      row?.salePrice,
+      fallback,
+    ),
+    fallback,
+  );
+};
+
 const normalizeVariant = (variant: any, row: any) => {
   const productId = variant?.product_id || variant?.productId || row?.product_id || row?.productId || row?.id || null;
   const variantId = variant?.variant_id || variant?.variantId || variant?.id || row?.variant_id || row?.variantId || row?.primary_variant_id || null;
-  const size = String(variant?.size || variant?.selected_size || "").trim();
-  const colour = String(variant?.colour || variant?.color || variant?.selected_color || "").trim();
+  const size = cleanSingleValue(variant?.size || variant?.selected_size || "");
+  const colour = cleanSingleValue(variant?.colour || variant?.color || variant?.selected_color || "");
   const barcode = String(variant?.barcode || variant?.ean_code || variant?.eanCode || "").trim();
-
-  const mrp = toNumber(
-    variant?.mrp ??
-      variant?.original_price_b2c ??
-      variant?.originalPrice ??
-      row?.mrp ??
-      row?.original_price_b2c ??
-      row?.originalPrice ??
-      row?.price,
-    0,
-  );
-
-  const salePrice = toNumber(
-    variant?.final_price_b2c ??
-      variant?.sale_price ??
-      variant?.price ??
-      variant?.selling_price ??
-      variant?.discounted_price ??
-      variant?.mahaveer_price ??
-      row?.final_price_b2c ??
-      row?.sale_price ??
-      row?.price ??
-      row?.salePrice,
-    mrp,
-  );
+  const b2cDiscount = getB2CDiscount(variant, row);
+  const b2bDiscount = getB2BDiscount(variant, row);
+  const mrp = getOriginalB2C(variant, row);
+  const directSalePrice = getDirectB2CPrice(variant, row, mrp);
+  const salePrice = b2cDiscount > 0 && mrp > 0 ? calculateDiscountedPrice(mrp, b2cDiscount, directSalePrice) : directSalePrice;
+  const originalB2B = getOriginalB2B(variant, row, mrp);
+  const finalB2B = b2bDiscount > 0 && originalB2B > 0
+    ? calculateDiscountedPrice(originalB2B, b2bDiscount, originalB2B)
+    : toNumber(firstValue(variant?.final_price_b2b, variant?.b2b_final_price, row?.final_price_b2b, row?.b2b_final_price, originalB2B), originalB2B);
 
   const rawImages = parseImages(variant?.images);
   const frontFromArray = imageUrlFromRecord(
@@ -350,22 +488,26 @@ const normalizeVariant = (variant: any, row: any) => {
   ]);
 
   const onHand = toNumber(
-    variant?.on_hand ??
-      variant?.onHand ??
-      variant?.stock ??
-      variant?.qty ??
-      variant?.quantity ??
-      row?.on_hand ??
-      row?.onHand ??
-      row?.stock ??
+    firstValue(
+      variant?.on_hand,
+      variant?.onHand,
+      variant?.stock,
+      variant?.qty,
+      variant?.quantity,
+      row?.on_hand,
+      row?.onHand,
+      row?.stock,
       0,
+    ),
     0,
   );
 
   const availableQty = toNumber(
-    variant?.available_qty ??
-      variant?.availableQty ??
+    firstValue(
+      variant?.available_qty,
+      variant?.availableQty,
       onHand,
+    ),
     onHand,
   );
 
@@ -382,20 +524,25 @@ const normalizeVariant = (variant: any, row: any) => {
     ean_code: barcode,
     eanCode: barcode,
     mrp,
-    original_price_b2c: toNumber(variant?.original_price_b2c ?? variant?.mrp ?? mrp, mrp),
+    original_price_b2c: mrp,
     final_price_b2c: salePrice,
-    original_price_b2b: toNumber(variant?.original_price_b2b ?? variant?.mrp ?? mrp, mrp),
-    final_price_b2b: toNumber(variant?.final_price_b2b ?? variant?.cost_price ?? variant?.sale_price ?? salePrice, salePrice),
+    original_price_b2b: originalB2B,
+    final_price_b2b: finalB2B,
     sale_price: salePrice,
     price: salePrice,
-    selling_price: toNumber(variant?.selling_price ?? salePrice, salePrice),
-    discounted_price: toNumber(variant?.discounted_price ?? salePrice, salePrice),
-    mahaveer_price: toNumber(variant?.mahaveer_price ?? salePrice, salePrice),
-    base_sale_price: toNumber(variant?.base_sale_price ?? variant?.original_sale_price ?? variant?.sale_price ?? salePrice, salePrice),
-    original_sale_price: toNumber(variant?.original_sale_price ?? variant?.base_sale_price ?? variant?.sale_price ?? salePrice, salePrice),
-    cost_price: toNumber(variant?.cost_price ?? 0, 0),
-    b2c_discount_pct: toNumber(variant?.b2c_discount_pct ?? row?.b2c_discount_pct ?? 0, 0),
-    b2b_discount_pct: toNumber(variant?.b2b_discount_pct ?? row?.b2b_discount_pct ?? 0, 0),
+    selling_price: salePrice,
+    discounted_price: salePrice,
+    mahaveer_price: salePrice,
+    base_sale_price: directSalePrice,
+    original_sale_price: directSalePrice,
+    cost_price: originalB2B,
+    b2c_discount_pct: b2cDiscount,
+    b2b_discount_pct: b2bDiscount,
+    discount_b2c: b2cDiscount,
+    discount_b2b: b2bDiscount,
+    discount: b2cDiscount,
+    discount_percentage: b2cDiscount,
+    discount_percent: b2cDiscount,
     on_hand: onHand,
     reserved: toNumber(variant?.reserved ?? 0, 0),
     available_qty: availableQty,
@@ -416,14 +563,17 @@ const normalizeVariant = (variant: any, row: any) => {
 const normalizeProduct = (row: any): Product => {
   const productName = String(row.product_name || row.name || row.title || "Product").trim();
   const brandName = String(row.brand_name || row.brand || "Vandhana").trim();
-  const gender = toGender(row.gender);
+  const gender = toGender(row.gender || row.category);
 
   const actualProductId = row.product_id || row.productId || row.actual_product_id || row.parent_product_id || row.id || null;
   const actualVariantId = row.variant_id || row.variantId || row.primary_variant_id || null;
   const barcode = String(row.barcode || row.ean_code || row.eanCode || "").trim();
 
   const rawVariants = Array.isArray(row.variants) && row.variants.length ? row.variants : [row];
-  const allVariants = rawVariants.map((variant: any) => normalizeVariant(variant, row));
+  const allVariants = rawVariants
+    .map((variant: any) => normalizeVariant(variant, row))
+    .filter((variant: any) => cleanSingleValue(variant.size) || cleanSingleValue(variant.colour || variant.color) || variant.variant_id || variant.id);
+
   const availableVariants = allVariants.filter((variant: any) => toNumber(variant.available_qty ?? variant.on_hand ?? 0, 0) > 0);
   const variants = availableVariants.length ? availableVariants : allVariants;
 
@@ -436,17 +586,23 @@ const normalizeProduct = (row: any): Product => {
 
   const onHand = variants.reduce((sum: number, variant: any) => sum + toNumber(variant.available_qty ?? variant.on_hand ?? 0, 0), 0);
 
-  const mrp = toNumber(selectedVariant?.mrp || row.mrp || row.original_price_b2c || row.originalPrice || row.price, 0);
-  const salePrice = toNumber(
-    selectedVariant?.final_price_b2c ||
-      selectedVariant?.sale_price ||
-      selectedVariant?.price ||
-      row.final_price_b2c ||
-      row.sale_price ||
-      row.price ||
-      row.salePrice,
-    mrp,
+  const mrp = toNumber(
+    firstValue(
+      selectedVariant?.original_price_b2c,
+      selectedVariant?.mrp,
+      row.mrp,
+      row.original_price_b2c,
+      row.originalPrice,
+      row.original_price,
+      row.price,
+      0,
+    ),
+    0,
   );
+
+  const b2cDiscount = getB2CDiscount(selectedVariant, row);
+  const directSalePrice = getDirectB2CPrice(selectedVariant, row, mrp);
+  const salePrice = b2cDiscount > 0 && mrp > 0 ? calculateDiscountedPrice(mrp, b2cDiscount, directSalePrice) : directSalePrice;
 
   const rawImages = parseImages(row.images);
   const frontFromArray = imageUrlFromRecord(
@@ -482,7 +638,7 @@ const normalizeProduct = (row: any): Product => {
   ]);
 
   const stockBySize = variants.reduce((acc: Record<string, number>, variant: any) => {
-    const size = String(variant.size || "").trim();
+    const size = cleanSingleValue(variant.size || "");
     if (!size) return acc;
     acc[size] = (acc[size] || 0) + toNumber(variant.available_qty ?? variant.on_hand ?? 0, 0);
     return acc;
@@ -491,24 +647,52 @@ const normalizeProduct = (row: any): Product => {
   const normalized: any = {
     id: String(actualProductId || selectedVariant?.product_id || selectedVariant?.productId || selectedVariant?.variant_id || barcode || ""),
     productId: actualProductId || selectedVariant?.product_id || selectedVariant?.productId || undefined,
+    product_id: actualProductId || selectedVariant?.product_id || selectedVariant?.productId || undefined,
     variantId: selectedVariant?.variant_id || selectedVariant?.variantId || actualVariantId || undefined,
+    variant_id: selectedVariant?.variant_id || selectedVariant?.variantId || actualVariantId || undefined,
     primaryVariantId: row.primary_variant_id || actualVariantId || selectedVariant?.variant_id || undefined,
+    primary_variant_id: row.primary_variant_id || actualVariantId || selectedVariant?.variant_id || undefined,
     title: productName,
+    product_name: productName,
+    name: productName,
     description: String(row.description || `${brandName} ${productName}`).trim(),
     brand: brandName,
+    brand_name: brandName,
     gender,
+    category: gender,
     categoryId: String(row.category_id || row.categoryId || findCategoryId(gender, productName)),
+    category_id: String(row.category_id || row.categoryId || findCategoryId(gender, productName)),
     price: salePrice,
+    salePrice,
+    sale_price: salePrice,
+    selling_price: salePrice,
+    final_price: salePrice,
+    final_price_b2c: salePrice,
+    discounted_price: salePrice,
+    mahaveer_price: salePrice,
     originalPrice: mrp,
+    original_price_b2c: mrp,
+    mrp,
     isSale: mrp > salePrice,
+    discount: b2cDiscount,
+    discount_b2c: b2cDiscount,
+    discount_percentage: b2cDiscount,
+    discount_percent: b2cDiscount,
+    b2c_discount_pct: b2cDiscount,
     images: images.length ? images : ["/placeholder.svg"],
     frontImageUrl,
+    front_image_url: frontImageUrl,
     backImageUrl,
+    back_image_url: backImageUrl,
     mainImageUrl,
+    main_image_url: mainImageUrl,
     imageUrl,
+    image_url: imageUrl,
     barcode: selectedVariant?.barcode || barcode,
+    ean_code: selectedVariant?.ean_code || selectedVariant?.barcode || barcode,
     size: selectedVariant?.size || sizeList[0] || "",
     colour: selectedVariant?.colour || colorList[0] || "",
+    color: selectedVariant?.color || colorList[0] || "",
     sizes: sizeList,
     colors: colorList,
     colours: colorList,
@@ -524,9 +708,10 @@ const normalizeProduct = (row: any): Product => {
     },
     createdAt: String(row.created_at || row.createdAt || new Date().toISOString()),
     onHand,
-    mrp,
-    salePrice,
+    on_hand: onHand,
+    available_qty: onHand,
     patternCode: String(row.pattern_code || row.patternCode || "").trim(),
+    pattern_code: String(row.pattern_code || row.patternCode || "").trim(),
     variants,
     variantCount: variants.length,
     variant_count: variants.length,
@@ -536,21 +721,61 @@ const normalizeProduct = (row: any): Product => {
   return normalized as Product;
 };
 
-export const fetchBranchProducts = async (branchId = DEFAULT_BRANCH_ID): Promise<Product[]> => {
-  const res = await fetch(`${API_BASE}/api/branch/${encodeURIComponent(branchId)}/stock`, {
+const readJson = async (res: Response) => {
+  const data = await res.json().catch(() => []);
+  if (!res.ok) {
+    throw new Error((data as any)?.message || `Request failed with status ${res.status}`);
+  }
+  return data;
+};
+
+const extractRows = (data: any) => {
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.data)) return data.data;
+  if (Array.isArray(data?.products)) return data.products;
+  if (Array.isArray(data?.rows)) return data.rows;
+  if (Array.isArray(data?.items)) return data.items;
+  return [];
+};
+
+const fetchFromProductsApi = async (branchId: number) => {
+  const url = `${API_BASE}/api/products?branch_id=${encodeURIComponent(branchId)}&all=true&_ts=${Date.now()}`;
+  const res = await fetch(url, {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
     },
+    cache: "no-store",
   });
 
-  const data = await res.json().catch(() => []);
+  const data = await readJson(res);
+  return extractRows(data);
+};
 
-  if (!res.ok) {
-    throw new Error(data?.message || "Unable to load products");
+const fetchFromBranchApi = async (branchId: number) => {
+  const url = `${API_BASE}/api/branch/${encodeURIComponent(branchId)}/stock?_ts=${Date.now()}`;
+  const res = await fetch(url, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    cache: "no-store",
+  });
+
+  const data = await readJson(res);
+  return extractRows(data);
+};
+
+export const fetchBranchProducts = async (branchId = DEFAULT_BRANCH_ID): Promise<Product[]> => {
+  let rows: any[] = [];
+
+  try {
+    rows = await fetchFromProductsApi(branchId);
+  } catch {
+    rows = await fetchFromBranchApi(branchId);
   }
 
-  const groupedRows = mergeRawRows(Array.isArray(data) ? data : []);
+  const groupedRows = mergeRawRows(Array.isArray(rows) ? rows : []);
   return groupedRows.map(normalizeProduct).filter((product) => product.id);
 };
 
@@ -572,14 +797,18 @@ export const fetchProductById = async (
   return (
     products.find((product: any) => String(product.id || "").trim() === target) ||
     products.find((product: any) => String(product.productId || "").trim() === target) ||
+    products.find((product: any) => String(product.product_id || "").trim() === target) ||
     products.find((product: any) => String(product.variantId || "").trim() === target) ||
+    products.find((product: any) => String(product.variant_id || "").trim() === target) ||
     products.find((product: any) => String(product.primaryVariantId || "").trim() === target) ||
+    products.find((product: any) => String(product.primary_variant_id || "").trim() === target) ||
     products.find((product: any) => String(product.barcode || "").trim() === target) ||
     products.find((product: any) =>
       Array.isArray(product.variants) &&
       product.variants.some(
         (variant: any) =>
           String(variant.variant_id || "").trim() === target ||
+          String(variant.variantId || "").trim() === target ||
           String(variant.id || "").trim() === target ||
           String(variant.barcode || "").trim() === target ||
           String(variant.ean_code || "").trim() === target,

@@ -108,11 +108,26 @@ const getNumber = (value: any, fallback = 0) => {
 
 const getString = (value: any) => String(value || "").trim();
 
+const isGroupedValue = (value: any) => {
+  const s = getString(value);
+  if (!s) return false;
+  if (s.includes(",")) return true;
+  if (s.split(/\s+/).length > 4) return true;
+  return false;
+};
+
+const cleanSingleValue = (value: any) => {
+  const s = getString(value);
+  if (!s) return "";
+  if (isGroupedValue(s)) return "";
+  return s;
+};
+
 const sameValue = (a: any, b: any) =>
   String(a || "").trim().toLowerCase() === String(b || "").trim().toLowerCase();
 
 const getVariantColor = (variant?: ProductVariantOption | null) =>
-  String(variant?.colour || variant?.color || "").trim();
+  cleanSingleValue(variant?.colour || variant?.color || "");
 
 const getBackendProductId = (product: Product | null) => {
   const p: any = product || {};
@@ -181,14 +196,16 @@ const normalizeVariant = (item: any, product: any): ProductVariantOption => {
     mrp,
   );
   const originalB2c = getNumber(item?.original_price_b2c ?? item?.mrp ?? product?.originalPrice ?? product?.mrp, mrp);
+  const size = cleanSingleValue(item?.size || item?.selected_size || product?.size);
+  const colour = cleanSingleValue(item?.colour || item?.color || item?.selected_color || product?.colour || product?.color);
 
   return {
     id: item?.id || item?.variant_id || item?.variantId || product?.variantId || product?.variant_id || product?.id || "",
     variant_id: item?.variant_id || item?.variantId || item?.id || product?.variantId || product?.variant_id || product?.id || "",
     product_id: item?.product_id || item?.productId || product?.productId || product?.product_id || product?.id,
-    size: getString(item?.size || item?.selected_size || product?.size),
-    colour: getString(item?.colour || item?.color || item?.selected_color || product?.colour || product?.color),
-    color: getString(item?.color || item?.colour || item?.selected_color || product?.color || product?.colour),
+    size,
+    colour,
+    color: colour,
     barcode: getString(item?.barcode || item?.ean_code || product?.barcode || product?.ean_code),
     ean_code: getString(item?.ean_code || item?.barcode || product?.ean_code || product?.barcode),
     mrp,
@@ -218,12 +235,20 @@ const normalizeVariant = (item: any, product: any): ProductVariantOption => {
   };
 };
 
+const isValidVariantOption = (variant: ProductVariantOption) => {
+  const hasSize = !!cleanSingleValue(variant.size);
+  const hasColor = !!cleanSingleValue(variant.colour || variant.color);
+  const hasId = !!getString(variant.variant_id || variant.id || variant.barcode || variant.ean_code);
+  return hasId && (hasSize || hasColor);
+};
+
 const getProductVariants = (product: Product | null): ProductVariantOption[] => {
   if (!product) return [];
   const p: any = product;
   const rawVariants = Array.isArray(p.variants) ? p.variants : [];
-  if (rawVariants.length) return rawVariants.map((item: any) => normalizeVariant(item, p));
-  return [normalizeVariant(p, p)];
+  const normalized = rawVariants.length ? rawVariants.map((item: any) => normalizeVariant(item, p)) : [normalizeVariant(p, p)];
+  const cleanVariants = normalized.filter(isValidVariantOption);
+  return cleanVariants.length ? cleanVariants : normalized.filter((variant) => getString(variant.variant_id || variant.id));
 };
 
 const uniqueValues = (values: string[]) => {
@@ -231,7 +256,7 @@ const uniqueValues = (values: string[]) => {
   const out: string[] = [];
 
   values.forEach((value) => {
-    const clean = String(value || "").trim();
+    const clean = cleanSingleValue(value);
     if (!clean) return;
     const key = clean.toLowerCase();
     if (!seen.has(key)) {
@@ -397,7 +422,7 @@ const ProductDetails: React.FC = () => {
       ? variantOptions.filter((variant) => sameValue(getVariantColor(variant), selectedColor))
       : variantOptions;
 
-    return sortVariantValues(filtered.map((variant) => variant.size));
+    return sortVariantValues(filtered.map((variant) => cleanSingleValue(variant.size)));
   }, [variantOptions, selectedColor]);
 
   useEffect(() => {
@@ -460,15 +485,15 @@ const ProductDetails: React.FC = () => {
         const initialOptions: Record<string, string> = {};
 
         if (firstVariant?.colour || firstVariant?.color) {
-          initialOptions["Color"] = firstVariant.colour || firstVariant.color;
+          initialOptions["Color"] = getVariantColor(firstVariant);
         } else if (foundProduct.colors?.length) {
-          initialOptions["Color"] = foundProduct.colors[0];
+          initialOptions["Color"] = cleanSingleValue(foundProduct.colors[0]);
         }
 
         if (firstVariant?.size) {
-          initialOptions["Size"] = firstVariant.size;
+          initialOptions["Size"] = cleanSingleValue(firstVariant.size);
         } else if (foundProduct.sizes?.length) {
-          initialOptions["Size"] = foundProduct.sizes[0];
+          initialOptions["Size"] = cleanSingleValue(foundProduct.sizes[0]);
         }
 
         setProduct(foundProduct);
@@ -523,7 +548,7 @@ const ProductDetails: React.FC = () => {
 
       const nextVariant = colorMatch || sizeMatch || variantOptions[0];
       const nextColor = getVariantColor(nextVariant);
-      const nextSize = nextVariant?.size || "";
+      const nextSize = cleanSingleValue(nextVariant?.size || "");
 
       const next: Record<string, string> = { ...prev };
 
@@ -695,20 +720,24 @@ const ProductDetails: React.FC = () => {
     setCartError("");
     setCartMessage("");
 
+    const cleanVal = cleanSingleValue(val);
+
+    if (!cleanVal) return;
+
     setSelectedOptions((prev) => {
       const next: Record<string, string> = {
         ...prev,
-        [name]: val,
+        [name]: cleanVal,
       };
 
       const key = name.toLowerCase();
 
       if (key === "color" || key === "colour") {
         const matchingColorVariants = variantOptions.filter((variant) =>
-          sameValue(getVariantColor(variant), val),
+          sameValue(getVariantColor(variant), cleanVal),
         );
 
-        const validSizes = sortVariantValues(matchingColorVariants.map((variant) => variant.size));
+        const validSizes = sortVariantValues(matchingColorVariants.map((variant) => cleanSingleValue(variant.size)));
         const currentSize = next["Size"] || "";
 
         if (validSizes.length && !validSizes.some((size) => sameValue(size, currentSize))) {
@@ -722,7 +751,7 @@ const ProductDetails: React.FC = () => {
 
       if (key === "size") {
         const matchingSizeVariants = variantOptions.filter((variant) =>
-          sameValue(variant.size, val),
+          sameValue(variant.size, cleanVal),
         );
 
         const currentColor = next["Color"] || "";
@@ -1190,36 +1219,38 @@ const ProductDetails: React.FC = () => {
 
                     <div className="flex flex-wrap gap-3">
                       {option.values.map((val) => {
-                        const isSelected = selectedOptions[option.name] === val;
+                        const cleanVal = cleanSingleValue(val);
+                        if (!cleanVal) return null;
+                        const isSelected = selectedOptions[option.name] === cleanVal;
 
                         if (isColor) {
                           return (
                             <button
-                              key={val}
-                              onClick={() => handleOptionChange(option.name, val)}
-                              title={val}
+                              key={cleanVal}
+                              onClick={() => handleOptionChange(option.name, cleanVal)}
+                              title={cleanVal}
                               className={`w-8 h-8 rounded-full border border-gray-100 transition-all ${
                                 isSelected
                                   ? "ring-2 ring-gray-400 ring-offset-2 scale-110"
                                   : "hover:scale-110"
                               }`}
-                              style={{ backgroundColor: getColorHex(val) }}
-                              aria-label={`Select Color ${val}`}
+                              style={{ backgroundColor: getColorHex(cleanVal) }}
+                              aria-label={`Select Color ${cleanVal}`}
                             />
                           );
                         }
 
                         return (
                           <button
-                            key={val}
-                            onClick={() => handleOptionChange(option.name, val)}
+                            key={cleanVal}
+                            onClick={() => handleOptionChange(option.name, cleanVal)}
                             className={`min-w-12 px-4 py-2.5 rounded-sm text-sm font-source-sans font-bold uppercase tracking-wider transition-all border ${
                               isSelected
                                 ? "bg-gray-900 text-white border-gray-900"
                                 : "bg-white text-gray-800 border-gray-300 hover:border-gray-900"
                             }`}
                           >
-                            {val}
+                            {cleanVal}
                           </button>
                         );
                       })}
