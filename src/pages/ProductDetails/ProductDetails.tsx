@@ -106,6 +106,29 @@ const getNumber = (value: any, fallback = 0) => {
   return Number.isFinite(n) ? n : fallback;
 };
 
+const clampDiscount = (value: any) => {
+  const n = getNumber(value, 0);
+  if (n < 0) return 0;
+  if (n > 100) return 100;
+  return n;
+};
+
+const firstPositiveDiscount = (...values: any[]) => {
+  for (const value of values) {
+    const n = clampDiscount(value);
+    if (n > 0) return n;
+  }
+  return 0;
+};
+
+const calculateDiscountedPrice = (price: any, discount: any, fallback = 0) => {
+  const base = getNumber(price, fallback);
+  const pct = clampDiscount(discount);
+  if (!base) return getNumber(fallback, 0);
+  if (!pct) return base;
+  return Math.round((base - (base * pct) / 100 + Number.EPSILON) * 100) / 100;
+};
+
 const getString = (value: any) => String(value || "").trim();
 
 const isGroupedValue = (value: any) => {
@@ -184,18 +207,60 @@ const imageListFromVariant = (variant?: ProductVariantOption | null) => {
 };
 
 const normalizeVariant = (item: any, product: any): ProductVariantOption => {
-  const mrp = getNumber(item?.mrp ?? item?.original_price_b2c ?? product?.originalPrice ?? product?.mrp ?? product?.price);
-  const finalB2c = getNumber(
+  const originalB2c = getNumber(
+    item?.original_price_b2c ??
+      item?.b2c_original_price ??
+      item?.mrp ??
+      item?.original_price ??
+      product?.original_price_b2c ??
+      product?.originalPrice ??
+      product?.mrp ??
+      product?.original_price ??
+      product?.price,
+    0,
+  );
+  const directFinalB2c = getNumber(
     item?.final_price_b2c ??
+      item?.b2c_final_price ??
       item?.sale_price ??
       item?.price ??
       item?.selling_price ??
       item?.discounted_price ??
       item?.mahaveer_price ??
+      product?.final_price_b2c ??
+      product?.salePrice ??
+      product?.sale_price ??
       product?.price,
-    mrp,
+    originalB2c,
   );
-  const originalB2c = getNumber(item?.original_price_b2c ?? item?.mrp ?? product?.originalPrice ?? product?.mrp, mrp);
+  const b2cDiscount = firstPositiveDiscount(
+    item?.b2c_discount_pct,
+    item?.discount_b2c,
+    item?.b2c_discount,
+    item?.discount_percentage,
+    item?.discount_percent,
+    item?.discount,
+    product?.b2c_discount_pct,
+    product?.discount_b2c,
+    product?.b2c_discount,
+    product?.discount_percentage,
+    product?.discount_percent,
+    product?.discount,
+  );
+  const b2bDiscount = firstPositiveDiscount(
+    item?.b2b_discount_pct,
+    item?.discount_b2b,
+    item?.b2b_discount,
+    item?.discount_percentage_b2b,
+    product?.b2b_discount_pct,
+    product?.discount_b2b,
+    product?.b2b_discount,
+    product?.discount_percentage_b2b,
+  );
+  const mrp = originalB2c;
+  const finalB2c = b2cDiscount > 0 && mrp > 0 ? calculateDiscountedPrice(mrp, b2cDiscount, directFinalB2c) : directFinalB2c;
+  const originalB2b = getNumber(item?.original_price_b2b ?? item?.b2b_original_price ?? item?.cost_price ?? product?.original_price_b2b ?? product?.cost_price, originalB2c);
+  const finalB2b = b2bDiscount > 0 && originalB2b > 0 ? calculateDiscountedPrice(originalB2b, b2bDiscount, originalB2b) : getNumber(item?.final_price_b2b ?? item?.b2b_final_price ?? item?.cost_price ?? product?.final_price_b2b, finalB2c);
   const size = cleanSingleValue(item?.size || item?.selected_size || product?.size);
   const colour = cleanSingleValue(item?.colour || item?.color || item?.selected_color || product?.colour || product?.color);
 
@@ -217,12 +282,12 @@ const normalizeVariant = (item: any, product: any): ProductVariantOption => {
     discounted_price: getNumber(item?.discounted_price ?? item?.sale_price ?? item?.final_price_b2c, finalB2c),
     mahaveer_price: getNumber(item?.mahaveer_price ?? item?.sale_price ?? item?.final_price_b2c, finalB2c),
     cost_price: getNumber(item?.cost_price ?? product?.cost_price, 0),
-    b2c_discount_pct: getNumber(item?.b2c_discount_pct ?? product?.b2c_discount_pct, 0),
-    b2b_discount_pct: getNumber(item?.b2b_discount_pct ?? product?.b2b_discount_pct, 0),
+    b2c_discount_pct: b2cDiscount,
+    b2b_discount_pct: b2bDiscount,
     original_price_b2c: originalB2c,
     final_price_b2c: finalB2c,
-    original_price_b2b: getNumber(item?.original_price_b2b ?? item?.mrp ?? product?.original_price_b2b, originalB2c),
-    final_price_b2b: getNumber(item?.final_price_b2b ?? item?.cost_price ?? item?.sale_price ?? product?.final_price_b2b, finalB2c),
+    original_price_b2b: originalB2b,
+    final_price_b2b: finalB2b,
     on_hand: getNumber(item?.on_hand ?? product?.on_hand ?? product?.onHand, 0),
     reserved: getNumber(item?.reserved ?? product?.reserved, 0),
     available_qty: getNumber(item?.available_qty ?? item?.on_hand ?? product?.available_qty ?? product?.onHand, 0),
@@ -246,9 +311,9 @@ const getProductVariants = (product: Product | null): ProductVariantOption[] => 
   if (!product) return [];
   const p: any = product;
   const rawVariants = Array.isArray(p.variants) ? p.variants : [];
-  const normalized = rawVariants.length ? rawVariants.map((item: any) => normalizeVariant(item, p)) : [normalizeVariant(p, p)];
+  const normalized: ProductVariantOption[] = rawVariants.length ? rawVariants.map((item: any) => normalizeVariant(item, p)) : [normalizeVariant(p, p)];
   const cleanVariants = normalized.filter(isValidVariantOption);
-  return cleanVariants.length ? cleanVariants : normalized.filter((variant) => getString(variant.variant_id || variant.id));
+  return cleanVariants.length ? cleanVariants : normalized.filter((variant: ProductVariantOption) => getString(variant.variant_id || variant.id));
 };
 
 const uniqueValues = (values: string[]) => {
@@ -285,7 +350,7 @@ const findExactVariant = (
   if (!variants.length) return null;
 
   return (
-    variants.find((variant) => {
+    variants.find((variant: ProductVariantOption) => {
       const sizeOk = selectedSize ? sameValue(variant.size, selectedSize) : true;
       const colorOk = selectedColor ? sameValue(getVariantColor(variant), selectedColor) : true;
       return sizeOk && colorOk;
@@ -295,12 +360,12 @@ const findExactVariant = (
 
 const findVariantByColor = (variants: ProductVariantOption[], selectedColor: string) => {
   if (!selectedColor) return null;
-  return variants.find((variant) => sameValue(getVariantColor(variant), selectedColor)) || null;
+  return variants.find((variant: ProductVariantOption) => sameValue(getVariantColor(variant), selectedColor)) || null;
 };
 
 const findVariantBySize = (variants: ProductVariantOption[], selectedSize: string) => {
   if (!selectedSize) return null;
-  return variants.find((variant) => sameValue(variant.size, selectedSize)) || null;
+  return variants.find((variant: ProductVariantOption) => sameValue(variant.size, selectedSize)) || null;
 };
 
 const findPriceVariant = (
@@ -390,7 +455,7 @@ const ProductDetails: React.FC = () => {
   const backendProductId = useMemo(() => getBackendProductId(product), [product]);
   const allVariantOptions = useMemo(() => getProductVariants(product), [product]);
   const availableVariantOptions = useMemo(
-    () => allVariantOptions.filter((variant) => getVariantStockCount(variant) > 0),
+    () => allVariantOptions.filter((variant: ProductVariantOption) => getVariantStockCount(variant) > 0),
     [allVariantOptions],
   );
   const variantOptions = availableVariantOptions.length ? availableVariantOptions : allVariantOptions;
@@ -413,16 +478,16 @@ const ProductDetails: React.FC = () => {
   );
 
   const colorValues = useMemo(
-    () => sortVariantValues(variantOptions.map((variant) => getVariantColor(variant))),
+    () => sortVariantValues(variantOptions.map((variant: ProductVariantOption) => getVariantColor(variant))),
     [variantOptions],
   );
 
   const sizeValues = useMemo(() => {
     const filtered = selectedColor
-      ? variantOptions.filter((variant) => sameValue(getVariantColor(variant), selectedColor))
+      ? variantOptions.filter((variant: ProductVariantOption) => sameValue(getVariantColor(variant), selectedColor))
       : variantOptions;
 
-    return sortVariantValues(filtered.map((variant) => cleanSingleValue(variant.size)));
+    return sortVariantValues(filtered.map((variant: ProductVariantOption) => cleanSingleValue(variant.size)));
   }, [variantOptions, selectedColor]);
 
   useEffect(() => {
@@ -479,7 +544,7 @@ const ProductDetails: React.FC = () => {
         }
 
         const allVariants = getProductVariants(foundProduct);
-        const availableVariants = allVariants.filter((variant) => getVariantStockCount(variant) > 0);
+        const availableVariants = allVariants.filter((variant: ProductVariantOption) => getVariantStockCount(variant) > 0);
         const variants = availableVariants.length ? availableVariants : allVariants;
         const firstVariant = variants[0];
         const initialOptions: Record<string, string> = {};
@@ -539,11 +604,11 @@ const ProductDetails: React.FC = () => {
       if (exact) return prev;
 
       const colorMatch = currentColor
-        ? variantOptions.find((variant) => sameValue(getVariantColor(variant), currentColor))
+        ? variantOptions.find((variant: ProductVariantOption) => sameValue(getVariantColor(variant), currentColor))
         : null;
 
       const sizeMatch = currentSize
-        ? variantOptions.find((variant) => sameValue(variant.size, currentSize))
+        ? variantOptions.find((variant: ProductVariantOption) => sameValue(variant.size, currentSize))
         : null;
 
       const nextVariant = colorMatch || sizeMatch || variantOptions[0];
@@ -733,11 +798,11 @@ const ProductDetails: React.FC = () => {
       const key = name.toLowerCase();
 
       if (key === "color" || key === "colour") {
-        const matchingColorVariants = variantOptions.filter((variant) =>
+        const matchingColorVariants = variantOptions.filter((variant: ProductVariantOption) =>
           sameValue(getVariantColor(variant), cleanVal),
         );
 
-        const validSizes = sortVariantValues(matchingColorVariants.map((variant) => cleanSingleValue(variant.size)));
+        const validSizes = sortVariantValues(matchingColorVariants.map((variant: ProductVariantOption) => cleanSingleValue(variant.size)));
         const currentSize = next["Size"] || "";
 
         if (validSizes.length && !validSizes.some((size) => sameValue(size, currentSize))) {
@@ -750,14 +815,14 @@ const ProductDetails: React.FC = () => {
       }
 
       if (key === "size") {
-        const matchingSizeVariants = variantOptions.filter((variant) =>
+        const matchingSizeVariants = variantOptions.filter((variant: ProductVariantOption) =>
           sameValue(variant.size, cleanVal),
         );
 
         const currentColor = next["Color"] || "";
 
-        if (currentColor && !matchingSizeVariants.some((variant) => sameValue(getVariantColor(variant), currentColor))) {
-          const nextColor = sortVariantValues(matchingSizeVariants.map((variant) => getVariantColor(variant)))[0] || "";
+        if (currentColor && !matchingSizeVariants.some((variant: ProductVariantOption) => sameValue(getVariantColor(variant), currentColor))) {
+          const nextColor = sortVariantValues(matchingSizeVariants.map((variant: ProductVariantOption) => getVariantColor(variant)))[0] || "";
           if (nextColor) next["Color"] = nextColor;
           else delete next["Color"];
         }
