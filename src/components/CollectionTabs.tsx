@@ -6,6 +6,37 @@ import type { Product } from "../Models/Product";
 import categories from "../Data/categories.json";
 import { fetchProductsByGender } from "../services/productsApi";
 
+const normalizeCategoryText = (value: any) =>
+  String(value || "")
+    .toLowerCase()
+    .replace(/-/g, " ")
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const getCategoryFromSearch = (search: string) => {
+  const params = new URLSearchParams(search);
+  return normalizeCategoryText(params.get("category") || "");
+};
+
+const getGenderForCategory = (categoryName: string) => {
+  if (!categoryName) return "";
+
+  const matchedCategory = categories.find(
+    (category) =>
+      category.level === 2 &&
+      normalizeCategoryText(category.name) === normalizeCategoryText(categoryName),
+  );
+
+  if (!matchedCategory) return "";
+
+  const parent = categories.find((category) => category.id === matchedCategory.parentId);
+  const root = categories.find((category) => category.id === parent?.parentId);
+
+  return root?.name || "";
+};
+
 const CollectionTabsContent = ({ title }: { title?: string }) => {
   const [activeTab, setActiveTab] = useState<string>("ALL");
   const [visibleCount, setVisibleCount] = useState(12);
@@ -23,9 +54,19 @@ const CollectionTabsContent = ({ title }: { title?: string }) => {
     loadingRef.current = loadingMore;
   }, [loadingMore]);
 
+  const categoryFromQuery = useMemo(() => getCategoryFromSearch(location.search), [location.search]);
+  const genderFromCategory = useMemo(() => getGenderForCategory(categoryFromQuery), [categoryFromQuery]);
+
   const preferredGender = useMemo(() => {
-    return localStorage.getItem("preferred_gender") || "Men";
-  }, [location.pathname]);
+    return genderFromCategory || localStorage.getItem("preferred_gender") || "Men";
+  }, [location.pathname, genderFromCategory]);
+
+  useEffect(() => {
+    if (genderFromCategory) {
+      localStorage.setItem("preferred_gender", genderFromCategory);
+      localStorage.setItem("preferred_gender_url", `/${genderFromCategory.toLowerCase()}`);
+    }
+  }, [genderFromCategory]);
 
   useEffect(() => {
     let alive = true;
@@ -80,8 +121,21 @@ const CollectionTabsContent = ({ title }: { title?: string }) => {
   }, [preferredGender, products]);
 
   useEffect(() => {
-    if (!tabs.includes(activeTab)) setActiveTab("ALL");
-  }, [tabs, activeTab]);
+    if (categoryFromQuery) {
+      const matchedTab = tabs.find(
+        (tabName) => normalizeCategoryText(tabName) === normalizeCategoryText(categoryFromQuery),
+      );
+
+      if (matchedTab) {
+        setActiveTab(matchedTab);
+        return;
+      }
+    }
+
+    if (!tabs.includes(activeTab)) {
+      setActiveTab("ALL");
+    }
+  }, [tabs, activeTab, categoryFromQuery]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -95,6 +149,7 @@ const CollectionTabsContent = ({ title }: { title?: string }) => {
       } else {
         setIsHeaderVisible(true);
       }
+
       lastScrollY.current = currentScrollY;
     };
 
@@ -121,6 +176,7 @@ const CollectionTabsContent = ({ title }: { title?: string }) => {
     }
 
     let recentlyViewedIds: string[] = [];
+
     try {
       recentlyViewedIds = JSON.parse(
         localStorage.getItem("recentlyViewed") || "[]",
@@ -178,6 +234,7 @@ const CollectionTabsContent = ({ title }: { title?: string }) => {
     );
 
     observer.observe(target);
+
     return () => {
       observer.disconnect();
       clearTimeout(timeoutId);
@@ -204,6 +261,7 @@ const CollectionTabsContent = ({ title }: { title?: string }) => {
         >
           {tabs.map((tabName) => {
             const isActive = tabName === activeTab;
+
             return (
               <button
                 key={tabName}

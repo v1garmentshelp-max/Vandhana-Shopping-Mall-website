@@ -139,7 +139,7 @@ const Women = () => {
   return (
     <div>
       <HeroCarousel banners={HERO_BANNERS} />
-      <CategoriesSection categories={womenCategories} title="Shop by Category" />
+      <CategoriesSection categories={womenCategories} title="Shop by Category" productData={typedProducts} />
       <NamedSection title="NEW DROPS" productData={newDrops} autoplay={false} />
       <HeroProductSection products={newDrops} className="mb-4" />
       <NamedSection title="Hot Summer Picks" productData={shorts} />
