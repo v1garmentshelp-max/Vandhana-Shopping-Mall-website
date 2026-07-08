@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import type { Product } from "../Models/Product";
 import { Heart } from "lucide-react";
@@ -14,8 +14,7 @@ type StoredUser = {
 };
 
 const getStoredUser = (): StoredUser | null => {
-  const raw =
-    localStorage.getItem("user") || sessionStorage.getItem("user") || null;
+  const raw = localStorage.getItem("user") || sessionStorage.getItem("user") || null;
   if (!raw) return null;
   try {
     return JSON.parse(raw);
@@ -33,9 +32,7 @@ const getWishlistKey = (userId: number) => `wishlist_variant_ids_${userId}`;
 
 const readWishlistIds = (userId: number): number[] => {
   try {
-    const raw =
-      localStorage.getItem(getWishlistKey(userId)) ||
-      localStorage.getItem(`wishlist_product_ids_${userId}`);
+    const raw = localStorage.getItem(getWishlistKey(userId)) || localStorage.getItem(`wishlist_product_ids_${userId}`);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed.map(Number).filter(Number.isFinite) : [];
@@ -48,6 +45,33 @@ const writeWishlistIds = (userId: number, ids: number[]) => {
   localStorage.setItem(getWishlistKey(userId), JSON.stringify(ids));
   localStorage.setItem(`wishlist_product_ids_${userId}`, JSON.stringify(ids));
   window.dispatchEvent(new Event("wishlist-updated"));
+};
+
+const getImageString = (value: any) => {
+  if (!value) return "";
+  if (typeof value === "string") return value.trim();
+  return String(value.image_url || value.secure_url || value.url || "").trim();
+};
+
+const isBadImage = (value: any) => {
+  const s = String(value || "").trim().toLowerCase();
+  return !s || s === "[object object]" || s.includes("undefined") || s.includes("null") || s.includes("placeholder.svg");
+};
+
+const uniqueImages = (values: any[]) => {
+  const seen = new Set<string>();
+  const out: string[] = [];
+
+  values.forEach((value) => {
+    const image = getImageString(value);
+    if (isBadImage(image)) return;
+    const key = image.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push(image);
+  });
+
+  return out;
 };
 
 export const ProductCardSkeleton: React.FC = () => {
@@ -65,50 +89,95 @@ export const ProductCardSkeleton: React.FC = () => {
   );
 };
 
-export const ProductCard: React.FC<Product> = ({
-  id,
-  productId,
-  variantId,
-  images,
-  title,
-  description,
-  brand,
-  price,
-  originalPrice,
-  isSale,
-}) => {
+export const ProductCard: React.FC<Product> = (props: any) => {
+  const {
+    id,
+    productId,
+    product_id,
+    variantId,
+    variant_id,
+    primaryVariantId,
+    primary_variant_id,
+    images,
+    title,
+    description,
+    brand,
+    price,
+    originalPrice,
+    isSale,
+    frontImageUrl,
+    front_image_url,
+    backImageUrl,
+    back_image_url,
+    mainImageUrl,
+    main_image_url,
+    imageUrl,
+    image_url,
+  } = props;
+
   const navigate = useNavigate();
-  const [imgLoaded, setImgLoaded] = useState(false);
+  const [frontFailed, setFrontFailed] = useState(false);
+  const [backFailed, setBackFailed] = useState(false);
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [isUpdatingWishlist, setIsUpdatingWishlist] = useState(false);
 
-  const cardImages = useMemo(() => {
-    const validImages = Array.isArray(images) ? images.filter(Boolean) : [];
-    return validImages.length ? validImages : ["/placeholder.svg"];
-  }, [images]);
+  const resolvedImages = useMemo(() => {
+    const imageList = Array.isArray(images) ? images : [];
+    const allImages = uniqueImages(imageList);
+    const frontCandidates = uniqueImages([
+      frontImageUrl,
+      front_image_url,
+      imageUrl,
+      image_url,
+      mainImageUrl,
+      main_image_url,
+      allImages[0],
+    ]);
+    const front = frontCandidates[0] || "/placeholder.svg";
+    const backCandidates = uniqueImages([
+      backImageUrl,
+      back_image_url,
+      allImages[1],
+      ...allImages.slice(1),
+    ]).filter((item) => item !== front);
+    const back = backCandidates[0] || "";
+    return { front, back };
+  }, [
+    images,
+    frontImageUrl,
+    front_image_url,
+    backImageUrl,
+    back_image_url,
+    mainImageUrl,
+    main_image_url,
+    imageUrl,
+    image_url,
+  ]);
+
+  const finalVariantId = variantId || variant_id || primaryVariantId || primary_variant_id;
 
   const wishlistVariantId = useMemo(() => {
-    return toPositiveNumber(variantId) || toPositiveNumber(id);
-  }, [variantId, id]);
+    return toPositiveNumber(finalVariantId) || toPositiveNumber(id);
+  }, [finalVariantId, id]);
 
   const parentProductId = useMemo(() => {
-    return toPositiveNumber(productId);
-  }, [productId]);
+    return toPositiveNumber(productId || product_id) || toPositiveNumber(id);
+  }, [productId, product_id, id]);
 
   const routeId = useMemo(() => {
-    return encodeURIComponent(String(variantId || id));
-  }, [variantId, id]);
+    return encodeURIComponent(String(finalVariantId || id));
+  }, [finalVariantId, id]);
 
-  const discount =
-    originalPrice && originalPrice > price
-      ? Math.round(((originalPrice - price) / originalPrice) * 100)
-      : 0;
+  const discount = originalPrice && originalPrice > price ? Math.round(((originalPrice - price) / originalPrice) * 100) : 0;
+  const frontImg = frontFailed ? "/placeholder.svg" : resolvedImages.front || "/placeholder.svg";
+  const backImg = !backFailed && resolvedImages.back && resolvedImages.back !== frontImg ? resolvedImages.back : "";
 
-  useEffect(() => {
-    setImgLoaded(false);
-  }, [cardImages[0]]);
+  React.useEffect(() => {
+    setFrontFailed(false);
+    setBackFailed(false);
+  }, [resolvedImages.front, resolvedImages.back]);
 
-  useEffect(() => {
+  React.useEffect(() => {
     const syncWishlistState = () => {
       const user = getStoredUser();
       const userId = Number(user?.id || 0);
@@ -128,9 +197,7 @@ export const ProductCard: React.FC<Product> = ({
     };
   }, [wishlistVariantId]);
 
-  const handleWishlistToggle = async (
-    e: React.MouseEvent<HTMLButtonElement>,
-  ) => {
+  const handleWishlistToggle = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     e.stopPropagation();
 
@@ -171,9 +238,7 @@ export const ProductCard: React.FC<Product> = ({
           throw new Error(data?.message || "Unable to remove from wishlist");
         }
 
-        const ids = readWishlistIds(userId).filter(
-          (item) => item !== wishlistVariantId,
-        );
+        const ids = readWishlistIds(userId).filter((item) => item !== wishlistVariantId);
         writeWishlistIds(userId, ids);
         setIsWishlisted(false);
       } else {
@@ -196,9 +261,7 @@ export const ProductCard: React.FC<Product> = ({
           throw new Error(data?.message || "Unable to add to wishlist");
         }
 
-        const ids = Array.from(
-          new Set([...readWishlistIds(userId), wishlistVariantId]),
-        );
+        const ids = Array.from(new Set([...readWishlistIds(userId), wishlistVariantId]));
         writeWishlistIds(userId, ids);
         setIsWishlisted(true);
       }
@@ -210,41 +273,31 @@ export const ProductCard: React.FC<Product> = ({
   };
 
   return (
-    <Link
-      to={`/product/${routeId}`}
-      className="max-w-[400px] group cursor-pointer block"
-    >
+    <Link to={`/product/${routeId}`} className="max-w-[400px] group cursor-pointer block">
       <div className="relative aspect-2/3 overflow-hidden rounded-xl bg-gray-100">
-        {!imgLoaded && (
-          <div className="absolute inset-0 bg-gray-200 animate-pulse z-0" />
-        )}
-
         {(isSale || discount > 0) && (
           <div className="absolute top-3 left-3 z-20 bg-primary text-black px-2 py-0.5 h-[18px] flex items-center justify-center rounded-xs">
-            <span className="font-big-shoulders font-bold text-[0.8rem] uppercase">
-              Sale
-            </span>
+            <span className="font-big-shoulders font-bold text-[0.8rem] uppercase">Sale</span>
           </div>
         )}
 
         <img
-          src={cardImages[0]}
+          src={frontImg}
           alt={title}
           loading="lazy"
-          onLoad={() => setImgLoaded(true)}
-          className={`h-full w-full object-cover object-top transition-all duration-500 group-hover:scale-105 relative z-10 ${
-            imgLoaded ? "opacity-100" : "opacity-0"
-          } ${cardImages.length > 1 ? "group-hover:opacity-0" : ""}`}
+          onError={() => setFrontFailed(true)}
+          className={`h-full w-full object-cover object-top transition-all duration-500 group-hover:scale-105 relative z-10 ${backImg ? "group-hover:opacity-0" : ""}`}
         />
 
-        {cardImages.length > 1 && (
+        {backImg ? (
           <img
-            src={cardImages[1]}
-            alt={title}
+            src={backImg}
+            alt={`${title} back`}
             loading="lazy"
-            className="h-full w-full object-cover object-top transition-transform duration-500 group-hover:scale-105 absolute top-0 left-0 opacity-0 group-hover:opacity-100 z-10"
+            onError={() => setBackFailed(true)}
+            className="h-full w-full object-cover object-top transition-all duration-500 group-hover:scale-105 absolute inset-0 opacity-0 group-hover:opacity-100 z-10"
           />
-        )}
+        ) : null}
 
         <button
           type="button"
@@ -252,33 +305,20 @@ export const ProductCard: React.FC<Product> = ({
           disabled={isUpdatingWishlist}
           className="cursor-pointer hover:bg-gray-100 absolute bottom-3 right-3 z-40 bg-white rounded-full p-2 shadow-sm transition-transform hover:scale-110 disabled:opacity-60"
         >
-          <Heart
-            size={18}
-            className={
-              isWishlisted ? "fill-red-500 text-red-500" : "text-black"
-            }
-          />
+          <Heart size={18} className={isWishlisted ? "fill-red-500 text-red-500" : "text-black"} />
         </button>
       </div>
 
       <div className="mt-2">
         {brand ? (
-          <p className="text-[0.72rem] font-bold tracking-wide text-gray-500 font-poppins uppercase truncate">
-            {brand}
-          </p>
+          <p className="text-[0.72rem] font-bold tracking-wide text-gray-500 font-poppins uppercase truncate">{brand}</p>
         ) : null}
 
-        <h3
-          aria-label={title}
-          className="text-[1.2rem] font-bold tracking-tight text-black font-big-shoulders capitalize truncate"
-        >
+        <h3 aria-label={title} className="text-[1.2rem] font-bold tracking-tight text-black font-big-shoulders capitalize truncate">
           {title}
         </h3>
 
-        <p
-          aria-label={description}
-          className="text-gray-500 max-w-[96%] font-poppins text-[0.8rem] leading-relaxed line-clamp-1"
-        >
+        <p aria-label={description} className="text-gray-500 max-w-[96%] font-poppins text-[0.8rem] leading-relaxed line-clamp-1">
           {description}
         </p>
 
@@ -286,12 +326,8 @@ export const ProductCard: React.FC<Product> = ({
           <span className="text-[1.2rem] font-bold text-black">₹{price}</span>
           {originalPrice && price < originalPrice && (
             <>
-              <span className="text-[1rem] font-medium text-gray-400 line-through">
-                ₹{originalPrice}
-              </span>
-              <span className="text-[13px] font-bold text-green-600 tracking-tight">
-                {discount}% OFF
-              </span>
+              <span className="text-[1rem] font-medium text-gray-400 line-through">₹{originalPrice}</span>
+              <span className="text-[13px] font-bold text-green-600 tracking-tight">{discount}% OFF</span>
             </>
           )}
         </div>

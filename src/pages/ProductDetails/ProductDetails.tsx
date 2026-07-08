@@ -67,9 +67,13 @@ type ProductVariantOption = {
   available_qty?: number;
   in_stock?: boolean;
   image_url?: string;
+  imageUrl?: string;
   front_image_url?: string;
+  frontImageUrl?: string;
   back_image_url?: string;
+  backImageUrl?: string;
   main_image_url?: string;
+  mainImageUrl?: string;
   images?: any[];
 };
 
@@ -166,11 +170,39 @@ const getVariantIdValue = (variant?: ProductVariantOption | null, product?: Prod
     variant?.id ||
     p.variantId ||
     p.variant_id ||
+    p.primaryVariantId ||
     p.primary_variant_id ||
     p.id ||
     "";
   const parsed = Number(String(value).trim());
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+};
+
+const getImageString = (value: any) => {
+  if (!value) return "";
+  if (typeof value === "string") return value.trim();
+  return String(value.image_url || value.secure_url || value.url || "").trim();
+};
+
+const isBadImage = (value: any) => {
+  const s = String(value || "").trim().toLowerCase();
+  return !s || s === "[object object]" || s.includes("undefined") || s.includes("null");
+};
+
+const uniqueImages = (values: any[]) => {
+  const seen = new Set<string>();
+  const out: string[] = [];
+
+  values.forEach((value) => {
+    const image = getImageString(value);
+    if (isBadImage(image)) return;
+    const key = image.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push(image);
+  });
+
+  return out;
 };
 
 const parseImages = (value: any) => {
@@ -186,24 +218,83 @@ const parseImages = (value: any) => {
   return [];
 };
 
+const normalizeImageType = (value: any) =>
+  String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+
+const imageByType = (images: any[], ...types: string[]) => {
+  const targets = types.map(normalizeImageType).filter(Boolean);
+  const found = images.find((item: any) => {
+    const imageType = normalizeImageType(item?.image_type || item?.type || item?.label || item?.name || item?.view || item?.position);
+    return targets.some((target) => imageType.includes(target));
+  });
+  return getImageString(found);
+};
+
+const firstDifferentImage = (images: any[], front: string) => {
+  const frontKey = String(front || "").trim().toLowerCase();
+  return getImageString(
+    images.find((image) => {
+      const value = getImageString(image);
+      return value && value.toLowerCase() !== frontKey;
+    }),
+  );
+};
+
+const imagePairFromSource = (source: any) => {
+  const rawImages = parseImages(source?.images);
+
+  const front = getImageString(
+    source?.front_image_url ||
+      source?.frontImageUrl ||
+      source?.front_url ||
+      source?.frontUrl ||
+      source?.front_image ||
+      source?.frontImage ||
+      imageByType(rawImages, "front", "primary") ||
+      source?.image_url ||
+      source?.imageUrl ||
+      source?.main_image_url ||
+      source?.mainImageUrl ||
+      imageByType(rawImages, "main", "default") ||
+      rawImages[0],
+  );
+
+  const back = getImageString(
+    source?.back_image_url ||
+      source?.backImageUrl ||
+      source?.back_url ||
+      source?.backUrl ||
+      source?.back_image ||
+      source?.backImage ||
+      source?.rear_image_url ||
+      source?.rearImageUrl ||
+      source?.secondary_image_url ||
+      source?.secondaryImageUrl ||
+      source?.hover_image_url ||
+      source?.hoverImageUrl ||
+      source?.image2 ||
+      source?.image_2 ||
+      source?.second_image_url ||
+      source?.secondImageUrl ||
+      imageByType(rawImages, "back", "rear", "secondary", "hover", "second", "alternate") ||
+      rawImages[1] ||
+      firstDifferentImage(rawImages, front),
+  );
+
+  return uniqueImages([front, back]).slice(0, 2);
+};
+
 const imageListFromVariant = (variant?: ProductVariantOption | null) => {
   if (!variant) return [];
+  return imagePairFromSource(variant);
+};
 
-  const images = parseImages(variant.images)
-    .map((item: any) => {
-      if (typeof item === "string") return item;
-      return item?.image_url || item?.url || item?.secure_url || "";
-    })
-    .filter(Boolean);
-
-  const direct = [
-    variant.front_image_url,
-    variant.image_url,
-    variant.main_image_url,
-    variant.back_image_url,
-  ].filter(Boolean) as string[];
-
-  return Array.from(new Set([...images, ...direct]));
+const productFallbackImages = (product: Product | null) => {
+  const p: any = product || {};
+  return imagePairFromSource(p);
 };
 
 const normalizeVariant = (item: any, product: any): ProductVariantOption => {
@@ -219,6 +310,7 @@ const normalizeVariant = (item: any, product: any): ProductVariantOption => {
       product?.price,
     0,
   );
+
   const directFinalB2c = getNumber(
     item?.final_price_b2c ??
       item?.b2c_final_price ??
@@ -233,6 +325,7 @@ const normalizeVariant = (item: any, product: any): ProductVariantOption => {
       product?.price,
     originalB2c,
   );
+
   const b2cDiscount = firstPositiveDiscount(
     item?.b2c_discount_pct,
     item?.discount_b2c,
@@ -247,6 +340,7 @@ const normalizeVariant = (item: any, product: any): ProductVariantOption => {
     product?.discount_percent,
     product?.discount,
   );
+
   const b2bDiscount = firstPositiveDiscount(
     item?.b2b_discount_pct,
     item?.discount_b2b,
@@ -257,12 +351,15 @@ const normalizeVariant = (item: any, product: any): ProductVariantOption => {
     product?.b2b_discount,
     product?.discount_percentage_b2b,
   );
+
   const mrp = originalB2c;
   const finalB2c = b2cDiscount > 0 && mrp > 0 ? calculateDiscountedPrice(mrp, b2cDiscount, directFinalB2c) : directFinalB2c;
   const originalB2b = getNumber(item?.original_price_b2b ?? item?.b2b_original_price ?? item?.cost_price ?? product?.original_price_b2b ?? product?.cost_price, originalB2c);
   const finalB2b = b2bDiscount > 0 && originalB2b > 0 ? calculateDiscountedPrice(originalB2b, b2bDiscount, originalB2b) : getNumber(item?.final_price_b2b ?? item?.b2b_final_price ?? item?.cost_price ?? product?.final_price_b2b, finalB2c);
   const size = cleanSingleValue(item?.size || item?.selected_size || product?.size);
   const colour = cleanSingleValue(item?.colour || item?.color || item?.selected_color || product?.colour || product?.color);
+
+  const variantImages = imagePairFromSource(item);
 
   return {
     id: item?.id || item?.variant_id || item?.variantId || product?.variantId || product?.variant_id || product?.id || "",
@@ -292,11 +389,15 @@ const normalizeVariant = (item: any, product: any): ProductVariantOption => {
     reserved: getNumber(item?.reserved ?? product?.reserved, 0),
     available_qty: getNumber(item?.available_qty ?? item?.on_hand ?? product?.available_qty ?? product?.onHand, 0),
     in_stock: Boolean(item?.in_stock ?? true),
-    image_url: item?.image_url || product?.image_url || product?.image,
-    front_image_url: item?.front_image_url || product?.front_image_url,
-    back_image_url: item?.back_image_url || product?.back_image_url,
-    main_image_url: item?.main_image_url || product?.main_image_url,
-    images: parseImages(item?.images),
+    image_url: variantImages[0] || item?.image_url || item?.imageUrl || "",
+    imageUrl: variantImages[0] || item?.imageUrl || item?.image_url || "",
+    front_image_url: variantImages[0] || item?.front_image_url || item?.frontImageUrl || "",
+    frontImageUrl: variantImages[0] || item?.frontImageUrl || item?.front_image_url || "",
+    back_image_url: variantImages[1] || item?.back_image_url || item?.backImageUrl || "",
+    backImageUrl: variantImages[1] || item?.backImageUrl || item?.back_image_url || "",
+    main_image_url: variantImages[0] || item?.main_image_url || item?.mainImageUrl || "",
+    mainImageUrl: variantImages[0] || item?.mainImageUrl || item?.main_image_url || "",
+    images: variantImages.length ? variantImages : parseImages(item?.images),
   };
 };
 
@@ -374,16 +475,12 @@ const findPriceVariant = (
   selectedColor: string,
 ) => {
   if (!variants.length) return null;
-
   const exact = findExactVariant(variants, selectedSize, selectedColor);
   if (exact) return exact;
-
   const bySize = findVariantBySize(variants, selectedSize);
   if (bySize) return bySize;
-
   const byColor = findVariantByColor(variants, selectedColor);
   if (byColor) return byColor;
-
   return variants[0];
 };
 
@@ -393,22 +490,40 @@ const findImageVariant = (
   selectedColor: string,
 ) => {
   if (!variants.length) return null;
-
   const exact = findExactVariant(variants, selectedSize, selectedColor);
   if (exact) return exact;
-
   const byColor = findVariantByColor(variants, selectedColor);
   if (byColor) return byColor;
-
   const bySize = findVariantBySize(variants, selectedSize);
   if (bySize) return bySize;
-
   return variants[0];
 };
 
 const getVariantStockCount = (variant?: ProductVariantOption | null) => {
   if (!variant) return 0;
   return getNumber(variant.available_qty, 0) || getNumber(variant.on_hand, 0) || 0;
+};
+
+const productIdentityKeys = (product: any) => {
+  const keys = [
+    product?.productId,
+    product?.product_id,
+    product?.id,
+    product?.barcode,
+    product?.ean_code,
+  ]
+    .map((item) => String(item || "").trim())
+    .filter(Boolean);
+
+  const titleKey = `${String(product?.brand || "").trim().toLowerCase()}|${String(product?.title || product?.name || product?.product_name || "").trim().toLowerCase()}`;
+  if (titleKey !== "|") keys.push(titleKey);
+
+  return keys;
+};
+
+const hasSameProductIdentity = (a: any, b: any) => {
+  const aKeys = new Set(productIdentityKeys(a));
+  return productIdentityKeys(b).some((key) => aKeys.has(key));
 };
 
 const CustomLeftArrow = ({ onClick }: any) => (
@@ -569,7 +684,7 @@ const ProductDetails: React.FC = () => {
 
         try {
           const stored: string[] = JSON.parse(localStorage.getItem("recentlyViewed") || "[]");
-          const currentId = String((foundProduct as any).productId || (foundProduct as any).product_id || foundProduct.id);
+          const currentId = String((foundProduct as any).variantId || (foundProduct as any).variant_id || (foundProduct as any).productId || (foundProduct as any).product_id || foundProduct.id);
           const updated = [
             currentId,
             ...stored.filter((item: string) => item !== currentId),
@@ -671,9 +786,10 @@ const ProductDetails: React.FC = () => {
           .map((c: Category) => c.name.toLowerCase());
 
         const mainGender = productCategories.find((c) => validGenders.includes(c));
+        const seen = new Set<string>();
 
         const recommended = allProducts
-          .filter((p) => String(p.id) !== String(product.id))
+          .filter((p) => !hasSameProductIdentity(product, p))
           .map((p) => {
             const targetCategories = [
               p.gender.toLowerCase(),
@@ -686,6 +802,12 @@ const ProductDetails: React.FC = () => {
             return { product: p, matchScore, hasSameGender };
           })
           .filter((item) => item.hasSameGender && item.matchScore > 0)
+          .filter((item) => {
+            const key = productIdentityKeys(item.product)[0] || String(item.product.id);
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+          })
           .sort((a, b) => b.matchScore - a.matchScore)
           .slice(0, 10)
           .map((item) => item.product);
@@ -760,11 +882,13 @@ const ProductDetails: React.FC = () => {
     `₹${Number(val || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
 
   const selectedVariantImages = imageListFromVariant(imageVariant);
-  const displayImages = selectedVariantImages.length
-    ? selectedVariantImages
-    : product.images?.length
-      ? product.images
-      : ["/placeholder.svg"];
+  const fallbackImages = productFallbackImages(product);
+  const displayImages = uniqueImages([
+    ...selectedVariantImages,
+    ...(selectedVariantImages.length ? [] : fallbackImages),
+  ]);
+
+  const finalDisplayImages = displayImages.length ? displayImages : ["/placeholder.svg"];
 
   const options_with_values: OptionGroup[] = [];
 
@@ -1103,15 +1227,15 @@ const ProductDetails: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 md:px-8 xl:px-12">
         <div className="flex flex-col lg:flex-row gap-8 lg:gap-14">
           <div className="flex-1 flex flex-col lg:flex-row gap-4 min-w-0">
-            {displayImages.length > 1 && (
+            {finalDisplayImages.length > 1 && (
               <div
                 ref={desktopThumbContainerRef}
                 className="hidden lg:flex flex-col w-20 lg:w-22 shrink-0 -mt-2 overflow-y-auto h-[450px] xl:h-[600px] gap-3 py-2 scrollbar-none"
                 style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
               >
-                {displayImages.map((src: string, index: number) => (
+                {finalDisplayImages.map((src: string, index: number) => (
                   <div
-                    key={index}
+                    key={`${src}-${index}`}
                     className={`w-full aspect-3/4 rounded-[9px] shrink-0 cursor-pointer overflow-hidden transition-all ${
                       index === selectedIndex
                         ? "opacity-100 border border-[#292d35] p-[3px]"
@@ -1124,6 +1248,9 @@ const ProductDetails: React.FC = () => {
                       alt={`Thumb ${index + 1}`}
                       loading={index < 4 ? "eager" : "lazy"}
                       className="w-full h-full object-cover aspect-3/4 object-top bg-gray-50 rounded-[6px]"
+                      onError={(e) => {
+                        e.currentTarget.src = "/placeholder.svg";
+                      }}
                     />
                   </div>
                 ))}
@@ -1134,12 +1261,12 @@ const ProductDetails: React.FC = () => {
               <Carousel
                 ref={mainCarouselRef}
                 responsive={mainResponsive}
-                infinite={true}
+                infinite={finalDisplayImages.length > 1}
                 customLeftArrow={<CustomLeftArrow />}
                 customRightArrow={<CustomRightArrow />}
                 afterChange={(_prev: number, state: any) => {
                   const realIndex =
-                    (state.currentSlide - 2 + displayImages.length) % displayImages.length;
+                    (state.currentSlide - 2 + finalDisplayImages.length) % finalDisplayImages.length;
                   if (realIndex !== selectedIndex) {
                     setSelectedIndex(realIndex);
                   }
@@ -1148,10 +1275,10 @@ const ProductDetails: React.FC = () => {
                 containerClass="h-full w-full"
                 sliderClass="h-full"
               >
-                {displayImages.map((src: string, index: number) => (
+                {finalDisplayImages.map((src: string, index: number) => (
                   <div
                     className="w-full h-full relative cursor-pointer"
-                    key={index}
+                    key={`${src}-${index}`}
                     onClick={() => {
                       setLightboxIndex(index);
                       setIsLightboxOpen(true);
@@ -1165,6 +1292,9 @@ const ProductDetails: React.FC = () => {
                       alt={`${product.title} - Image ${index + 1}`}
                       loading={index === 0 ? "eager" : "lazy"}
                       className="absolute inset-0 w-full h-full object-cover object-top rounded-2xl"
+                      onError={(e) => {
+                        e.currentTarget.src = "/placeholder.svg";
+                      }}
                     />
                   </div>
                 ))}
@@ -1196,7 +1326,7 @@ const ProductDetails: React.FC = () => {
               </div>
             </div>
 
-            {displayImages.length > 1 && (
+            {finalDisplayImages.length > 1 && (
               <div className="lg:hidden mt-4">
                 <Carousel
                   ref={mobileThumbCarouselRef}
@@ -1205,9 +1335,9 @@ const ProductDetails: React.FC = () => {
                   partialVisible={true}
                   itemClass="pr-3"
                 >
-                  {displayImages.map((src: string, index: number) => (
+                  {finalDisplayImages.map((src: string, index: number) => (
                     <div
-                      key={index}
+                      key={`${src}-${index}`}
                       className={`w-full aspect-3/4 cursor-pointer overflow-hidden transition-all snap-start ${
                         index === selectedIndex
                           ? "opacity-100 border border-black"
@@ -1219,6 +1349,9 @@ const ProductDetails: React.FC = () => {
                         src={src}
                         alt={`Thumb ${index + 1}`}
                         className="w-full h-full object-cover bg-gray-50"
+                        onError={(e) => {
+                          e.currentTarget.src = "/placeholder.svg";
+                        }}
                       />
                     </div>
                   ))}
@@ -1451,12 +1584,12 @@ const ProductDetails: React.FC = () => {
           <Carousel
             ref={lightboxCarouselRef}
             responsive={mainResponsive}
-            infinite={true}
+            infinite={finalDisplayImages.length > 1}
             customLeftArrow={<CustomLeftArrow />}
             customRightArrow={<CustomRightArrow />}
             afterChange={(_prev: number, state: any) => {
               const realIndex =
-                (state.currentSlide - 2 + displayImages.length) % displayImages.length;
+                (state.currentSlide - 2 + finalDisplayImages.length) % finalDisplayImages.length;
               if (realIndex !== lightboxIndex) {
                 setLightboxIndex(realIndex);
               }
@@ -1465,30 +1598,33 @@ const ProductDetails: React.FC = () => {
             containerClass="h-full w-full"
             sliderClass="h-full"
           >
-            {displayImages.map((src: string, index: number) => (
+            {finalDisplayImages.map((src: string, index: number) => (
               <div
                 className="w-full h-full relative flex items-center justify-center"
-                key={index}
+                key={`${src}-${index}`}
               >
                 <img
                   src={src}
                   loading="lazy"
                   className="max-w-full max-h-full object-contain"
                   alt={`Enlarged product ${index + 1}`}
+                  onError={(e) => {
+                    e.currentTarget.src = "/placeholder.svg";
+                  }}
                 />
               </div>
             ))}
           </Carousel>
         </div>
 
-        {displayImages.length > 1 && (
+        {finalDisplayImages.length > 1 && (
           <div
             className="h-20 md:h-24 max-w-2xl w-full flex justify-center gap-3 md:gap-4 overflow-x-auto pb-2 scrollbar-none"
             style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
           >
-            {displayImages.map((src: string, idx: number) => (
+            {finalDisplayImages.map((src: string, idx: number) => (
               <div
-                key={idx}
+                key={`${src}-${idx}`}
                 onClick={() => {
                   setLightboxIndex(idx);
                   if (lightboxCarouselRef.current) {
@@ -1505,6 +1641,9 @@ const ProductDetails: React.FC = () => {
                   src={src}
                   className="w-full h-full object-cover bg-gray-50"
                   alt={`Thumb ${idx + 1}`}
+                  onError={(e) => {
+                    e.currentTarget.src = "/placeholder.svg";
+                  }}
                 />
               </div>
             ))}

@@ -82,20 +82,9 @@ const cleanSingleValue = (value: any) => {
   return s;
 };
 
-const splitValues = (value: any): string[] => {
-  if (!value) return [];
-
-  if (Array.isArray(value)) {
-    return value
-      .flatMap((item) => splitValues(item))
-      .map((item) => cleanSingleValue(item))
-      .filter(Boolean);
-  }
-
-  return String(value || "")
-    .split(",")
-    .map((item) => cleanSingleValue(item))
-    .filter(Boolean);
+const isBadImage = (value: any) => {
+  const s = String(value || "").trim().toLowerCase();
+  return !s || s === "[object object]" || s.includes("undefined") || s.includes("null") || s.includes("placeholder.svg");
 };
 
 const uniqueStrings = (items: any[]) => {
@@ -105,6 +94,24 @@ const uniqueStrings = (items: any[]) => {
   items.forEach((item) => {
     const value = cleanSingleValue(item);
     if (!value || value === "[object Object]") return;
+
+    const key = value.toLowerCase();
+    if (seen.has(key)) return;
+
+    seen.add(key);
+    out.push(value);
+  });
+
+  return out;
+};
+
+const uniqueImages = (items: any[]) => {
+  const seen = new Set<string>();
+  const out: string[] = [];
+
+  items.forEach((item) => {
+    const value = imageUrlFromRecord(item);
+    if (isBadImage(value)) return;
 
     const key = value.toLowerCase();
     if (seen.has(key)) return;
@@ -162,9 +169,101 @@ const parseImages = (value: any): ProductImage[] => {
 };
 
 const imageUrlFromRecord = (image: any) => {
-  if (typeof image === "string") return String(image || "").trim();
-  return String(image?.image_url || image?.secure_url || image?.url || "").trim();
+  if (!image) return "";
+  if (typeof image === "string") return image.trim();
+  return String(image.image_url || image.secure_url || image.url || "").trim();
 };
+
+const imageByType = (images: any[], ...types: string[]) => {
+  const keys = types.map(normalizeText).filter(Boolean);
+  const found = images.find((img) => {
+    const imageType = normalizeText(img?.image_type || img?.type || img?.label || img?.name || img?.view || img?.position);
+    return keys.some((key) => imageType.includes(key));
+  });
+  return imageUrlFromRecord(found);
+};
+
+const firstDifferentImage = (images: any[], front: string) => {
+  const frontKey = String(front || "").trim().toLowerCase();
+  return imageUrlFromRecord(
+    images.find((image) => {
+      const value = imageUrlFromRecord(image);
+      return value && value.toLowerCase() !== frontKey;
+    }),
+  );
+};
+
+const getImagePairFromSource = (source: any) => {
+  const rawImages = parseImages(source?.images);
+
+  const front = firstValue(
+    source?.front_image_url,
+    source?.frontImageUrl,
+    source?.front_url,
+    source?.frontUrl,
+    source?.front_image,
+    source?.frontImage,
+    imageByType(rawImages, "front", "primary"),
+    source?.image_url,
+    source?.imageUrl,
+    source?.main_image_url,
+    source?.mainImageUrl,
+    imageByType(rawImages, "main", "default"),
+    rawImages[0],
+  );
+
+  const back = firstValue(
+    source?.back_image_url,
+    source?.backImageUrl,
+    source?.back_url,
+    source?.backUrl,
+    source?.back_image,
+    source?.backImage,
+    source?.rear_image_url,
+    source?.rearImageUrl,
+    source?.secondary_image_url,
+    source?.secondaryImageUrl,
+    source?.hover_image_url,
+    source?.hoverImageUrl,
+    source?.image2,
+    source?.image_2,
+    source?.second_image_url,
+    source?.secondImageUrl,
+    imageByType(rawImages, "back", "rear", "secondary", "hover", "second", "alternate"),
+    rawImages[1],
+    firstDifferentImage(rawImages, imageUrlFromRecord(front)),
+  );
+
+  return uniqueImages([front, back]).slice(0, 2);
+};
+
+const isSameVariantAsRow = (variant: any, row: any) => {
+  const variantIds = [variant?.variant_id, variant?.variantId, variant?.id]
+    .map((value) => String(value || "").trim())
+    .filter(Boolean);
+
+  const rowVariantIds = [row?.variant_id, row?.variantId, row?.primary_variant_id, row?.primaryVariantId]
+    .map((value) => String(value || "").trim())
+    .filter(Boolean);
+
+  if (variantIds.length && rowVariantIds.length && variantIds.some((id) => rowVariantIds.includes(id))) return true;
+
+  const variantBarcodes = [variant?.barcode, variant?.ean_code, variant?.eanCode]
+    .map((value) => String(value || "").trim())
+    .filter(Boolean);
+
+  const rowBarcodes = [row?.barcode, row?.ean_code, row?.eanCode]
+    .map((value) => String(value || "").trim())
+    .filter(Boolean);
+
+  if (variantBarcodes.length && rowBarcodes.length && variantBarcodes.some((code) => rowBarcodes.includes(code))) return true;
+
+  return !Array.isArray(row?.variants) || row.variants.length <= 1;
+};
+
+const getImagesFromVariantOnly = (variant: any) => getImagePairFromSource(variant);
+
+const getImagesFromRowOnly = (row: any) => getImagePairFromSource(row);
 
 const getGenderCategoryId = (gender: ProductGender) => {
   return (
@@ -284,20 +383,6 @@ const mergeRawRows = (rows: any[]) => {
 
     const group = groups.get(key);
 
-    const rowImages = uniqueStrings([
-      row?.front_image_url,
-      row?.frontImageUrl,
-      row?.back_image_url,
-      row?.backImageUrl,
-      row?.main_image_url,
-      row?.mainImageUrl,
-      row?.image_url,
-      row?.imageUrl,
-      ...parseImages(row?.images).map(imageUrlFromRecord),
-    ]);
-
-    group.images = uniqueStrings([...(group.images || []), ...rowImages]);
-
     for (const variant of getRawVariants(row)) {
       const size = cleanSingleValue(variant?.size || row?.size || "");
       const colour = cleanSingleValue(variant?.colour || variant?.color || row?.colour || row?.color || "");
@@ -318,10 +403,11 @@ const mergeRawRows = (rows: any[]) => {
         size,
         colour,
         color: colour,
-        image_url: variant?.image_url || variant?.imageUrl || row?.image_url || row?.imageUrl || "",
-        front_image_url: variant?.front_image_url || variant?.frontImageUrl || row?.front_image_url || row?.frontImageUrl || "",
-        back_image_url: variant?.back_image_url || variant?.backImageUrl || row?.back_image_url || row?.backImageUrl || "",
-        main_image_url: variant?.main_image_url || variant?.mainImageUrl || row?.main_image_url || row?.mainImageUrl || "",
+        image_url: variant?.image_url || variant?.imageUrl || "",
+        front_image_url: variant?.front_image_url || variant?.frontImageUrl || "",
+        back_image_url: variant?.back_image_url || variant?.backImageUrl || "",
+        main_image_url: variant?.main_image_url || variant?.mainImageUrl || "",
+        images: variant?.images || [],
       };
 
       if (!group._variantMap.has(variantKey)) {
@@ -463,29 +549,10 @@ const normalizeVariant = (variant: any, row: any) => {
     ? calculateDiscountedPrice(originalB2B, b2bDiscount, originalB2B)
     : toNumber(firstValue(variant?.final_price_b2b, variant?.b2b_final_price, row?.final_price_b2b, row?.b2b_final_price, originalB2B), originalB2B);
 
-  const rawImages = parseImages(variant?.images);
-  const frontFromArray = imageUrlFromRecord(
-    rawImages.find((img) => normalizeText(img?.image_type).includes("front")),
-  );
-  const backFromArray = imageUrlFromRecord(
-    rawImages.find((img) => normalizeText(img?.image_type).includes("back")),
-  );
-  const mainFromArray = imageUrlFromRecord(
-    rawImages.find((img) => normalizeText(img?.image_type).includes("main")),
-  );
-
-  const frontImageUrl = String(variant?.front_image_url || variant?.frontImageUrl || frontFromArray || "").trim();
-  const backImageUrl = String(variant?.back_image_url || variant?.backImageUrl || backFromArray || "").trim();
-  const mainImageUrl = String(variant?.main_image_url || variant?.mainImageUrl || mainFromArray || "").trim();
-  const imageUrl = String(variant?.image_url || variant?.imageUrl || frontImageUrl || mainImageUrl || row?.image_url || row?.imageUrl || "").trim();
-
-  const images = uniqueStrings([
-    frontImageUrl,
-    backImageUrl,
-    mainImageUrl,
-    imageUrl,
-    ...rawImages.map(imageUrlFromRecord),
-  ]);
+  const variantImages = getImagesFromVariantOnly(variant);
+  const rowImages = isSameVariantAsRow(variant, row) ? getImagesFromRowOnly(row) : [];
+  const images = uniqueImages([...variantImages, ...rowImages]).slice(0, 2);
+  const imageUrl = images[0] || "";
 
   const onHand = toNumber(
     firstValue(
@@ -549,14 +616,85 @@ const normalizeVariant = (variant: any, row: any) => {
     in_stock: variant?.in_stock === undefined ? availableQty > 0 : Boolean(variant?.in_stock),
     image_url: imageUrl,
     imageUrl,
-    front_image_url: frontImageUrl,
-    frontImageUrl,
-    back_image_url: backImageUrl,
-    backImageUrl,
-    main_image_url: mainImageUrl,
-    mainImageUrl,
-    images: images.length ? images : [],
+    front_image_url: images[0] || "",
+    frontImageUrl: images[0] || "",
+    back_image_url: images[1] || "",
+    backImageUrl: images[1] || "",
+    main_image_url: images[0] || "",
+    mainImageUrl: images[0] || "",
+    images,
     raw: variant,
+  };
+};
+
+const getVariantImagesForDisplay = (variant: any, row: any) => {
+  const variantImages = getImagesFromVariantOnly(variant);
+  const rowImages = isSameVariantAsRow(variant, row) ? getImagesFromRowOnly(row) : [];
+  const images = uniqueImages([...variantImages, ...rowImages]).slice(0, 2);
+  return images.length ? images : ["/placeholder.svg"];
+};
+
+const applySelectedVariantToProduct = (product: any, target: string) => {
+  const variants = Array.isArray(product?.variants) ? product.variants : [];
+  if (!target || !variants.length) return product;
+
+  const selectedVariant =
+    variants.find((variant: any) => String(variant.variant_id || "").trim() === target) ||
+    variants.find((variant: any) => String(variant.variantId || "").trim() === target) ||
+    variants.find((variant: any) => String(variant.id || "").trim() === target) ||
+    variants.find((variant: any) => String(variant.barcode || "").trim() === target) ||
+    variants.find((variant: any) => String(variant.ean_code || "").trim() === target) ||
+    null;
+
+  if (!selectedVariant) return product;
+
+  const selectedImages = getVariantImagesForDisplay(selectedVariant, product);
+  const mrp = toNumber(selectedVariant.original_price_b2c ?? selectedVariant.mrp ?? product.originalPrice ?? product.mrp, product.originalPrice || 0);
+  const price = toNumber(selectedVariant.final_price_b2c ?? selectedVariant.sale_price ?? selectedVariant.price ?? product.price, product.price || 0);
+  const discount = getB2CDiscount(selectedVariant, product);
+  const nextVariants = [
+    selectedVariant,
+    ...variants.filter((variant: any) => variant !== selectedVariant),
+  ];
+
+  return {
+    ...product,
+    variantId: selectedVariant.variant_id || selectedVariant.variantId || selectedVariant.id || product.variantId,
+    variant_id: selectedVariant.variant_id || selectedVariant.variantId || selectedVariant.id || product.variant_id,
+    primaryVariantId: selectedVariant.variant_id || selectedVariant.variantId || selectedVariant.id || product.primaryVariantId,
+    primary_variant_id: selectedVariant.variant_id || selectedVariant.variantId || selectedVariant.id || product.primary_variant_id,
+    price,
+    salePrice: price,
+    sale_price: price,
+    selling_price: price,
+    final_price: price,
+    final_price_b2c: price,
+    discounted_price: price,
+    mahaveer_price: price,
+    originalPrice: mrp,
+    original_price_b2c: mrp,
+    mrp,
+    isSale: mrp > price,
+    discount,
+    discount_b2c: discount,
+    discount_percentage: discount,
+    discount_percent: discount,
+    b2c_discount_pct: discount,
+    images: selectedImages,
+    imageUrl: selectedImages[0] || "/placeholder.svg",
+    image_url: selectedImages[0] || "/placeholder.svg",
+    frontImageUrl: selectedImages[0] || "",
+    front_image_url: selectedImages[0] || "",
+    backImageUrl: selectedImages[1] || "",
+    back_image_url: selectedImages[1] || "",
+    mainImageUrl: selectedImages[0] || "",
+    main_image_url: selectedImages[0] || "",
+    barcode: selectedVariant.barcode || product.barcode,
+    ean_code: selectedVariant.ean_code || selectedVariant.barcode || product.ean_code,
+    size: selectedVariant.size || product.size,
+    colour: selectedVariant.colour || product.colour,
+    color: selectedVariant.color || product.color,
+    variants: nextVariants,
   };
 };
 
@@ -579,6 +717,7 @@ const normalizeProduct = (row: any): Product => {
 
   const selectedVariant =
     variants.find((variant: any) => String(variant.variant_id || "") === String(actualVariantId || "")) ||
+    variants.find((variant: any) => String(variant.barcode || "") === String(barcode || "")) ||
     variants[0];
 
   const sizeList = sortVariantValues(variants.map((variant: any) => variant.size));
@@ -603,39 +742,8 @@ const normalizeProduct = (row: any): Product => {
   const b2cDiscount = getB2CDiscount(selectedVariant, row);
   const directSalePrice = getDirectB2CPrice(selectedVariant, row, mrp);
   const salePrice = b2cDiscount > 0 && mrp > 0 ? calculateDiscountedPrice(mrp, b2cDiscount, directSalePrice) : directSalePrice;
-
-  const rawImages = parseImages(row.images);
-  const frontFromArray = imageUrlFromRecord(
-    rawImages.find((img) => normalizeText(img?.image_type).includes("front")),
-  );
-  const backFromArray = imageUrlFromRecord(
-    rawImages.find((img) => normalizeText(img?.image_type).includes("back")),
-  );
-  const mainFromArray = imageUrlFromRecord(
-    rawImages.find((img) => normalizeText(img?.image_type).includes("main")),
-  );
-
-  const frontImageUrl = String(row.front_image_url || row.frontImageUrl || selectedVariant?.front_image_url || frontFromArray || "").trim();
-  const backImageUrl = String(row.back_image_url || row.backImageUrl || selectedVariant?.back_image_url || backFromArray || "").trim();
-  const mainImageUrl = String(row.main_image_url || row.mainImageUrl || selectedVariant?.main_image_url || mainFromArray || "").trim();
-  const imageUrl = String(row.image_url || row.imageUrl || selectedVariant?.image_url || frontImageUrl || mainImageUrl || "").trim();
-
-  const variantImages = variants.flatMap((variant: any) => [
-    variant.image_url,
-    variant.front_image_url,
-    variant.back_image_url,
-    variant.main_image_url,
-    ...parseImages(variant.images).map(imageUrlFromRecord),
-  ]);
-
-  const images = uniqueStrings([
-    frontImageUrl,
-    backImageUrl,
-    mainImageUrl,
-    imageUrl,
-    ...rawImages.map(imageUrlFromRecord),
-    ...variantImages,
-  ]);
+  const images = getVariantImagesForDisplay(selectedVariant, row);
+  const imageUrl = images[0] || "/placeholder.svg";
 
   const stockBySize = variants.reduce((acc: Record<string, number>, variant: any) => {
     const size = cleanSingleValue(variant.size || "");
@@ -650,8 +758,8 @@ const normalizeProduct = (row: any): Product => {
     product_id: actualProductId || selectedVariant?.product_id || selectedVariant?.productId || undefined,
     variantId: selectedVariant?.variant_id || selectedVariant?.variantId || actualVariantId || undefined,
     variant_id: selectedVariant?.variant_id || selectedVariant?.variantId || actualVariantId || undefined,
-    primaryVariantId: row.primary_variant_id || actualVariantId || selectedVariant?.variant_id || undefined,
-    primary_variant_id: row.primary_variant_id || actualVariantId || selectedVariant?.variant_id || undefined,
+    primaryVariantId: selectedVariant?.variant_id || selectedVariant?.variantId || actualVariantId || undefined,
+    primary_variant_id: selectedVariant?.variant_id || selectedVariant?.variantId || actualVariantId || undefined,
     title: productName,
     product_name: productName,
     name: productName,
@@ -679,13 +787,13 @@ const normalizeProduct = (row: any): Product => {
     discount_percentage: b2cDiscount,
     discount_percent: b2cDiscount,
     b2c_discount_pct: b2cDiscount,
-    images: images.length ? images : ["/placeholder.svg"],
-    frontImageUrl,
-    front_image_url: frontImageUrl,
-    backImageUrl,
-    back_image_url: backImageUrl,
-    mainImageUrl,
-    main_image_url: mainImageUrl,
+    images,
+    frontImageUrl: imageUrl,
+    front_image_url: imageUrl,
+    backImageUrl: images[1] || "",
+    back_image_url: images[1] || "",
+    mainImageUrl: imageUrl,
+    main_image_url: imageUrl,
     imageUrl,
     image_url: imageUrl,
     barcode: selectedVariant?.barcode || barcode,
@@ -794,26 +902,28 @@ export const fetchProductById = async (
   const products = await fetchBranchProducts(branchId);
   const target = String(id || "").trim();
 
-  return (
+  const variantMatch = products.find((product: any) =>
+    Array.isArray(product.variants) &&
+    product.variants.some(
+      (variant: any) =>
+        String(variant.variant_id || "").trim() === target ||
+        String(variant.variantId || "").trim() === target ||
+        String(variant.id || "").trim() === target ||
+        String(variant.barcode || "").trim() === target ||
+        String(variant.ean_code || "").trim() === target,
+    ),
+  );
+
+  if (variantMatch) return applySelectedVariantToProduct(variantMatch, target) as Product;
+
+  const productMatch =
     products.find((product: any) => String(product.id || "").trim() === target) ||
     products.find((product: any) => String(product.productId || "").trim() === target) ||
     products.find((product: any) => String(product.product_id || "").trim() === target) ||
-    products.find((product: any) => String(product.variantId || "").trim() === target) ||
-    products.find((product: any) => String(product.variant_id || "").trim() === target) ||
     products.find((product: any) => String(product.primaryVariantId || "").trim() === target) ||
     products.find((product: any) => String(product.primary_variant_id || "").trim() === target) ||
     products.find((product: any) => String(product.barcode || "").trim() === target) ||
-    products.find((product: any) =>
-      Array.isArray(product.variants) &&
-      product.variants.some(
-        (variant: any) =>
-          String(variant.variant_id || "").trim() === target ||
-          String(variant.variantId || "").trim() === target ||
-          String(variant.id || "").trim() === target ||
-          String(variant.barcode || "").trim() === target ||
-          String(variant.ean_code || "").trim() === target,
-      ),
-    ) ||
-    null
-  );
+    null;
+
+  return productMatch;
 };
