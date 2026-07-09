@@ -358,7 +358,6 @@ const normalizeVariant = (item: any, product: any): ProductVariantOption => {
   const finalB2b = b2bDiscount > 0 && originalB2b > 0 ? calculateDiscountedPrice(originalB2b, b2bDiscount, originalB2b) : getNumber(item?.final_price_b2b ?? item?.b2b_final_price ?? item?.cost_price ?? product?.final_price_b2b, finalB2c);
   const size = cleanSingleValue(item?.size || item?.selected_size || product?.size);
   const colour = cleanSingleValue(item?.colour || item?.color || item?.selected_color || product?.colour || product?.color);
-
   const variantImages = imagePairFromSource(item);
 
   return {
@@ -889,6 +888,7 @@ const ProductDetails: React.FC = () => {
   ]);
 
   const finalDisplayImages = displayImages.length ? displayImages : ["/placeholder.svg"];
+  const hasMultipleImages = finalDisplayImages.length > 1;
 
   const options_with_values: OptionGroup[] = [];
 
@@ -1181,7 +1181,7 @@ const ProductDetails: React.FC = () => {
 
   const handleThumbClick = (index: number) => {
     setSelectedIndex(index);
-    if (mainCarouselRef.current) {
+    if (mainCarouselRef.current && hasMultipleImages) {
       mainCarouselRef.current.goToSlide(index + 2);
     }
   };
@@ -1227,7 +1227,7 @@ const ProductDetails: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 md:px-8 xl:px-12">
         <div className="flex flex-col lg:flex-row gap-8 lg:gap-14">
           <div className="flex-1 flex flex-col lg:flex-row gap-4 min-w-0">
-            {finalDisplayImages.length > 1 && (
+            {hasMultipleImages && (
               <div
                 ref={desktopThumbContainerRef}
                 className="hidden lg:flex flex-col w-20 lg:w-22 shrink-0 -mt-2 overflow-y-auto h-[450px] xl:h-[600px] gap-3 py-2 scrollbar-none"
@@ -1258,47 +1258,67 @@ const ProductDetails: React.FC = () => {
             )}
 
             <div className="group flex-1 relative bg-white aspect-3/4 xl:aspect-4/5 overflow-hidden min-w-0 z-0">
-              <Carousel
-                ref={mainCarouselRef}
-                responsive={mainResponsive}
-                infinite={finalDisplayImages.length > 1}
-                customLeftArrow={<CustomLeftArrow />}
-                customRightArrow={<CustomRightArrow />}
-                afterChange={(_prev: number, state: any) => {
-                  const realIndex =
-                    (state.currentSlide - 2 + finalDisplayImages.length) % finalDisplayImages.length;
-                  if (realIndex !== selectedIndex) {
-                    setSelectedIndex(realIndex);
-                  }
-                }}
-                itemClass="flex items-center justify-center h-full w-full"
-                containerClass="h-full w-full"
-                sliderClass="h-full"
-              >
-                {finalDisplayImages.map((src: string, index: number) => (
-                  <div
-                    className="w-full h-full relative cursor-pointer"
-                    key={`${src}-${index}`}
-                    onClick={() => {
-                      setLightboxIndex(index);
-                      setIsLightboxOpen(true);
-                      if (lightboxCarouselRef.current) {
-                        lightboxCarouselRef.current.goToSlide(index + 2);
-                      }
-                    }}
-                  >
-                    <img
-                      src={src}
-                      alt={`${product.title} - Image ${index + 1}`}
-                      loading={index === 0 ? "eager" : "lazy"}
-                      className="absolute inset-0 w-full h-full object-cover object-top rounded-2xl"
-                      onError={(e) => {
-                        e.currentTarget.src = "/placeholder.svg";
+              {hasMultipleImages ? (
+                <Carousel
+                  ref={mainCarouselRef}
+                  responsive={mainResponsive}
+                  infinite={true}
+                  customLeftArrow={<CustomLeftArrow />}
+                  customRightArrow={<CustomRightArrow />}
+                  afterChange={(_prev: number, state: any) => {
+                    const realIndex =
+                      (state.currentSlide - 2 + finalDisplayImages.length) % finalDisplayImages.length;
+                    if (realIndex !== selectedIndex) {
+                      setSelectedIndex(realIndex);
+                    }
+                  }}
+                  itemClass="flex items-center justify-center h-full w-full"
+                  containerClass="h-full w-full"
+                  sliderClass="h-full"
+                >
+                  {finalDisplayImages.map((src: string, index: number) => (
+                    <div
+                      className="w-full h-full relative cursor-pointer"
+                      key={`${src}-${index}`}
+                      onClick={() => {
+                        setLightboxIndex(index);
+                        setIsLightboxOpen(true);
+                        if (lightboxCarouselRef.current) {
+                          lightboxCarouselRef.current.goToSlide(index + 2);
+                        }
                       }}
-                    />
-                  </div>
-                ))}
-              </Carousel>
+                    >
+                      <img
+                        src={src}
+                        alt={`${product.title} - Image ${index + 1}`}
+                        loading={index === 0 ? "eager" : "lazy"}
+                        className="absolute inset-0 w-full h-full object-cover object-top rounded-2xl"
+                        onError={(e) => {
+                          e.currentTarget.src = "/placeholder.svg";
+                        }}
+                      />
+                    </div>
+                  ))}
+                </Carousel>
+              ) : (
+                <div
+                  className="w-full h-full relative cursor-pointer"
+                  onClick={() => {
+                    setLightboxIndex(0);
+                    setIsLightboxOpen(true);
+                  }}
+                >
+                  <img
+                    src={finalDisplayImages[0]}
+                    alt={product.title}
+                    loading="eager"
+                    className="absolute inset-0 w-full h-full object-cover object-top rounded-2xl"
+                    onError={(e) => {
+                      e.currentTarget.src = "/placeholder.svg";
+                    }}
+                  />
+                </div>
+              )}
 
               <div className="absolute top-3 right-3 md:top-4 md:right-4 flex flex-col gap-3 z-10">
                 <button
@@ -1326,7 +1346,7 @@ const ProductDetails: React.FC = () => {
               </div>
             </div>
 
-            {finalDisplayImages.length > 1 && (
+            {hasMultipleImages && (
               <div className="lg:hidden mt-4">
                 <Carousel
                   ref={mobileThumbCarouselRef}
@@ -1581,43 +1601,55 @@ const ProductDetails: React.FC = () => {
         </button>
 
         <div className="flex-1 w-full max-w-5xl flex items-center justify-center relative mb-6 overflow-hidden">
-          <Carousel
-            ref={lightboxCarouselRef}
-            responsive={mainResponsive}
-            infinite={finalDisplayImages.length > 1}
-            customLeftArrow={<CustomLeftArrow />}
-            customRightArrow={<CustomRightArrow />}
-            afterChange={(_prev: number, state: any) => {
-              const realIndex =
-                (state.currentSlide - 2 + finalDisplayImages.length) % finalDisplayImages.length;
-              if (realIndex !== lightboxIndex) {
-                setLightboxIndex(realIndex);
-              }
-            }}
-            itemClass="flex items-center justify-center h-full w-full"
-            containerClass="h-full w-full"
-            sliderClass="h-full"
-          >
-            {finalDisplayImages.map((src: string, index: number) => (
-              <div
-                className="w-full h-full relative flex items-center justify-center"
-                key={`${src}-${index}`}
-              >
-                <img
-                  src={src}
-                  loading="lazy"
-                  className="max-w-full max-h-full object-contain"
-                  alt={`Enlarged product ${index + 1}`}
-                  onError={(e) => {
-                    e.currentTarget.src = "/placeholder.svg";
-                  }}
-                />
-              </div>
-            ))}
-          </Carousel>
+          {hasMultipleImages ? (
+            <Carousel
+              ref={lightboxCarouselRef}
+              responsive={mainResponsive}
+              infinite={true}
+              customLeftArrow={<CustomLeftArrow />}
+              customRightArrow={<CustomRightArrow />}
+              afterChange={(_prev: number, state: any) => {
+                const realIndex =
+                  (state.currentSlide - 2 + finalDisplayImages.length) % finalDisplayImages.length;
+                if (realIndex !== lightboxIndex) {
+                  setLightboxIndex(realIndex);
+                }
+              }}
+              itemClass="flex items-center justify-center h-full w-full"
+              containerClass="h-full w-full"
+              sliderClass="h-full"
+            >
+              {finalDisplayImages.map((src: string, index: number) => (
+                <div
+                  className="w-full h-full relative flex items-center justify-center"
+                  key={`${src}-${index}`}
+                >
+                  <img
+                    src={src}
+                    loading="lazy"
+                    className="max-w-full max-h-full object-contain"
+                    alt={`Enlarged product ${index + 1}`}
+                    onError={(e) => {
+                      e.currentTarget.src = "/placeholder.svg";
+                    }}
+                  />
+                </div>
+              ))}
+            </Carousel>
+          ) : (
+            <img
+              src={finalDisplayImages[0]}
+              loading="lazy"
+              className="max-w-full max-h-full object-contain"
+              alt={product.title}
+              onError={(e) => {
+                e.currentTarget.src = "/placeholder.svg";
+              }}
+            />
+          )}
         </div>
 
-        {finalDisplayImages.length > 1 && (
+        {hasMultipleImages && (
           <div
             className="h-20 md:h-24 max-w-2xl w-full flex justify-center gap-3 md:gap-4 overflow-x-auto pb-2 scrollbar-none"
             style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}

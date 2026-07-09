@@ -124,6 +124,7 @@ export const ProductCard: React.FC<Product> = (props: any) => {
   const resolvedImages = useMemo(() => {
     const imageList = Array.isArray(images) ? images : [];
     const allImages = uniqueImages(imageList);
+
     const frontCandidates = uniqueImages([
       frontImageUrl,
       front_image_url,
@@ -133,14 +134,18 @@ export const ProductCard: React.FC<Product> = (props: any) => {
       main_image_url,
       allImages[0],
     ]);
+
     const front = frontCandidates[0] || "/placeholder.svg";
+
     const backCandidates = uniqueImages([
       backImageUrl,
       back_image_url,
       allImages[1],
       ...allImages.slice(1),
     ]).filter((item) => item !== front);
+
     const back = backCandidates[0] || "";
+
     return { front, back };
   }, [
     images,
@@ -171,6 +176,7 @@ export const ProductCard: React.FC<Product> = (props: any) => {
   const discount = originalPrice && originalPrice > price ? Math.round(((originalPrice - price) / originalPrice) * 100) : 0;
   const frontImg = frontFailed ? "/placeholder.svg" : resolvedImages.front || "/placeholder.svg";
   const backImg = !backFailed && resolvedImages.back && resolvedImages.back !== frontImg ? resolvedImages.back : "";
+  const hasBackImage = Boolean(backImg);
 
   React.useEffect(() => {
     setFrontFailed(false);
@@ -273,7 +279,7 @@ export const ProductCard: React.FC<Product> = (props: any) => {
   };
 
   return (
-    <Link to={`/product/${routeId}`} className="max-w-[400px] group cursor-pointer block">
+    <Link to={`/product/${routeId}`} className={`max-w-[400px] cursor-pointer block ${hasBackImage ? "group" : ""}`}>
       <div className="relative aspect-2/3 overflow-hidden rounded-xl bg-gray-100">
         {(isSale || discount > 0) && (
           <div className="absolute top-3 left-3 z-20 bg-primary text-black px-2 py-0.5 h-[18px] flex items-center justify-center rounded-xs">
@@ -286,10 +292,12 @@ export const ProductCard: React.FC<Product> = (props: any) => {
           alt={title}
           loading="lazy"
           onError={() => setFrontFailed(true)}
-          className={`h-full w-full object-cover object-top transition-all duration-500 group-hover:scale-105 relative z-10 ${backImg ? "group-hover:opacity-0" : ""}`}
+          className={`h-full w-full object-cover object-top transition-all duration-500 relative z-10 ${
+            hasBackImage ? "group-hover:opacity-0 group-hover:scale-105" : ""
+          }`}
         />
 
-        {backImg ? (
+        {hasBackImage ? (
           <img
             src={backImg}
             alt={`${title} back`}

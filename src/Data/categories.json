@@ -3,7 +3,7 @@
     "id": "men-root",
     "name": "Men",
     "slug": "men",
-    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1783234031/products/11880024__front__1783234033631_7b1med.jpg",
+    "image": "/placeholder.svg",
     "parentId": null,
     "level": 0
   },
@@ -11,7 +11,7 @@
     "id": "women-root",
     "name": "Women",
     "slug": "women",
-    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1783176714/products/11881155__front__1783176717066_0r7dec.jpg",
+    "image": "/placeholder.svg",
     "parentId": null,
     "level": 0
   },
@@ -19,7 +19,7 @@
     "id": "kids-root",
     "name": "Kids",
     "slug": "kids",
-    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1783233929/products/11880002__front__1783233931410_sq9ekz.jpg",
+    "image": "/placeholder.svg",
     "parentId": null,
     "level": 0
   },
@@ -27,7 +27,7 @@
     "id": "m-top",
     "name": "Topwear",
     "slug": "men-topwear",
-    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1783233924/products/11880001__front__1783233926518_l9glxq.jpg",
+    "image": "/placeholder.svg",
     "parentId": "men-root",
     "level": 1
   },
@@ -35,7 +35,7 @@
     "id": "m-bottom",
     "name": "Bottomwear",
     "slug": "men-bottomwear",
-    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1783233949/products/11880006__front__1783233950927_nepw7f.jpg",
+    "image": "/placeholder.svg",
     "parentId": "men-root",
     "level": 1
   },
@@ -43,7 +43,7 @@
     "id": "w-top",
     "name": "Topwear",
     "slug": "women-topwear",
-    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1783233990/products/11880014__front__1783233992375_0ksms6.jpg",
+    "image": "/placeholder.svg",
     "parentId": "women-root",
     "level": 1
   },
@@ -51,7 +51,7 @@
     "id": "w-bottom",
     "name": "Bottomwear",
     "slug": "women-bottomwear",
-    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1783234009/products/11880019__front__1783234011472_18wbdm.jpg",
+    "image": "/placeholder.svg",
     "parentId": "women-root",
     "level": 1
   },
@@ -59,7 +59,7 @@
     "id": "k-top",
     "name": "Topwear",
     "slug": "kids-topwear",
-    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1783234031/products/11880024__front__1783234033631_7b1med.jpg",
+    "image": "/placeholder.svg",
     "parentId": "kids-root",
     "level": 1
   },
@@ -67,7 +67,7 @@
     "id": "k-bottom",
     "name": "Bottomwear",
     "slug": "kids-bottomwear",
-    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1783233954/products/11880007__front__1783233955873_esjxqy.jpg",
+    "image": "/placeholder.svg",
     "parentId": "kids-root",
     "level": 1
   },
@@ -75,47 +75,23 @@
     "id": "cat_4",
     "name": "T-Shirts",
     "slug": "men-t-shirts",
-    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1783233924/products/11880001__front__1783233926518_l9glxq.jpg",
+    "image": "/placeholder.svg",
     "parentId": "m-top",
     "level": 2
   },
   {
-    "id": "cat_5",
-    "name": "Joggers",
-    "slug": "men-joggers",
-    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1783233949/products/11880006__front__1783233950927_nepw7f.jpg",
-    "parentId": "m-bottom",
-    "level": 2
-  },
-  {
     "id": "cat_6",
-    "name": "Polos",
-    "slug": "men-polos",
-    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1783233978/products/11880011__front__1783233980773_8gk7w6.jpg",
+    "name": "Polo T-Shirts",
+    "slug": "men-polo-t-shirts",
+    "image": "/placeholder.svg",
     "parentId": "m-top",
     "level": 2
   },
   {
     "id": "cat_7",
-    "name": "Pants",
-    "slug": "men-pants",
-    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1783233986/products/11880013__front__1783233988413_ggubll.jpg",
-    "parentId": "m-bottom",
-    "level": 2
-  },
-  {
-    "id": "cat_8",
-    "name": "Shirts",
-    "slug": "men-shirts",
-    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1783234001/products/11880017__front__1783234004222_9aizo6.jpg",
-    "parentId": "m-top",
-    "level": 2
-  },
-  {
-    "id": "cat_9",
-    "name": "Jeans",
-    "slug": "men-jeans",
-    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1783234018/products/11880021__front__1783234020356_6ou13z.jpg",
+    "name": "Cargo Pants",
+    "slug": "men-cargo-pants",
+    "image": "/placeholder.svg",
     "parentId": "m-bottom",
     "level": 2
   },
@@ -123,71 +99,55 @@
     "id": "cat_11",
     "name": "T-Shirts",
     "slug": "women-t-shirts",
-    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1783233919/products/11880000__front__1783233921586_4vn60r.jpg",
+    "image": "/placeholder.svg",
     "parentId": "w-top",
     "level": 2
   },
   {
-    "id": "cat_13",
-    "name": "Pants",
-    "slug": "women-pants",
-    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1783233949/products/11880006__front__1783233950927_nepw7f.jpg",
-    "parentId": "w-bottom",
+    "id": "cat_30",
+    "name": "Tops",
+    "slug": "women-tops",
+    "image": "/placeholder.svg",
+    "parentId": "w-top",
     "level": 2
   },
   {
-    "id": "cat_14",
-    "name": "Joggers",
-    "slug": "women-joggers",
-    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1783233954/products/11880007__front__1783233955873_esjxqy.jpg",
-    "parentId": "w-bottom",
+    "id": "cat_19",
+    "name": "Kurti Pant Sets",
+    "slug": "women-kurti-pant-sets",
+    "image": "/placeholder.svg",
+    "parentId": "w-top",
     "level": 2
   },
   {
     "id": "cat_15",
     "name": "Jeans",
     "slug": "women-jeans",
-    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1783233960/products/11880008__front__1783233961781_s0ozxz.jpg",
+    "image": "/placeholder.svg",
     "parentId": "w-bottom",
     "level": 2
   },
   {
-    "id": "cat_16",
-    "name": "Shirts",
-    "slug": "women-shirts",
-    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1783233967/products/11880009__front__1783233967016_1yigzt.jpg",
-    "parentId": "w-top",
-    "level": 2
-  },
-  {
-    "id": "cat_19",
-    "name": "Co-ord Sets",
-    "slug": "women-co-ord-sets",
-    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1783233974/products/11880010__front__1783233976427_vrr3uw.jpg",
-    "parentId": "w-top",
-    "level": 2
-  },
-  {
-    "id": "cat_20",
-    "name": "Shorts",
-    "slug": "women-shorts",
-    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1783233978/products/11880011__front__1783233980773_8gk7w6.jpg",
+    "id": "cat_13",
+    "name": "Pants",
+    "slug": "women-pants",
+    "image": "/placeholder.svg",
     "parentId": "w-bottom",
     "level": 2
   },
   {
-    "id": "cat_21",
-    "name": "T-Shirts",
-    "slug": "kids-t-shirts",
-    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1783233929/products/11880002__front__1783233931410_sq9ekz.jpg",
-    "parentId": "k-top",
+    "id": "cat_14",
+    "name": "Beggi",
+    "slug": "women-beggi",
+    "image": "/placeholder.svg",
+    "parentId": "w-bottom",
     "level": 2
   },
   {
-    "id": "cat_22",
-    "name": "Full Sleeves T-Shirts",
-    "slug": "kids-full-sleeves-t-shirts",
-    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1783233944/products/11880005__front__1783233946125_vlvsm6.jpg",
+    "id": "cat_25",
+    "name": "Night Dresses",
+    "slug": "kids-night-dresses",
+    "image": "/placeholder.svg",
     "parentId": "k-top",
     "level": 2
   },
@@ -195,80 +155,8 @@
     "id": "cat_23",
     "name": "Pants",
     "slug": "kids-pants",
-    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1783233954/products/11880007__front__1783233955873_esjxqy.jpg",
+    "image": "/placeholder.svg",
     "parentId": "k-bottom",
-    "level": 2
-  },
-  {
-    "id": "cat_24",
-    "name": "Oversized T-Shirts",
-    "slug": "kids-oversized-t-shirts",
-    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1783233974/products/11880010__front__1783233976427_vrr3uw.jpg",
-    "parentId": "k-top",
-    "level": 2
-  },
-  {
-    "id": "cat_25",
-    "name": "Night Dresses",
-    "slug": "kids-night-dresses",
-    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1783234031/products/11880024__front__1783234033631_7b1med.jpg",
-    "parentId": "k-top",
-    "level": 2
-  },
-  {
-    "id": "cat_26",
-    "name": "Track Pants",
-    "slug": "men-track-pants",
-    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1783233986/products/11880013__front__1783233988413_ggubll.jpg",
-    "parentId": "m-bottom",
-    "level": 2
-  },
-  {
-    "id": "cat_27",
-    "name": "Shorts",
-    "slug": "men-shorts",
-    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1783233990/products/11880014__front__1783233992375_0ksms6.jpg",
-    "parentId": "m-bottom",
-    "level": 2
-  },
-  {
-    "id": "cat_28",
-    "name": "Pyjamas",
-    "slug": "men-pyjamas",
-    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1783233994/products/11880015__front__1783233996604_110ksi.jpg",
-    "parentId": "m-bottom",
-    "level": 2
-  },
-  {
-    "id": "cat_29",
-    "name": "Vests",
-    "slug": "men-vests",
-    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1783233998/products/11880016__front__1783234000486_o6k25d.jpg",
-    "parentId": "m-top",
-    "level": 2
-  },
-  {
-    "id": "cat_30",
-    "name": "Dresses",
-    "slug": "women-dresses",
-    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1783234001/products/11880017__front__1783234004222_9aizo6.jpg",
-    "parentId": "w-top",
-    "level": 2
-  },
-  {
-    "id": "cat_31",
-    "name": "Hoodies",
-    "slug": "women-hoodies",
-    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1783234009/products/11880019__front__1783234011472_18wbdm.jpg",
-    "parentId": "w-top",
-    "level": 2
-  },
-  {
-    "id": "cat_32",
-    "name": "Sweatshirts",
-    "slug": "women-sweatshirts",
-    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1783234018/products/11880021__front__1783234020356_6ou13z.jpg",
-    "parentId": "w-top",
     "level": 2
   }
 ]
