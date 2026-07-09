@@ -10,7 +10,7 @@ const normalizeCategoryText = (value: any) =>
   String(value || "")
     .toLowerCase()
     .replace(/-/g, " ")
-    .replace(/&/g, "and")
+    .replace(/&/g, " and ")
     .replace(/[^a-z0-9]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
@@ -20,21 +20,172 @@ const getCategoryFromSearch = (search: string) => {
   return normalizeCategoryText(params.get("category") || "");
 };
 
+const getProductName = (product: any) =>
+  normalizeCategoryText(product?.title || product?.name || product?.product_name || product?.productName || "");
+
+const getProductGender = (product: any) =>
+  normalizeCategoryText(product?.gender || product?.category || "");
+
+const getRootGenderForCategory = (category: any) => {
+  if (!category) return "";
+  if (category.level === 0) return category.name || "";
+  const parent = categories.find((item: any) => item.id === category.parentId);
+  if (!parent) return "";
+  if (parent.level === 0) return parent.name || "";
+  const root = categories.find((item: any) => item.id === parent.parentId);
+  return root?.name || "";
+};
+
 const getGenderForCategory = (categoryName: string) => {
-  if (!categoryName) return "";
+  const normalized = normalizeCategoryText(categoryName);
+  if (!normalized) return "";
+
+  if (normalized === "men" || normalized.startsWith("men ")) return "Men";
+  if (normalized === "women" || normalized.startsWith("women ")) return "Women";
+  if (normalized === "kids" || normalized.startsWith("kids ")) return "Kids";
+
+  const storedGender = localStorage.getItem("preferred_gender");
+  if (storedGender) return storedGender;
 
   const matchedCategory = categories.find(
-    (category) =>
+    (category: any) =>
       category.level === 2 &&
-      normalizeCategoryText(category.name) === normalizeCategoryText(categoryName),
+      (normalizeCategoryText(category.name) === normalized ||
+        normalizeCategoryText(category.slug) === normalized),
   );
 
-  if (!matchedCategory) return "";
+  return getRootGenderForCategory(matchedCategory);
+};
 
-  const parent = categories.find((category) => category.id === matchedCategory.parentId);
-  const root = categories.find((category) => category.id === parent?.parentId);
+const getLevel2CategoriesForGender = (gender: string) => {
+  const root = categories.find(
+    (category: any) =>
+      category.level === 0 &&
+      normalizeCategoryText(category.name) === normalizeCategoryText(gender),
+  );
 
-  return root?.name || "";
+  if (!root) return [];
+
+  const level1Ids = categories
+    .filter((category: any) => category.level === 1 && category.parentId === root.id)
+    .map((category: any) => category.id);
+
+  return categories.filter(
+    (category: any) =>
+      category.level === 2 && level1Ids.includes(String(category.parentId || "")),
+  );
+};
+
+const getMatchedCategoryName = (query: string, gender: string, tabs: string[]) => {
+  const normalizedQuery = normalizeCategoryText(query);
+  if (!normalizedQuery) return "";
+
+  const genderCategories = getLevel2CategoriesForGender(gender);
+
+  const matchedCategory = genderCategories.find((category: any) => {
+    const name = normalizeCategoryText(category.name);
+    const slug = normalizeCategoryText(category.slug);
+    const genderName = normalizeCategoryText(`${gender} ${category.name}`);
+    return name === normalizedQuery || slug === normalizedQuery || genderName === normalizedQuery;
+  });
+
+  if (matchedCategory) return matchedCategory.name;
+
+  const matchedTab = tabs.find((tabName) => {
+    const tab = normalizeCategoryText(tabName);
+    const genderTab = normalizeCategoryText(`${gender} ${tabName}`);
+    return tab === normalizedQuery || genderTab === normalizedQuery;
+  });
+
+  return matchedTab || "";
+};
+
+const productMatchesCategory = (product: Product, categoryName: string) => {
+  const title = getProductName(product);
+  const category = normalizeCategoryText(categoryName);
+
+  if (!title || !category || category === "all") return true;
+
+  if (category.includes("polo")) {
+    return title.includes("polo");
+  }
+
+  if (category.includes("cargo")) {
+    return title.includes("cargo") || title.includes("cargo pant");
+  }
+
+  if (category.includes("kurti")) {
+    return title.includes("kurti") || title.includes("kurti pant set");
+  }
+
+  if (category.includes("night dress")) {
+    return title.includes("night dress");
+  }
+
+  if (category.includes("beggi") || category.includes("baggy") || category.includes("bagge")) {
+    return title.includes("beggi") || title.includes("baggy") || title.includes("bagge");
+  }
+
+  if (category.includes("jean")) {
+    return title.includes("jean") || title.includes("denim");
+  }
+
+  if (category.includes("top")) {
+    return title.includes("top") || title.includes("women h s top") || title.includes("h s top");
+  }
+
+  if (category.includes("t shirt") || category.includes("tshirt") || category.includes("tee")) {
+    return title.includes("t shirt") || title.includes("tshirt") || title.includes("t-shirt") || title.includes("oversized");
+  }
+
+  if (category.includes("pant")) {
+    if (title.includes("kurti pant set")) return false;
+    return title.includes("pant") || title.includes("cargo") || title.includes("bagge") || title.includes("beggi");
+  }
+
+  if (category.includes("shirt")) {
+    return title.includes("shirt") && !title.includes("t shirt") && !title.includes("tshirt");
+  }
+
+  if (category.includes("dress")) {
+    return title.includes("dress");
+  }
+
+  if (category.includes("jogger")) {
+    return title.includes("jogger");
+  }
+
+  if (category.includes("short")) {
+    return title.includes("short");
+  }
+
+  if (category.includes("pyjama") || category.includes("pajama")) {
+    return title.includes("pyjama") || title.includes("pajama");
+  }
+
+  if (category.includes("vest")) {
+    return title.includes("vest");
+  }
+
+  if (category.includes("hoodie")) {
+    return title.includes("hoodie");
+  }
+
+  if (category.includes("sweatshirt")) {
+    return title.includes("sweatshirt");
+  }
+
+  return title.includes(category);
+};
+
+const getProductsForTab = (products: Product[], activeTab: string) => {
+  if (activeTab === "ALL") return products;
+
+  const matched = products.filter((product) => productMatchesCategory(product, activeTab));
+
+  if (matched.length) return matched;
+
+  return products;
 };
 
 const CollectionTabsContent = ({ title }: { title?: string }) => {
@@ -96,35 +247,14 @@ const CollectionTabsContent = ({ title }: { title?: string }) => {
   }, [preferredGender]);
 
   const tabs = useMemo(() => {
-    const genderCatId = categories.find(
-      (c) =>
-        c.level === 0 && c.name.toLowerCase() === preferredGender.toLowerCase(),
-    )?.id;
-
-    const level2Cats = categories.filter((c) => {
-      if (c.level !== 2) return false;
-      const parent = categories.find((p) => p.id === c.parentId);
-      return parent?.parentId === genderCatId;
-    });
-
-    const activeCategoryIds = new Set(products.map((product) => String(product.categoryId)));
-
-    const uniqueNames = Array.from(
-      new Set(
-        level2Cats
-          .filter((category) => activeCategoryIds.has(String(category.id)))
-          .map((category) => category.name),
-      ),
-    );
-
+    const level2Cats = getLevel2CategoriesForGender(preferredGender);
+    const uniqueNames = Array.from(new Set(level2Cats.map((category: any) => category.name).filter(Boolean)));
     return ["ALL", ...uniqueNames];
-  }, [preferredGender, products]);
+  }, [preferredGender]);
 
   useEffect(() => {
     if (categoryFromQuery) {
-      const matchedTab = tabs.find(
-        (tabName) => normalizeCategoryText(tabName) === normalizeCategoryText(categoryFromQuery),
-      );
+      const matchedTab = getMatchedCategoryName(categoryFromQuery, preferredGender, tabs);
 
       if (matchedTab) {
         setActiveTab(matchedTab);
@@ -135,7 +265,7 @@ const CollectionTabsContent = ({ title }: { title?: string }) => {
     if (!tabs.includes(activeTab)) {
       setActiveTab("ALL");
     }
-  }, [tabs, activeTab, categoryFromQuery]);
+  }, [tabs, activeTab, categoryFromQuery, preferredGender]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -164,52 +294,58 @@ const CollectionTabsContent = ({ title }: { title?: string }) => {
 
   const currentProducts = useMemo(() => {
     const genderProducts = products.filter(
-      (p) => p.gender.toLowerCase() === preferredGender.toLowerCase(),
+      (product) => getProductGender(product) === normalizeCategoryText(preferredGender),
     );
 
     if (activeTab !== "ALL") {
-      const matchingCats = categories.filter(
-        (c) => c.level === 2 && c.name === activeTab,
-      );
-      const catIds = matchingCats.map((c) => String(c.id));
-      return genderProducts.filter((p) => catIds.includes(String(p.categoryId)));
+      return getProductsForTab(genderProducts, activeTab);
     }
 
     let recentlyViewedIds: string[] = [];
 
     try {
-      recentlyViewedIds = JSON.parse(
-        localStorage.getItem("recentlyViewed") || "[]",
-      );
+      recentlyViewedIds = JSON.parse(localStorage.getItem("recentlyViewed") || "[]");
     } catch {
       recentlyViewedIds = [];
     }
 
-    const recentlyViewed = genderProducts.filter((p) =>
-      recentlyViewedIds.includes(String(p.id)),
+    const recentlyViewed = genderProducts.filter((product: any) =>
+      recentlyViewedIds.includes(String(product.id)) ||
+      recentlyViewedIds.includes(String(product.variantId)) ||
+      recentlyViewedIds.includes(String(product.variant_id)) ||
+      recentlyViewedIds.includes(String(product.productId)) ||
+      recentlyViewedIds.includes(String(product.product_id)),
     );
 
     recentlyViewed.sort(
-      (a, b) =>
+      (a: any, b: any) =>
         recentlyViewedIds.indexOf(String(a.id)) -
         recentlyViewedIds.indexOf(String(b.id)),
     );
 
-    const rvCategoryIds = new Set(recentlyViewed.map((p) => p.categoryId));
-
-    const related = genderProducts.filter(
-      (p) =>
-        !recentlyViewedIds.includes(String(p.id)) &&
-        rvCategoryIds.has(p.categoryId),
+    const recentlyViewedKeys = new Set(
+      recentlyViewed.flatMap((product: any) => [
+        String(product.id || ""),
+        String(product.variantId || ""),
+        String(product.variant_id || ""),
+        String(product.productId || ""),
+        String(product.product_id || ""),
+      ]),
     );
 
-    const remaining = genderProducts.filter(
-      (p) =>
-        !recentlyViewedIds.includes(String(p.id)) &&
-        !rvCategoryIds.has(p.categoryId),
-    );
+    const remaining = genderProducts.filter((product: any) => {
+      const keys = [
+        String(product.id || ""),
+        String(product.variantId || ""),
+        String(product.variant_id || ""),
+        String(product.productId || ""),
+        String(product.product_id || ""),
+      ];
 
-    return [...recentlyViewed, ...related, ...remaining];
+      return !keys.some((key) => recentlyViewedKeys.has(key));
+    });
+
+    return [...recentlyViewed, ...remaining];
   }, [activeTab, preferredGender, products]);
 
   useEffect(() => {
@@ -311,8 +447,7 @@ const CollectionTabsContent = ({ title }: { title?: string }) => {
               No products found
             </h3>
             <p className="text-[#6b7280] mb-8 text-sm md:text-base px-3 max-w-md mx-auto">
-              We couldn't find any items in this collection right now. Check
-              back later or explore other categories.
+              We couldn't find any items in this collection right now. Check back later or explore other categories.
             </p>
             <button
               onClick={() => setActiveTab("ALL")}
@@ -324,8 +459,8 @@ const CollectionTabsContent = ({ title }: { title?: string }) => {
         ) : (
           <>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
-              {displayedProducts.map((product) => (
-                <div key={product.id} className="min-w-0">
+              {displayedProducts.map((product: any) => (
+                <div key={`${product.id}-${product.variantId || product.variant_id || product.productId || product.product_id}`} className="min-w-0">
                   <ProductCard {...product} />
                 </div>
               ))}
