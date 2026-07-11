@@ -47,10 +47,24 @@ const writeWishlistIds = (userId: number, ids: number[]) => {
   window.dispatchEvent(new Event("wishlist-updated"));
 };
 
+const normalizeBarcode = (value: any) => {
+  return String(value || "")
+    .trim()
+    .replace(/^"|"$/g, "")
+    .replace(/\s+/g, "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9._-]/g, "");
+};
+
 const getImageString = (value: any) => {
   if (!value) return "";
   if (typeof value === "string") return value.trim();
-  return String(value.image_url || value.secure_url || value.url || "").trim();
+  return String(value.image_url || value.secure_url || value.url || value.imageUrl || "").trim();
+};
+
+const getImageType = (value: any) => {
+  if (!value || typeof value === "string") return "";
+  return String(value.image_type || value.imageType || value.type || "").trim().toLowerCase();
 };
 
 const isBadImage = (value: any) => {
@@ -58,20 +72,66 @@ const isBadImage = (value: any) => {
   return !s || s === "[object object]" || s.includes("undefined") || s.includes("null") || s.includes("placeholder.svg");
 };
 
-const uniqueImages = (values: any[]) => {
-  const seen = new Set<string>();
-  const out: string[] = [];
+const sameImage = (a: any, b: any) => {
+  const x = String(a || "").trim().toLowerCase();
+  const y = String(b || "").trim().toLowerCase();
+  return !!x && !!y && x === y;
+};
 
-  values.forEach((value) => {
+const getArrayValues = (value: any) => {
+  if (Array.isArray(value)) return value;
+  if (typeof value === "string") {
+    return value
+      .split(",")
+      .map((x) => x.trim())
+      .filter(Boolean);
+  }
+  return [];
+};
+
+const extractBarcodeFromImageUrl = (url: any) => {
+  const text = decodeURIComponent(String(url || ""));
+  const filename = text.split("?")[0].split("/").pop() || text;
+  const clean = filename.replace(/\.[a-z0-9]+$/i, "");
+
+  if (clean.includes("__")) {
+    const first = normalizeBarcode(clean.split("__")[0]);
+    if (first) return first;
+  }
+
+  const match = clean.match(/[A-Za-z0-9._-]*\d{5,}[A-Za-z0-9._-]*/);
+  return match ? normalizeBarcode(match[0]) : "";
+};
+
+const imageMatchesAllowedCodes = (url: string, allowedCodes: Set<string>) => {
+  if (!url || isBadImage(url)) return false;
+  if (!allowedCodes.size) return true;
+
+  const imageCode = extractBarcodeFromImageUrl(url);
+  if (!imageCode) return true;
+
+  return allowedCodes.has(imageCode);
+};
+
+const firstValidImage = (values: any[], allowedCodes: Set<string>) => {
+  for (const value of values) {
     const image = getImageString(value);
-    if (isBadImage(image)) return;
-    const key = image.toLowerCase();
-    if (seen.has(key)) return;
-    seen.add(key);
-    out.push(image);
-  });
+    if (!imageMatchesAllowedCodes(image, allowedCodes)) continue;
+    return image;
+  }
+  return "";
+};
 
-  return out;
+const findImageByType = (images: any[], type: string, allowedCodes: Set<string>) => {
+  const target = String(type || "").toLowerCase();
+
+  for (const img of images) {
+    if (getImageType(img) !== target) continue;
+    const image = getImageString(img);
+    if (imageMatchesAllowedCodes(image, allowedCodes)) return image;
+  }
+
+  return "";
 };
 
 export const ProductCardSkeleton: React.FC = () => {
@@ -113,6 +173,11 @@ export const ProductCard: React.FC<Product> = (props: any) => {
     main_image_url,
     imageUrl,
     image_url,
+    barcode,
+    ean_code,
+    eanCode,
+    barcodes,
+    ean_codes,
   } = props;
 
   const navigate = useNavigate();
@@ -121,32 +186,54 @@ export const ProductCard: React.FC<Product> = (props: any) => {
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [isUpdatingWishlist, setIsUpdatingWishlist] = useState(false);
 
+  const allowedImageCodes = useMemo(() => {
+    const codes = [
+      barcode,
+      ean_code,
+      eanCode,
+      ...getArrayValues(barcodes),
+      ...getArrayValues(ean_codes),
+    ]
+      .map(normalizeBarcode)
+      .filter(Boolean);
+
+    return new Set(codes);
+  }, [barcode, ean_code, eanCode, barcodes, ean_codes]);
+
   const resolvedImages = useMemo(() => {
     const imageList = Array.isArray(images) ? images : [];
-    const allImages = uniqueImages(imageList);
 
-    const frontCandidates = uniqueImages([
-      frontImageUrl,
-      front_image_url,
-      imageUrl,
-      image_url,
-      mainImageUrl,
-      main_image_url,
-      allImages[0],
-    ]);
+    const typedFront = findImageByType(imageList, "front", allowedImageCodes);
+    const typedMain = findImageByType(imageList, "main", allowedImageCodes);
+    const typedBack = findImageByType(imageList, "back", allowedImageCodes);
 
-    const front = frontCandidates[0] || "/placeholder.svg";
+    const front = firstValidImage(
+      [
+        frontImageUrl,
+        front_image_url,
+        typedFront,
+        mainImageUrl,
+        main_image_url,
+        typedMain,
+        imageUrl,
+        image_url,
+      ],
+      allowedImageCodes
+    ) || "/placeholder.svg";
 
-    const backCandidates = uniqueImages([
-      backImageUrl,
-      back_image_url,
-      allImages[1],
-      ...allImages.slice(1),
-    ]).filter((item) => item !== front);
+    const back = firstValidImage(
+      [
+        backImageUrl,
+        back_image_url,
+        typedBack,
+      ],
+      allowedImageCodes
+    );
 
-    const back = backCandidates[0] || "";
-
-    return { front, back };
+    return {
+      front,
+      back: back && !sameImage(back, front) ? back : "",
+    };
   }, [
     images,
     frontImageUrl,
@@ -157,6 +244,7 @@ export const ProductCard: React.FC<Product> = (props: any) => {
     main_image_url,
     imageUrl,
     image_url,
+    allowedImageCodes,
   ]);
 
   const finalVariantId = variantId || variant_id || primaryVariantId || primary_variant_id;
@@ -175,13 +263,13 @@ export const ProductCard: React.FC<Product> = (props: any) => {
 
   const discount = originalPrice && originalPrice > price ? Math.round(((originalPrice - price) / originalPrice) * 100) : 0;
   const frontImg = frontFailed ? "/placeholder.svg" : resolvedImages.front || "/placeholder.svg";
-  const backImg = !backFailed && resolvedImages.back && resolvedImages.back !== frontImg ? resolvedImages.back : "";
+  const backImg = !backFailed && resolvedImages.back && !sameImage(resolvedImages.back, frontImg) ? resolvedImages.back : "";
   const hasBackImage = Boolean(backImg);
 
   React.useEffect(() => {
     setFrontFailed(false);
     setBackFailed(false);
-  }, [resolvedImages.front, resolvedImages.back]);
+  }, [resolvedImages.front, resolvedImages.back, finalVariantId, id]);
 
   React.useEffect(() => {
     const syncWishlistState = () => {
