@@ -4,6 +4,8 @@ import categoriesJson from "../Data/categories.json";
 const API_BASE = "https://vandhana-shopping-mall-backend.vercel.app";
 const DEFAULT_BRANCH_ID = 3;
 
+type AnyRecord = Record<string, any>;
+
 type CategoryRecord = {
   id: string;
   name: string;
@@ -14,7 +16,7 @@ type CategoryRecord = {
 
 const categories = categoriesJson as CategoryRecord[];
 
-const normalizeText = (value: any) =>
+const normalizeText = (value: any): string =>
   String(value || "")
     .toLowerCase()
     .replace(/&/g, " and ")
@@ -22,22 +24,22 @@ const normalizeText = (value: any) =>
     .replace(/\s+/g, " ")
     .trim();
 
-const toNumber = (value: any, fallback = 0) => {
+const toNumber = (value: any, fallback = 0): number => {
   const n = Number(value);
   return Number.isFinite(n) ? n : fallback;
 };
 
-const roundMoney = (value: number) =>
+const roundMoney = (value: number): number =>
   Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100;
 
-const clampDiscount = (value: any) => {
+const clampDiscount = (value: any): number => {
   const n = toNumber(value, 0);
   if (n < 0) return 0;
   if (n > 100) return 100;
   return n;
 };
 
-const calculateDiscountedPrice = (original: any, discount: any, fallback = 0) => {
+const calculateDiscountedPrice = (original: any, discount: any, fallback = 0): number => {
   const base = toNumber(original, fallback);
   const pct = clampDiscount(discount);
   if (!base) return toNumber(fallback, 0);
@@ -45,14 +47,14 @@ const calculateDiscountedPrice = (original: any, discount: any, fallback = 0) =>
   return roundMoney(base - (base * pct) / 100);
 };
 
-const firstValue = (...values: any[]) => {
+const firstValue = (...values: any[]): any => {
   for (const value of values) {
     if (value !== undefined && value !== null && String(value).trim() !== "") return value;
   }
   return "";
 };
 
-const firstPositiveDiscount = (...values: any[]) => {
+const firstPositiveDiscount = (...values: any[]): number => {
   for (const value of values) {
     const n = clampDiscount(value);
     if (n > 0) return n;
@@ -67,7 +69,7 @@ const toGender = (value: any): ProductGender => {
   return "Men";
 };
 
-const isGroupedValue = (value: any) => {
+const isGroupedValue = (value: any): boolean => {
   const s = String(value || "").trim();
   if (!s) return false;
   if (s.includes(",")) return true;
@@ -75,29 +77,29 @@ const isGroupedValue = (value: any) => {
   return false;
 };
 
-const cleanSingleValue = (value: any) => {
+const cleanSingleValue = (value: any): string => {
   const s = String(value || "").trim();
   if (!s) return "";
   if (isGroupedValue(s)) return "";
   return s;
 };
 
-const imageUrlFromRecord = (image: any) => {
+const imageUrlFromRecord = (image: any): string => {
   if (!image) return "";
   if (typeof image === "string") return image.trim();
   return String(image.image_url || image.imageUrl || image.secure_url || image.url || "").trim();
 };
 
-const isBadImage = (value: any) => {
+const isBadImage = (value: any): boolean => {
   const s = String(value || "").trim().toLowerCase();
   return !s || s === "[object object]" || s.includes("undefined") || s.includes("null") || s.includes("placeholder.svg");
 };
 
-const uniqueStrings = (items: any[]) => {
+const uniqueStrings = (items: any[]): string[] => {
   const seen = new Set<string>();
   const out: string[] = [];
 
-  items.forEach((item) => {
+  items.forEach((item: any) => {
     const value = cleanSingleValue(item);
     if (!value || value === "[object Object]") return;
     const key = value.toLowerCase();
@@ -109,11 +111,11 @@ const uniqueStrings = (items: any[]) => {
   return out;
 };
 
-const uniqueImages = (items: any[]) => {
+const uniqueImages = (items: any[]): string[] => {
   const seen = new Set<string>();
   const out: string[] = [];
 
-  items.forEach((item) => {
+  items.forEach((item: any) => {
     const value = imageUrlFromRecord(item);
     if (isBadImage(value)) return;
     const key = value.toLowerCase();
@@ -125,21 +127,23 @@ const uniqueImages = (items: any[]) => {
   return out;
 };
 
-const sortVariantValues = (items: any[]) => {
-  return uniqueStrings(items).sort((a, b) => {
+const sortVariantValues = (items: any[]): string[] => {
+  return uniqueStrings(items).sort((a: string, b: string) => {
     const na = parseFloat(String(a).replace(/[^\d.]/g, ""));
     const nb = parseFloat(String(b).replace(/[^\d.]/g, ""));
+
     if (Number.isFinite(na) && Number.isFinite(nb) && na !== nb) return na - nb;
+
     return String(a).localeCompare(String(b), undefined, { numeric: true });
   });
 };
 
-const parseImages = (value: any) => {
+const parseImages = (value: any): AnyRecord[] => {
   if (!value) return [];
 
   if (Array.isArray(value)) {
     return value
-      .map((item) => {
+      .map((item: any) => {
         if (typeof item === "string") return { image_url: item };
         return item;
       })
@@ -149,9 +153,10 @@ const parseImages = (value: any) => {
   if (typeof value === "string") {
     try {
       const parsed = JSON.parse(value);
+
       if (Array.isArray(parsed)) {
         return parsed
-          .map((item) => {
+          .map((item: any) => {
             if (typeof item === "string") return { image_url: item };
             return item;
           })
@@ -167,17 +172,17 @@ const parseImages = (value: any) => {
   return [];
 };
 
-const imageByType = (images: any[], ...types: string[]) => {
-  const keys = types.map(normalizeText).filter(Boolean);
-  const found = images.find((img) => {
+const imageByType = (images: AnyRecord[], ...types: string[]): string => {
+  const keys = types.map((type: string) => normalizeText(type)).filter(Boolean);
+  const found = images.find((img: AnyRecord) => {
     const imageType = normalizeText(img?.image_type || img?.type || img?.label || img?.name || img?.view || img?.position);
-    return keys.some((key) => imageType.includes(key));
+    return keys.some((key: string) => imageType.includes(key));
   });
 
   return imageUrlFromRecord(found);
 };
 
-const getImagePairFromSource = (source: any) => {
+const getImagePairFromSource = (source: AnyRecord): string[] => {
   const rawImages = parseImages(source?.images);
 
   const front = firstValue(
@@ -202,14 +207,14 @@ const getImagePairFromSource = (source: any) => {
   return uniqueImages([front, back]).slice(0, 2);
 };
 
-const getRawVariants = (row: any) => {
-  if (Array.isArray(row?.variants) && row.variants.length) return row.variants;
-  if (Array.isArray(row?.color_variants) && row.color_variants.length) return row.color_variants;
-  if (Array.isArray(row?.colorVariants) && row.colorVariants.length) return row.colorVariants;
+const getRawVariants = (row: AnyRecord): AnyRecord[] => {
+  if (Array.isArray(row?.variants) && row.variants.length) return row.variants as AnyRecord[];
+  if (Array.isArray(row?.color_variants) && row.color_variants.length) return row.color_variants as AnyRecord[];
+  if (Array.isArray(row?.colorVariants) && row.colorVariants.length) return row.colorVariants as AnyRecord[];
   return [row];
 };
 
-const getVariantId = (variant: any, row?: any) =>
+const getVariantId = (variant: AnyRecord, row: AnyRecord = {}): any =>
   firstValue(
     variant?.variant_id,
     variant?.variantId,
@@ -220,10 +225,10 @@ const getVariantId = (variant: any, row?: any) =>
     row?.primaryVariantId,
   );
 
-const getVariantBarcode = (variant: any, row?: any) =>
+const getVariantBarcode = (variant: AnyRecord, row: AnyRecord = {}): string =>
   String(firstValue(variant?.barcode, variant?.ean_code, variant?.eanCode, row?.barcode, row?.ean_code, row?.eanCode)).trim();
 
-const getVariantColor = (variant: any, row?: any) =>
+const getVariantColor = (variant: AnyRecord, row: AnyRecord = {}): string =>
   cleanSingleValue(
     firstValue(
       variant?.colour,
@@ -239,10 +244,10 @@ const getVariantColor = (variant: any, row?: any) =>
     ),
   );
 
-const getVariantSize = (variant: any, row?: any) =>
+const getVariantSize = (variant: AnyRecord, row: AnyRecord = {}): string =>
   cleanSingleValue(firstValue(variant?.size, variant?.selected_size, row?.size, row?.selected_size));
 
-const getProductKey = (row: any) => {
+const getProductKey = (row: AnyRecord): string => {
   const productId = String(firstValue(row?.product_id, row?.productId, row?.actual_product_id)).trim();
   if (productId) return productId;
 
@@ -254,28 +259,28 @@ const getProductKey = (row: any) => {
   ].join("|");
 };
 
-const pickSelectedVariant = (variants: any[], row: any, color?: string) => {
+const pickSelectedVariant = (variants: AnyRecord[], row: AnyRecord, color?: string): AnyRecord => {
   const targetVariantId = String(firstValue(row?.variant_id, row?.variantId, row?.primary_variant_id, row?.primaryVariantId)).trim();
   const targetBarcode = String(firstValue(row?.barcode, row?.ean_code, row?.eanCode)).trim();
   const targetColor = normalizeText(color || getVariantColor(row, row));
 
-  const sameColorVariants = variants.filter((variant) => normalizeText(getVariantColor(variant, row)) === targetColor);
+  const sameColorVariants = variants.filter((variant: AnyRecord) => normalizeText(getVariantColor(variant, row)) === targetColor);
   const pool = sameColorVariants.length ? sameColorVariants : variants;
 
   return (
-    pool.find((variant) => String(getVariantId(variant, row)).trim() === targetVariantId) ||
-    pool.find((variant) => getVariantBarcode(variant, row) === targetBarcode) ||
-    pool.find((variant) => getImagePairFromSource(variant).length > 0) ||
+    pool.find((variant: AnyRecord) => String(getVariantId(variant, row)).trim() === targetVariantId) ||
+    pool.find((variant: AnyRecord) => getVariantBarcode(variant, row) === targetBarcode) ||
+    pool.find((variant: AnyRecord) => getImagePairFromSource(variant).length > 0) ||
     pool[0] ||
     row
   );
 };
 
-const expandRowToColorCards = (row: any) => {
+const expandRowToColorCards = (row: AnyRecord): AnyRecord[] => {
   const variants = getRawVariants(row);
-  const groups = new Map<string, any[]>();
+  const groups = new Map<string, AnyRecord[]>();
 
-  variants.forEach((variant) => {
+  variants.forEach((variant: AnyRecord) => {
     const color = getVariantColor(variant, row) || getVariantColor(row, row) || "DEFAULT";
     const key = normalizeText(color) || "default";
     if (!groups.has(key)) groups.set(key, []);
@@ -284,11 +289,11 @@ const expandRowToColorCards = (row: any) => {
 
   if (!groups.size) groups.set("default", [row]);
 
-  const allColors = sortVariantValues(variants.map((variant) => getVariantColor(variant, row)));
-  const allSizes = sortVariantValues(variants.map((variant) => getVariantSize(variant, row)));
-  const allBarcodes = uniqueStrings(variants.map((variant) => getVariantBarcode(variant, row)));
+  const allColors = sortVariantValues(variants.map((variant: AnyRecord) => getVariantColor(variant, row)));
+  const allSizes = sortVariantValues(variants.map((variant: AnyRecord) => getVariantSize(variant, row)));
+  const allBarcodes = uniqueStrings(variants.map((variant: AnyRecord) => getVariantBarcode(variant, row)));
 
-  return Array.from(groups.entries()).map(([colorKey, colorVariants]) => {
+  return Array.from(groups.entries()).map(([colorKey, colorVariants]: [string, AnyRecord[]]) => {
     const colorName =
       getVariantColor(colorVariants[0], row) ||
       getVariantColor(row, row) ||
@@ -297,13 +302,13 @@ const expandRowToColorCards = (row: any) => {
     const selected = pickSelectedVariant(colorVariants, row, colorName);
     const selectedVariantId = getVariantId(selected, row);
     const selectedBarcode = getVariantBarcode(selected, row);
-    const colorSizes = sortVariantValues(colorVariants.map((variant) => getVariantSize(variant, row)));
-    const colorBarcodes = uniqueStrings(colorVariants.map((variant) => getVariantBarcode(variant, row)));
+    const colorSizes = sortVariantValues(colorVariants.map((variant: AnyRecord) => getVariantSize(variant, row)));
+    const colorBarcodes = uniqueStrings(colorVariants.map((variant: AnyRecord) => getVariantBarcode(variant, row)));
     const selectedImages = getImagePairFromSource(selected);
     const rowImages = getImagePairFromSource(row);
     const images = uniqueImages([...selectedImages, ...rowImages]);
 
-    const onHand = colorVariants.reduce((sum, variant) => {
+    const onHand = colorVariants.reduce((sum: number, variant: AnyRecord) => {
       return sum + toNumber(firstValue(variant?.available_qty, variant?.availableQty, variant?.on_hand, variant?.onHand, 0), 0);
     }, 0);
 
@@ -364,10 +369,10 @@ const expandRowToColorCards = (row: any) => {
   });
 };
 
-const dedupeColorCards = (rows: any[]) => {
-  const map = new Map<string, any>();
+const dedupeColorCards = (rows: AnyRecord[]): AnyRecord[] => {
+  const map = new Map<string, AnyRecord>();
 
-  rows.forEach((row) => {
+  rows.forEach((row: AnyRecord) => {
     const key = [
       getProductKey(row),
       normalizeText(row?.colour || row?.color || row?.selected_colour || row?.selectedColor || row?.display_color || row?.displayColor),
@@ -378,7 +383,7 @@ const dedupeColorCards = (rows: any[]) => {
       return;
     }
 
-    const current = map.get(key);
+    const current = map.get(key)!;
     const currentHasImage = !!imageUrlFromRecord(current?.front_image_url || current?.frontImageUrl || current?.image_url || current?.imageUrl);
     const nextHasImage = !!imageUrlFromRecord(row?.front_image_url || row?.frontImageUrl || row?.image_url || row?.imageUrl);
 
@@ -388,28 +393,28 @@ const dedupeColorCards = (rows: any[]) => {
   return Array.from(map.values());
 };
 
-const getGenderCategoryId = (gender: ProductGender) => {
-  return categories.find((c) => c.level === 0 && normalizeText(c.name) === normalizeText(gender))?.id || "";
+const getGenderCategoryId = (gender: ProductGender): string => {
+  return categories.find((c: CategoryRecord) => c.level === 0 && normalizeText(c.name) === normalizeText(gender))?.id || "";
 };
 
-const getLeafCategoriesForGender = (gender: ProductGender) => {
+const getLeafCategoriesForGender = (gender: ProductGender): CategoryRecord[] => {
   const genderId = getGenderCategoryId(gender);
   if (!genderId) return [];
 
   const level1Ids = categories
-    .filter((c) => c.level === 1 && String(c.parentId || "") === genderId)
-    .map((c) => c.id);
+    .filter((c: CategoryRecord) => c.level === 1 && String(c.parentId || "") === genderId)
+    .map((c: CategoryRecord) => c.id);
 
-  return categories.filter((c) => c.level === 2 && level1Ids.includes(String(c.parentId || "")));
+  return categories.filter((c: CategoryRecord) => c.level === 2 && level1Ids.includes(String(c.parentId || "")));
 };
 
-const findCategoryId = (gender: ProductGender, productName: string) => {
+const findCategoryId = (gender: ProductGender, productName: string): string => {
   const leafCategories = getLeafCategoriesForGender(gender);
   if (!leafCategories.length) return "";
 
   const name = normalizeText(productName);
 
-  const aliases = [
+  const aliases: { keys: string[]; targets: string[] }[] = [
     { keys: ["kurti"], targets: ["kurti pant sets", "kurti pant set", "co ord sets", "co-ord sets"] },
     { keys: ["beggi", "baggy", "bagge"], targets: ["beggi", "pants"] },
     { keys: ["cargo"], targets: ["cargo pants", "pants"] },
@@ -430,13 +435,13 @@ const findCategoryId = (gender: ProductGender, productName: string) => {
   ];
 
   for (const alias of aliases) {
-    if (alias.keys.some((key) => name.includes(normalizeText(key)))) {
+    if (alias.keys.some((key: string) => name.includes(normalizeText(key)))) {
       for (const target of alias.targets) {
-        const exact = leafCategories.find((c) => normalizeText(c.name) === normalizeText(target));
+        const exact = leafCategories.find((c: CategoryRecord) => normalizeText(c.name) === normalizeText(target));
         if (exact) return exact.id;
 
         const partial = leafCategories.find(
-          (c) =>
+          (c: CategoryRecord) =>
             normalizeText(c.name).includes(normalizeText(target)) ||
             normalizeText(target).includes(normalizeText(c.name)),
         );
@@ -447,13 +452,13 @@ const findCategoryId = (gender: ProductGender, productName: string) => {
   }
 
   const direct = leafCategories.find(
-    (c) => name.includes(normalizeText(c.name)) || normalizeText(c.name).includes(name),
+    (c: CategoryRecord) => name.includes(normalizeText(c.name)) || normalizeText(c.name).includes(name),
   );
 
   return direct?.id || leafCategories[0]?.id || "";
 };
 
-const getB2CDiscount = (variant: any, row: any) => {
+const getB2CDiscount = (variant: AnyRecord, row: AnyRecord): number => {
   const variantDiscount = firstPositiveDiscount(
     variant?.b2c_discount_pct,
     variant?.discount_b2c,
@@ -475,7 +480,7 @@ const getB2CDiscount = (variant: any, row: any) => {
   );
 };
 
-const getB2BDiscount = (variant: any, row: any) => {
+const getB2BDiscount = (variant: AnyRecord, row: AnyRecord): number => {
   const variantDiscount = firstPositiveDiscount(
     variant?.b2b_discount_pct,
     variant?.discount_b2b,
@@ -493,7 +498,7 @@ const getB2BDiscount = (variant: any, row: any) => {
   );
 };
 
-const normalizeVariant = (variant: any, row: any) => {
+const normalizeVariant = (variant: AnyRecord, row: AnyRecord): AnyRecord => {
   const productId = firstValue(variant?.product_id, variant?.productId, row?.product_id, row?.productId);
   const variantId = getVariantId(variant, row);
   const size = getVariantSize(variant, row);
@@ -642,7 +647,7 @@ const normalizeVariant = (variant: any, row: any) => {
   };
 };
 
-const normalizeProduct = (row: any): Product => {
+const normalizeProduct = (row: AnyRecord): Product => {
   const productName = String(firstValue(row.product_name, row.productName, row.name, row.title, "Product")).trim();
   const brandName = String(firstValue(row.brand_name, row.brandName, row.brand, "Vandhana")).trim();
   const gender = toGender(firstValue(row.gender, row.category));
@@ -651,20 +656,21 @@ const normalizeProduct = (row: any): Product => {
   const selectedColor = getVariantColor(row, row);
   const selectedSize = getVariantSize(row, row);
   const allRawVariants = getRawVariants(row);
-  const normalizedVariants = allRawVariants.map((variant) => normalizeVariant(variant, row));
-  const availableVariants = normalizedVariants.filter((variant) => toNumber(variant.available_qty ?? variant.on_hand ?? 0, 0) > 0);
+  const normalizedVariants = allRawVariants.map((variant: AnyRecord) => normalizeVariant(variant, row));
+  const availableVariants = normalizedVariants.filter((variant: AnyRecord) => toNumber(variant.available_qty ?? variant.on_hand ?? 0, 0) > 0);
   const variants = availableVariants.length ? availableVariants : normalizedVariants;
 
   const selectedVariant =
-    variants.find((variant) => String(variant.variant_id || variant.variantId || variant.id).trim() === String(actualVariantId || "").trim()) ||
-    variants.find((variant) => normalizeText(variant.colour || variant.color) === normalizeText(selectedColor)) ||
-    variants[0];
+    variants.find((variant: AnyRecord) => String(variant.variant_id || variant.variantId || variant.id).trim() === String(actualVariantId || "").trim()) ||
+    variants.find((variant: AnyRecord) => normalizeText(variant.colour || variant.color) === normalizeText(selectedColor)) ||
+    variants[0] ||
+    {};
 
-  const allColors = sortVariantValues(variants.map((variant) => variant.colour || variant.color));
-  const selectedColorVariants = variants.filter((variant) => normalizeText(variant.colour || variant.color) === normalizeText(selectedColor));
+  const allColors = sortVariantValues(variants.map((variant: AnyRecord) => variant.colour || variant.color));
+  const selectedColorVariants = variants.filter((variant: AnyRecord) => normalizeText(variant.colour || variant.color) === normalizeText(selectedColor));
   const selectedGroup = selectedColorVariants.length ? selectedColorVariants : variants;
-  const colorSizes = sortVariantValues(selectedGroup.map((variant) => variant.size));
-  const allSizes = sortVariantValues(variants.map((variant) => variant.size));
+  const colorSizes = sortVariantValues(selectedGroup.map((variant: AnyRecord) => variant.size));
+  const allSizes = sortVariantValues(variants.map((variant: AnyRecord) => variant.size));
 
   const b2cDiscount = getB2CDiscount(selectedVariant, row);
   const mrp = toNumber(firstValue(selectedVariant?.original_price_b2c, selectedVariant?.mrp, row?.mrp, row?.original_price_b2c, row?.originalPrice, 0), 0);
@@ -674,7 +680,17 @@ const normalizeProduct = (row: any): Product => {
   const variantImages = getImagePairFromSource(selectedVariant);
   const images = uniqueImages([...variantImages, ...rowImages]);
   const imageUrl = images[0] || "/placeholder.svg";
-  const totalStock = selectedGroup.reduce((sum, variant) => sum + toNumber(variant.available_qty ?? variant.on_hand ?? 0, 0), 0);
+
+  const totalStock = selectedGroup.reduce((sum: number, variant: AnyRecord) => {
+    return sum + toNumber(variant.available_qty ?? variant.on_hand ?? 0, 0);
+  }, 0);
+
+  const stockBySize = selectedGroup.reduce((acc: Record<string, number>, variant: AnyRecord) => {
+    const size = cleanSingleValue(variant.size);
+    if (!size) return acc;
+    acc[size] = (acc[size] || 0) + toNumber(variant.available_qty ?? variant.on_hand ?? 0, 0);
+    return acc;
+  }, {});
 
   return {
     id: String(firstValue(selectedVariant?.variant_id, selectedVariant?.variantId, actualVariantId, row?.id, selectedVariant?.barcode, actualProductId)),
@@ -734,12 +750,7 @@ const normalizeProduct = (row: any): Product => {
     all_sizes: allSizes,
     colors: allColors,
     colours: allColors,
-    stockBySize: selectedGroup.reduce((acc: Record<string, number>, variant) => {
-      const size = cleanSingleValue(variant.size);
-      if (!size) return acc;
-      acc[size] = (acc[size] || 0) + toNumber(variant.available_qty ?? variant.on_hand ?? 0, 0);
-      return acc;
-    }, {}),
+    stockBySize,
     specs: {
       material: row.material || "",
       fit: row.fit || row.fit_type || "",
@@ -764,7 +775,7 @@ const normalizeProduct = (row: any): Product => {
   } as any;
 };
 
-const readJson = async (res: Response) => {
+const readJson = async (res: Response): Promise<any> => {
   const data = await res.json().catch(() => []);
   if (!res.ok) {
     throw new Error((data as any)?.message || `Request failed with status ${res.status}`);
@@ -772,16 +783,16 @@ const readJson = async (res: Response) => {
   return data;
 };
 
-const extractRows = (data: any) => {
-  if (Array.isArray(data)) return data;
-  if (Array.isArray(data?.data)) return data.data;
-  if (Array.isArray(data?.products)) return data.products;
-  if (Array.isArray(data?.rows)) return data.rows;
-  if (Array.isArray(data?.items)) return data.items;
+const extractRows = (data: any): AnyRecord[] => {
+  if (Array.isArray(data)) return data as AnyRecord[];
+  if (Array.isArray(data?.data)) return data.data as AnyRecord[];
+  if (Array.isArray(data?.products)) return data.products as AnyRecord[];
+  if (Array.isArray(data?.rows)) return data.rows as AnyRecord[];
+  if (Array.isArray(data?.items)) return data.items as AnyRecord[];
   return [];
 };
 
-const fetchFromBranchApi = async (branchId: number) => {
+const fetchFromBranchApi = async (branchId: number): Promise<AnyRecord[]> => {
   const url = `${API_BASE}/api/branch/${encodeURIComponent(branchId)}/stock?_ts=${Date.now()}`;
   const res = await fetch(url, {
     method: "GET",
@@ -795,7 +806,7 @@ const fetchFromBranchApi = async (branchId: number) => {
   return extractRows(data);
 };
 
-const fetchFromProductsApi = async (branchId: number) => {
+const fetchFromProductsApi = async (branchId: number): Promise<AnyRecord[]> => {
   const url = `${API_BASE}/api/products?branch_id=${encodeURIComponent(branchId)}&all=true&_ts=${Date.now()}`;
   const res = await fetch(url, {
     method: "GET",
@@ -810,7 +821,7 @@ const fetchFromProductsApi = async (branchId: number) => {
 };
 
 export const fetchBranchProducts = async (branchId = DEFAULT_BRANCH_ID): Promise<Product[]> => {
-  let rows: any[] = [];
+  let rows: AnyRecord[] = [];
 
   try {
     rows = await fetchFromBranchApi(branchId);
@@ -826,10 +837,11 @@ export const fetchBranchProducts = async (branchId = DEFAULT_BRANCH_ID): Promise
     }
   }
 
-  const colorRows = dedupeColorCards(rows.flatMap((row) => expandRowToColorCards(row)));
+  const expandedRows = rows.flatMap((row: AnyRecord) => expandRowToColorCards(row));
+  const colorRows = dedupeColorCards(expandedRows);
 
   return colorRows
-    .map(normalizeProduct)
+    .map((row: AnyRecord) => normalizeProduct(row))
     .filter((product: any) => product.id || product.variantId || product.variant_id);
 };
 
@@ -838,7 +850,7 @@ export const fetchProductsByGender = async (
   branchId = DEFAULT_BRANCH_ID,
 ): Promise<Product[]> => {
   const products = await fetchBranchProducts(branchId);
-  return products.filter((product) => normalizeText(product.gender) === normalizeText(gender));
+  return products.filter((product: Product) => normalizeText(product.gender) === normalizeText(gender));
 };
 
 export const fetchProductById = async (
