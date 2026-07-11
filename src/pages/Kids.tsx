@@ -49,6 +49,20 @@ const HERO_BANNERS: Banner[] = [
   },
 ];
 
+const normalizeText = (value: any) =>
+  String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+
+const productName = (product: any) =>
+  normalizeText(product?.title || product?.name || product?.product_name || product?.productName || "");
+
+const productMatches = (product: Product, keywords: string[]) => {
+  const name = productName(product);
+  return keywords.some((keyword) => name.includes(normalizeText(keyword)));
+};
+
 const Kids = () => {
   const [typedProducts, setTypedProducts] = useState<Product[]>([]);
 
@@ -96,23 +110,26 @@ const Kids = () => {
   const finalKidsCategories = kidsCategories.length ? kidsCategories : fallbackKidsCategories;
 
   const newDrops = useMemo(() => {
-    return typedProducts
-      .filter((product: Product) => product.gender === "Kids")
-      .slice(0, 10);
+    return typedProducts.filter(
+      (product: Product) => normalizeText(product.gender) === "kids",
+    );
   }, [typedProducts]);
 
-  const topwear = useMemo(() => {
-    const topwearParentIds = categories
-      .filter((category: Category) => category.name.toLowerCase() === "topwear")
-      .map((category: Category) => category.id);
+  const nightDresses = useMemo(() => {
+    return typedProducts.filter((product: Product) =>
+      productMatches(product, ["night dress"]),
+    );
+  }, [typedProducts]);
 
-    const topwearCatIds = categories
-      .filter((category: Category) => topwearParentIds.includes(String(category.parentId || "")))
-      .map((category: Category) => category.id);
+  const pants = useMemo(() => {
+    return typedProducts.filter((product: Product) =>
+      productMatches(product, ["pant", "bagge"]),
+    );
+  }, [typedProducts]);
 
-    return typedProducts.filter(
-      (product: Product) =>
-        product.gender === "Kids" && topwearCatIds.includes(String(product.categoryId)),
+  const frocks = useMemo(() => {
+    return typedProducts.filter((product: Product) =>
+      productMatches(product, ["frock"]),
     );
   }, [typedProducts]);
 
@@ -121,8 +138,10 @@ const Kids = () => {
       <HeroCarousel banners={HERO_BANNERS} />
       <CategoriesSection categories={finalKidsCategories} title="Shop by Category" productData={typedProducts} />
       <NamedSection title="NEW DROPS" productData={newDrops} autoplay={false} />
-      <HeroProductSection products={newDrops} className="mb-4" />
-      <NamedSection title="TOPWEAR" productData={topwear} />
+      <HeroProductSection products={newDrops.slice(0, 10)} className="mb-4" />
+      {!!nightDresses.length && <NamedSection title="NIGHT DRESSES" productData={nightDresses} />}
+      {!!pants.length && <NamedSection title="PANTS" productData={pants} />}
+      {!!frocks.length && <NamedSection title="FROCKS" productData={frocks} />}
       <CollectionTabs />
       <FeaturesSection className="my-4" />
     </div>

@@ -26,6 +26,26 @@ const getProductName = (product: any) =>
 const getProductGender = (product: any) =>
   normalizeCategoryText(product?.gender || product?.category || "");
 
+const getProductCardKey = (product: any, index: number) => {
+  return [
+    product?.variantId,
+    product?.variant_id,
+    product?.primaryVariantId,
+    product?.primary_variant_id,
+    product?.barcode,
+    product?.ean_code,
+    product?.id,
+    product?.productId,
+    product?.product_id,
+    product?.color,
+    product?.colour,
+    index,
+  ]
+    .map((item) => String(item || "").trim())
+    .filter(Boolean)
+    .join("-");
+};
+
 const getRootGenderForCategory = (category: any) => {
   if (!category) return "";
   if (category.level === 0) return category.name || "";
@@ -185,7 +205,7 @@ const getProductsForTab = (products: Product[], activeTab: string) => {
 
   if (matched.length) return matched;
 
-  return products;
+  return [];
 };
 
 const CollectionTabsContent = ({ title }: { title?: string }) => {
@@ -459,8 +479,8 @@ const CollectionTabsContent = ({ title }: { title?: string }) => {
         ) : (
           <>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
-              {displayedProducts.map((product: any) => (
-                <div key={`${product.id}-${product.variantId || product.variant_id || product.productId || product.product_id}`} className="min-w-0">
+              {displayedProducts.map((product: any, index) => (
+                <div key={getProductCardKey(product, index)} className="min-w-0">
                   <ProductCard {...product} />
                 </div>
               ))}

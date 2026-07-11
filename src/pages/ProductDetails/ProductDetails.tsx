@@ -110,6 +110,11 @@ const getNumber = (value: any, fallback = 0) => {
   return Number.isFinite(n) ? n : fallback;
 };
 
+const getPositiveId = (value: any) => {
+  const n = Number(String(value || "").trim());
+  return Number.isInteger(n) && n > 0 ? n : null;
+};
+
 const clampDiscount = (value: any) => {
   const n = getNumber(value, 0);
   if (n < 0) return 0;
@@ -158,9 +163,9 @@ const getVariantColor = (variant?: ProductVariantOption | null) =>
 
 const getBackendProductId = (product: Product | null) => {
   const p: any = product || {};
-  const value = p.productId || p.product_id || p.id || "";
+  const value = p.productId || p.product_id || "";
   const parsed = Number(String(value).trim());
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : getPositiveId(p.id);
 };
 
 const getVariantIdValue = (variant?: ProductVariantOption | null, product?: Product | null) => {
@@ -356,19 +361,20 @@ const normalizeVariant = (item: any, product: any): ProductVariantOption => {
   const finalB2c = b2cDiscount > 0 && mrp > 0 ? calculateDiscountedPrice(mrp, b2cDiscount, directFinalB2c) : directFinalB2c;
   const originalB2b = getNumber(item?.original_price_b2b ?? item?.b2b_original_price ?? item?.cost_price ?? product?.original_price_b2b ?? product?.cost_price, originalB2c);
   const finalB2b = b2bDiscount > 0 && originalB2b > 0 ? calculateDiscountedPrice(originalB2b, b2bDiscount, originalB2b) : getNumber(item?.final_price_b2b ?? item?.b2b_final_price ?? item?.cost_price ?? product?.final_price_b2b, finalB2c);
-  const size = cleanSingleValue(item?.size || item?.selected_size || product?.size);
-  const colour = cleanSingleValue(item?.colour || item?.color || item?.selected_color || product?.colour || product?.color);
+  const size = cleanSingleValue(item?.size || item?.selected_size || "");
+  const colour = cleanSingleValue(item?.colour || item?.color || item?.selected_colour || item?.selectedColor || "");
+
   const variantImages = imagePairFromSource(item);
 
   return {
-    id: item?.id || item?.variant_id || item?.variantId || product?.variantId || product?.variant_id || product?.id || "",
-    variant_id: item?.variant_id || item?.variantId || item?.id || product?.variantId || product?.variant_id || product?.id || "",
-    product_id: item?.product_id || item?.productId || product?.productId || product?.product_id || product?.id,
+    id: item?.id || item?.variant_id || item?.variantId || "",
+    variant_id: item?.variant_id || item?.variantId || item?.id || "",
+    product_id: item?.product_id || item?.productId || product?.productId || product?.product_id || "",
     size,
     colour,
     color: colour,
-    barcode: getString(item?.barcode || item?.ean_code || product?.barcode || product?.ean_code),
-    ean_code: getString(item?.ean_code || item?.barcode || product?.ean_code || product?.barcode),
+    barcode: getString(item?.barcode || item?.ean_code || ""),
+    ean_code: getString(item?.ean_code || item?.barcode || ""),
     mrp,
     base_sale_price: getNumber(item?.base_sale_price ?? item?.original_sale_price ?? item?.sale_price, finalB2c),
     original_sale_price: getNumber(item?.original_sale_price ?? item?.base_sale_price ?? item?.sale_price, finalB2c),
@@ -384,10 +390,10 @@ const normalizeVariant = (item: any, product: any): ProductVariantOption => {
     final_price_b2c: finalB2c,
     original_price_b2b: originalB2b,
     final_price_b2b: finalB2b,
-    on_hand: getNumber(item?.on_hand ?? product?.on_hand ?? product?.onHand, 0),
-    reserved: getNumber(item?.reserved ?? product?.reserved, 0),
-    available_qty: getNumber(item?.available_qty ?? item?.on_hand ?? product?.available_qty ?? product?.onHand, 0),
-    in_stock: Boolean(item?.in_stock ?? true),
+    on_hand: getNumber(item?.on_hand ?? item?.onHand ?? 0),
+    reserved: getNumber(item?.reserved ?? 0),
+    available_qty: getNumber(item?.available_qty ?? item?.availableQty ?? item?.on_hand ?? item?.onHand ?? 0),
+    in_stock: Boolean(item?.in_stock ?? item?.inStock ?? true),
     image_url: variantImages[0] || item?.image_url || item?.imageUrl || "",
     imageUrl: variantImages[0] || item?.imageUrl || item?.image_url || "",
     front_image_url: variantImages[0] || item?.front_image_url || item?.frontImageUrl || "",
@@ -440,6 +446,19 @@ const sortVariantValues = (values: string[]) => {
     if (Number.isFinite(na) && Number.isFinite(nb) && na !== nb) return na - nb;
     return String(a).localeCompare(String(b), undefined, { numeric: true });
   });
+};
+
+const findVariantByRouteId = (variants: ProductVariantOption[], routeId: any) => {
+  const target = String(routeId || "").trim();
+  if (!target) return null;
+
+  return (
+    variants.find((variant) => String(variant.variant_id || "").trim() === target) ||
+    variants.find((variant) => String(variant.id || "").trim() === target) ||
+    variants.find((variant) => String(variant.barcode || "").trim() === target) ||
+    variants.find((variant) => String(variant.ean_code || "").trim() === target) ||
+    null
+  );
 };
 
 const findExactVariant = (
@@ -507,14 +526,13 @@ const productIdentityKeys = (product: any) => {
   const keys = [
     product?.productId,
     product?.product_id,
-    product?.id,
     product?.barcode,
     product?.ean_code,
   ]
     .map((item) => String(item || "").trim())
     .filter(Boolean);
 
-  const titleKey = `${String(product?.brand || "").trim().toLowerCase()}|${String(product?.title || product?.name || product?.product_name || "").trim().toLowerCase()}`;
+  const titleKey = `${String(product?.brand || product?.brand_name || "").trim().toLowerCase()}|${String(product?.title || product?.name || product?.product_name || "").trim().toLowerCase()}`;
   if (titleKey !== "|") keys.push(titleKey);
 
   return keys;
@@ -660,19 +678,43 @@ const ProductDetails: React.FC = () => {
         const allVariants = getProductVariants(foundProduct);
         const availableVariants = allVariants.filter((variant: ProductVariantOption) => getVariantStockCount(variant) > 0);
         const variants = availableVariants.length ? availableVariants : allVariants;
-        const firstVariant = variants[0];
+
+        const routeVariant = findVariantByRouteId(variants, id) || findVariantByRouteId(allVariants, id);
+
+        const productColor = cleanSingleValue(
+          (foundProduct as any).selectedColor ||
+            (foundProduct as any).selected_colour ||
+            (foundProduct as any).displayColor ||
+            (foundProduct as any).display_color ||
+            (foundProduct as any).color ||
+            (foundProduct as any).colour,
+        );
+
+        const productSize = cleanSingleValue(
+          (foundProduct as any).selectedSize ||
+            (foundProduct as any).selected_size ||
+            (foundProduct as any).displaySize ||
+            (foundProduct as any).display_size ||
+            (foundProduct as any).size,
+        );
+
+        const fieldVariant =
+          findExactVariant(variants, productSize, productColor) ||
+          findVariantByColor(variants, productColor) ||
+          findVariantBySize(variants, productSize);
+
+        const firstVariant = routeVariant || fieldVariant || variants[0];
         const initialOptions: Record<string, string> = {};
 
-        if (firstVariant?.colour || firstVariant?.color) {
-          initialOptions["Color"] = getVariantColor(firstVariant);
-        } else if (foundProduct.colors?.length) {
-          initialOptions["Color"] = cleanSingleValue(foundProduct.colors[0]);
+        const initialColor = getVariantColor(firstVariant) || productColor || cleanSingleValue((foundProduct as any).colors?.[0]);
+        const initialSize = cleanSingleValue(firstVariant?.size || productSize || (foundProduct as any).sizes?.[0]);
+
+        if (initialColor) {
+          initialOptions["Color"] = initialColor;
         }
 
-        if (firstVariant?.size) {
-          initialOptions["Size"] = cleanSingleValue(firstVariant.size);
-        } else if (foundProduct.sizes?.length) {
-          initialOptions["Size"] = cleanSingleValue(foundProduct.sizes[0]);
+        if (initialSize) {
+          initialOptions["Size"] = initialSize;
         }
 
         setProduct(foundProduct);
@@ -683,7 +725,7 @@ const ProductDetails: React.FC = () => {
 
         try {
           const stored: string[] = JSON.parse(localStorage.getItem("recentlyViewed") || "[]");
-          const currentId = String((foundProduct as any).variantId || (foundProduct as any).variant_id || (foundProduct as any).productId || (foundProduct as any).product_id || foundProduct.id);
+          const currentId = String(firstVariant?.variant_id || firstVariant?.id || (foundProduct as any).variantId || (foundProduct as any).variant_id || (foundProduct as any).id);
           const updated = [
             currentId,
             ...stored.filter((item: string) => item !== currentId),
@@ -993,6 +1035,19 @@ const ProductDetails: React.FC = () => {
       ston: "#8f8f8f",
       stone: "#8f8f8f",
       biscuit: "#d2b48c",
+      "coffee brown": "#4b2e1f",
+      cream: "#fffdd0",
+      lavender: "#b57edc",
+      "mehandi green": "#556b2f",
+      orange: "#f97316",
+      "deep skin": "#d2a679",
+      "bottel green": "#006a4e",
+      "bottle green": "#006a4e",
+      "ice green": "#d7fff0",
+      "light pink": "#f9a8d4",
+      "rama green": "#00897b",
+      "strawberry pink": "#fc5a8d",
+      purple: "#7e22ce",
     };
 
     const isHex = /^#([0-9A-F]{3}){1,2}$/i.test(val);
@@ -1044,7 +1099,7 @@ const ProductDetails: React.FC = () => {
     }
 
     const variantId = getVariantIdValue(exactSelectedVariant, product);
-    const realProductId = Number((product as any).productId || (product as any).product_id || product.id || 0) || variantId;
+    const realProductId = Number((product as any).productId || (product as any).product_id || 0) || variantId;
 
     if (!variantId) {
       setCartError("Product variant id not found.");

@@ -64,6 +64,20 @@ const bannerSlides: BannerSlide[] = [
   },
 ];
 
+const normalizeText = (value: any) =>
+  String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+
+const productName = (product: any) =>
+  normalizeText(product?.title || product?.name || product?.product_name || product?.productName || "");
+
+const productMatches = (product: Product, keywords: string[]) => {
+  const name = productName(product);
+  return keywords.some((keyword) => name.includes(normalizeText(keyword)));
+};
+
 const Women = () => {
   const [typedProducts, setTypedProducts] = useState<Product[]>([]);
 
@@ -109,30 +123,34 @@ const Women = () => {
   );
 
   const newDrops = useMemo(() => {
-    return typedProducts
-      .filter((product: Product) => product.gender === "Women")
-      .slice(0, 10);
-  }, [typedProducts]);
-
-  const shorts = useMemo(() => {
-    const shortsCatIds = categories
-      .filter((c: Category) => c.name.toLowerCase() === "shorts")
-      .map((c) => c.id);
-
     return typedProducts.filter(
-      (product: Product) =>
-        product.gender === "Women" && shortsCatIds.includes(String(product.categoryId)),
+      (product: Product) => normalizeText(product.gender) === "women",
     );
   }, [typedProducts]);
 
-  const joggers = useMemo(() => {
-    const joggerCatIds = categories
-      .filter((c: Category) => c.name.toLowerCase() === "joggers")
-      .map((c) => c.id);
+  const kurtiPantSets = useMemo(() => {
+    return typedProducts.filter((product: Product) =>
+      productMatches(product, ["kurti pant set", "kurti"]),
+    );
+  }, [typedProducts]);
 
+  const pants = useMemo(() => {
     return typedProducts.filter(
       (product: Product) =>
-        product.gender === "Women" && joggerCatIds.includes(String(product.categoryId)),
+        productMatches(product, ["ladies pant", "beggi"]) &&
+        !productMatches(product, ["kurti"]),
+    );
+  }, [typedProducts]);
+
+  const jeans = useMemo(() => {
+    return typedProducts.filter((product: Product) =>
+      productMatches(product, ["jean", "denim"]),
+    );
+  }, [typedProducts]);
+
+  const tops = useMemo(() => {
+    return typedProducts.filter((product: Product) =>
+      productMatches(product, ["t shirt", "top"]),
     );
   }, [typedProducts]);
 
@@ -141,14 +159,16 @@ const Women = () => {
       <HeroCarousel banners={HERO_BANNERS} />
       <CategoriesSection categories={womenCategories} title="Shop by Category" productData={typedProducts} />
       <NamedSection title="NEW DROPS" productData={newDrops} autoplay={false} />
-      <HeroProductSection products={newDrops} className="mb-4" />
-      <NamedSection title="Hot Summer Picks" productData={shorts} />
+      <HeroProductSection products={newDrops.slice(0, 10)} className="mb-4" />
+      {!!kurtiPantSets.length && <NamedSection title="KURTI PANT SETS" productData={kurtiPantSets} />}
+      {!!tops.length && <NamedSection title="TOPWEAR" productData={tops} />}
       <BannerSlider
         title="Latest Offers"
         slides={bannerSlides}
         className="py-4! md:py-8! md:pb-0!"
       />
-      <NamedSection title="JOGGERS" productData={joggers} />
+      {!!pants.length && <NamedSection title="PANTS" productData={pants} />}
+      {!!jeans.length && <NamedSection title="JEANS" productData={jeans} />}
       <CollectionTabs />
       <FeaturesSection className="my-4" />
     </div>

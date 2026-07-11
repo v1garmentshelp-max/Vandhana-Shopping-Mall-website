@@ -29,6 +29,29 @@ const getProductName = (product: any) =>
 const getProductGender = (product: any) =>
   normalizeText(product?.gender || product?.category || "");
 
+const getProductSelectedColor = (product: any) =>
+  String(product?.selectedColor || product?.selected_color || product?.colour || product?.color || "").trim();
+
+const getProductCardKey = (product: any, index: number) => {
+  return [
+    product?.variantId,
+    product?.variant_id,
+    product?.primaryVariantId,
+    product?.primary_variant_id,
+    product?.barcode,
+    product?.ean_code,
+    product?.id,
+    product?.productId,
+    product?.product_id,
+    product?.color,
+    product?.colour,
+    index,
+  ]
+    .map((item) => String(item || "").trim())
+    .filter(Boolean)
+    .join("-");
+};
+
 const getCategoryRoot = (category: any) => {
   if (!category) return null;
   if (category.level === 0) return category;
@@ -286,7 +309,15 @@ const getFilterConfig = (gender: string, products: Product[]) => {
   );
 
   const colorOptions = Array.from(
-    new Set(genderProducts.flatMap((product: any) => product.colors || product.colours || []).filter(Boolean)),
+    new Set(
+      genderProducts
+        .flatMap((product: any) => [
+          getProductSelectedColor(product),
+          ...(product.colors || []),
+          ...(product.colours || []),
+        ])
+        .filter(Boolean),
+    ),
   );
 
   const sizeOptions = Array.from(
@@ -484,9 +515,12 @@ export default function Collection() {
     }
 
     if (activeFilters["Color"]?.length) {
-      result = result.filter((p: any) =>
-        (p.colors || p.colours || []).some((c: string) => activeFilters["Color"].includes(c)),
-      );
+      result = result.filter((p: any) => {
+        const selectedColor = normalizeText(getProductSelectedColor(p));
+        const activeColors = activeFilters["Color"].map(normalizeText);
+        if (selectedColor && activeColors.includes(selectedColor)) return true;
+        return (p.colors || p.colours || []).some((c: string) => activeColors.includes(normalizeText(c)));
+      });
     }
 
     if (activeFilters["Brand"]?.length) {
@@ -729,8 +763,8 @@ export default function Collection() {
             ) : filteredProducts.length > 0 ? (
               <>
                 <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
-                  {filteredProducts.slice(0, visibleCount).map((product: any) => (
-                    <ProductCard key={`${product.id}-${product.variant_id || product.variantId || product.product_id || product.productId || ""}`} {...product} />
+                  {filteredProducts.slice(0, visibleCount).map((product: any, index) => (
+                    <ProductCard key={getProductCardKey(product, index)} {...product} />
                   ))}
                   {isLoadingMore &&
                     visibleCount < filteredProducts.length &&
