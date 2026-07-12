@@ -360,13 +360,6 @@ const findCategoryId = (gender: ProductGender, productName: string) => {
   return direct?.id || leafCategories[0]?.id || "";
 };
 
-const getRawVariants = (row: any) => {
-  if (Array.isArray(row?.variants) && row.variants.length) return row.variants;
-  if (Array.isArray(row?.color_variants) && row.color_variants.length) return row.color_variants;
-  if (Array.isArray(row?.colorVariants) && row.colorVariants.length) return row.colorVariants;
-  return [row];
-};
-
 const getDetailVariants = (row: any) => {
   if (Array.isArray(row?.variants) && row.variants.length) return row.variants;
   if (Array.isArray(row?.color_variants) && row.color_variants.length) return row.color_variants;
