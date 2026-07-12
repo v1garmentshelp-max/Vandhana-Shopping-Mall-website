@@ -10,8 +10,6 @@ import banner4 from "../assets/offers-poster-2.jpeg";
 import HeroCarousel, { type Banner } from "../components/HeroCarousel";
 import { useEffect, useMemo, useState } from "react";
 import CategoriesSection from "../components/CategoriesSection";
-import type { Category } from "../Models/Category";
-import categories from "../Data/categories.json";
 import type { Product } from "../Models/Product";
 import poster1 from "../assets/hero-poster-1.jpeg";
 import poster2 from "../assets/hero-poster-2.jpeg";
@@ -20,86 +18,47 @@ import poster4 from "../assets/hero-poster-4.jpeg";
 import poster5 from "../assets/hero-poster-5.jpeg";
 import poster6 from "../assets/hero-poster-6.jpeg";
 import { CollectionTabs } from "../components/CollectionTabs";
-import { fetchProductsByGender } from "../services/productsApi";
+import { fetchCategoriesByGender, fetchProductsByGender, type StorefrontCategory } from "../services/productsApi";
 
 const HERO_BANNERS: Banner[] = [
-  {
-    id: 1,
-    image: poster1,
-    alt: "Anniversary Bash Sale",
-    link: "/collections",
-  },
-  {
-    id: 2,
-    image: poster2,
-    alt: "Jeans Collection",
-    link: "/collections",
-  },
-  {
-    id: 3,
-    image: poster3,
-    alt: "Oversized Tees Offer",
-    link: "/collections",
-  },
-  {
-    id: 4,
-    image: poster6,
-    alt: "Anniversary Bash Sale",
-    link: "/collections",
-  },
-  {
-    id: 5,
-    image: poster4,
-    alt: "Jeans Collection",
-    link: "/collections",
-  },
-  {
-    id: 6,
-    image: poster5,
-    alt: "Oversized Tees Offer",
-    link: "/collections",
-  },
+  { id: 1, image: poster1, alt: "Anniversary Bash Sale", link: "/collections?gender=Men" },
+  { id: 2, image: poster2, alt: "Jeans Collection", link: "/collections?gender=Men" },
+  { id: 3, image: poster3, alt: "Oversized Tees Offer", link: "/collections?gender=Men" },
+  { id: 4, image: poster6, alt: "Anniversary Bash Sale", link: "/collections?gender=Men" },
+  { id: 5, image: poster4, alt: "Jeans Collection", link: "/collections?gender=Men" },
+  { id: 6, image: poster5, alt: "Oversized Tees Offer", link: "/collections?gender=Men" },
 ];
 
 const bannerSlides: BannerSlide[] = [
-  {
-    id: 1,
-    desktopImage: banner1,
-    link: "/",
-  },
-  {
-    id: 2,
-    desktopImage: banner2,
-    link: "/",
-  },
-  {
-    id: 3,
-    desktopImage: banner4,
-    link: "/",
-  },
-  {
-    id: 4,
-    desktopImage: banner3,
-    link: "/",
-  },
+  { id: 1, desktopImage: banner1, link: "/collections?gender=Men" },
+  { id: 2, desktopImage: banner2, link: "/collections?gender=Men" },
+  { id: 3, desktopImage: banner4, link: "/collections?gender=Men" },
+  { id: 4, desktopImage: banner3, link: "/collections?gender=Men" },
 ];
 
 const normalizeText = (value: any) =>
   String(value || "")
     .toLowerCase()
+    .replace(/-/g, " ")
+    .replace(/&/g, " and ")
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
 
-const productName = (product: any) =>
-  normalizeText(product?.title || product?.name || product?.product_name || product?.productName || "");
+const bySlug = (products: Product[], slugs: string[]) => {
+  const set = new Set(slugs.map(normalizeText));
+  return products.filter((product: any) => set.has(normalizeText(product.categorySlug || product.category_slug)));
+};
 
-const productMatches = (product: Product, keywords: string[]) => {
-  const name = productName(product);
-  return keywords.some((keyword) => name.includes(normalizeText(keyword)));
+const byName = (products: Product[], words: string[]) => {
+  return products.filter((product: any) => {
+    const text = normalizeText(`${product.title} ${product.product_name} ${product.name} ${product.categoryName} ${product.category_name}`);
+    return words.some((word) => text.includes(normalizeText(word)));
+  });
 };
 
 const Men = () => {
   const [typedProducts, setTypedProducts] = useState<Product[]>([]);
+  const [pageCategories, setPageCategories] = useState<StorefrontCategory[]>([]);
 
   useEffect(() => {
     localStorage.setItem("preferred_gender", "Men");
@@ -109,76 +68,58 @@ const Men = () => {
   useEffect(() => {
     let alive = true;
 
-    const loadProducts = async () => {
+    const loadData = async () => {
       try {
-        const data = await fetchProductsByGender("Men", 3);
-        if (alive) setTypedProducts(data);
+        const [products, cats] = await Promise.all([
+          fetchProductsByGender("Men", 3),
+          fetchCategoriesByGender("Men"),
+        ]);
+
+        if (alive) {
+          setTypedProducts(products);
+          setPageCategories(cats);
+        }
       } catch {
-        if (alive) setTypedProducts([]);
+        if (alive) {
+          setTypedProducts([]);
+          setPageCategories([]);
+        }
       }
     };
 
-    void loadProducts();
+    void loadData();
 
     return () => {
       alive = false;
     };
   }, []);
 
-  const menCatId = categories.find(
-    (c: Category) => c.name === "Men" && c.level === 0,
-  )?.id;
-
-  const menTopId = categories.find(
-    (c: Category) => c.name === "Topwear" && c.parentId === menCatId,
-  )?.id;
-
-  const menBottomId = categories.find(
-    (c: Category) => c.name === "Bottomwear" && c.parentId === menCatId,
-  )?.id;
-
-  const menCategories = categories.filter(
-    (category: Category) =>
-      category.parentId === menTopId || category.parentId === menBottomId,
-  );
-
-  const newDrops = useMemo(() => {
-    return typedProducts.filter(
-      (product: Product) => normalizeText(product.gender) === "men",
-    );
-  }, [typedProducts]);
+  const newDrops = useMemo(() => typedProducts, [typedProducts]);
 
   const tshirts = useMemo(() => {
-    return typedProducts.filter((product: Product) =>
-      productMatches(product, ["t shirt", "oversized"]),
-    );
+    const matched = bySlug(typedProducts, ["t-shirts-polo"]);
+    return matched.length ? matched : byName(typedProducts, ["t shirt", "oversized", "polo"]);
   }, [typedProducts]);
 
-  const polos = useMemo(() => {
-    return typedProducts.filter((product: Product) =>
-      productMatches(product, ["polo"]),
-    );
+  const cargos = useMemo(() => {
+    const matched = bySlug(typedProducts, ["cargo-pants"]);
+    return matched.length ? matched : byName(typedProducts, ["cargo"]);
   }, [typedProducts]);
 
   const pants = useMemo(() => {
-    return typedProducts.filter((product: Product) =>
-      productMatches(product, ["cargo pant", "pant"]),
-    );
+    const matched = bySlug(typedProducts, ["pants"]);
+    return matched.length ? matched : byName(typedProducts, ["pant"]);
   }, [typedProducts]);
 
   return (
     <div className="w-full bg-white">
       <HeroCarousel banners={HERO_BANNERS} />
-      <CategoriesSection categories={menCategories} title="Shop by Category" productData={typedProducts} />
+      <CategoriesSection categories={pageCategories as any} title="Shop by Category" productData={typedProducts} />
       <NamedSection title="NEW DROPS" productData={newDrops} autoplay={false} />
       <HeroProductSection products={newDrops.slice(0, 10)} className="mb-4" />
-      {!!tshirts.length && <NamedSection title="T-SHIRTS" productData={tshirts} />}
-      {!!polos.length && <NamedSection title="POLO T-SHIRTS" productData={polos} />}
-      <BannerSlider
-        title="Latest Offers"
-        slides={bannerSlides}
-        className="py-4! md:py-8! md:pb-0!"
-      />
+      {!!tshirts.length && <NamedSection title="T-SHIRTS & POLO" productData={tshirts} />}
+      <BannerSlider title="Latest Offers" slides={bannerSlides} className="py-4! md:py-8! md:pb-0!" />
+      {!!cargos.length && <NamedSection title="CARGO PANTS" productData={cargos} />}
       {!!pants.length && <NamedSection title="PANTS" productData={pants} />}
       <CollectionTabs />
       <FeaturesSection className="my-4" />

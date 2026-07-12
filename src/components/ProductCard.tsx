@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import type { Product } from "../Models/Product";
 import { Heart } from "lucide-react";
@@ -54,6 +54,155 @@ const normalizeBarcode = (value: any) => {
     .replace(/\s+/g, "")
     .toUpperCase()
     .replace(/[^A-Z0-9._-]/g, "");
+};
+
+const cleanText = (value: any) => {
+  return String(value || "")
+    .replace(/\s+/g, " ")
+    .trim();
+};
+
+const normalizeText = (value: any) => {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/['’]/g, "")
+    .replace(/[./_-]+/g, " ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+};
+
+const toTitleCase = (value: any) => {
+  return cleanText(value)
+    .toLowerCase()
+    .split(" ")
+    .filter(Boolean)
+    .map((word) => {
+      if (word.length <= 2 && /^[a-z]+$/.test(word)) return word.toUpperCase();
+      return word.charAt(0).toUpperCase() + word.slice(1);
+    })
+    .join(" ");
+};
+
+const removeStartToken = (text: string, token: any) => {
+  const raw = cleanText(text);
+  const cleanToken = cleanText(token);
+  if (!raw || !cleanToken) return raw;
+
+  const rawNorm = normalizeText(raw);
+  const tokenNorm = normalizeText(cleanToken);
+
+  if (!rawNorm.startsWith(tokenNorm)) return raw;
+
+  const rawWords = raw.split(" ");
+  const tokenWordCount = cleanToken.split(" ").filter(Boolean).length;
+  return cleanText(rawWords.slice(tokenWordCount).join(" "));
+};
+
+const commonColorWords = [
+  "black",
+  "white",
+  "h white",
+  "off white",
+  "cream",
+  "beige",
+  "brown",
+  "green",
+  "b green",
+  "blue",
+  "sky blue",
+  "sea blue",
+  "ice blue",
+  "navy",
+  "grey",
+  "gray",
+  "d grey",
+  "dark grey",
+  "dark gray",
+  "charcoal",
+  "lavender",
+  "pink",
+  "red",
+  "maroon",
+  "yellow",
+  "mustard",
+  "orange",
+  "purple",
+  "tint",
+  "olive",
+  "khaki"
+];
+
+const removeColorPrefix = (text: string, colorValue: any) => {
+  let next = cleanText(text);
+  const color = cleanText(colorValue);
+
+  if (color) {
+    const colorParts = [
+      color,
+      color.replace(/\./g, " "),
+      color.replace(/\//g, " "),
+      color.replace(/-/g, " ")
+    ];
+
+    for (const part of colorParts) {
+      const before = next;
+      next = removeStartToken(next, part);
+      if (before !== next) return next;
+    }
+  }
+
+  for (const colorWord of commonColorWords) {
+    const before = next;
+    next = removeStartToken(next, colorWord);
+    if (before !== next) return next;
+  }
+
+  return next;
+};
+
+const cleanDisplayTitle = (props: any) => {
+  const rawTitle = cleanText(props.title || props.name || props.product_name || props.productName || "Product");
+  const brand = cleanText(props.brand || props.brand_name || props.brandName);
+  const color = cleanText(props.colour || props.color || props.selectedColour || props.selectedColor || props.selected_colour || props.selected_color);
+  const categoryName = cleanText(props.categoryName || props.category_name || "");
+
+  let title = rawTitle
+    .replace(/['’]/g, "'")
+    .replace(/\bmen's\b/gi, "MENS")
+    .replace(/\bwomen's\b/gi, "WOMENS")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  title = removeStartToken(title, brand);
+  title = removeStartToken(title, "MENS");
+  title = removeStartToken(title, "MEN");
+  title = removeStartToken(title, "WOMENS");
+  title = removeStartToken(title, "WOMEN");
+  title = removeStartToken(title, "LADIES");
+  title = removeStartToken(title, "KIDS");
+  title = removeStartToken(title, "BOYS");
+  title = removeStartToken(title, "GIRLS");
+  title = removeColorPrefix(title, color);
+
+  if (normalizeText(title).length <= 2 && categoryName) title = categoryName;
+  if (!title) title = categoryName || rawTitle || "Product";
+
+  return toTitleCase(title);
+};
+
+const cleanDisplayBrand = (value: any) => {
+  const brand = cleanText(value || "Vandhana");
+  return brand.toUpperCase();
+};
+
+const formatPrice = (value: any) => {
+  const n = Number(value || 0);
+  if (!Number.isFinite(n)) return "0";
+  return n.toLocaleString("en-IN", {
+    maximumFractionDigits: 0,
+  });
 };
 
 const getImageString = (value: any) => {
@@ -136,14 +285,12 @@ const findImageByType = (images: any[], type: string, allowedCodes: Set<string>)
 
 export const ProductCardSkeleton: React.FC = () => {
   return (
-    <div className="max-w-[400px] block animate-pulse">
-      <div className="relative aspect-2/3 overflow-hidden rounded-xl bg-gray-200"></div>
-      <div className="mt-3 space-y-2">
-        <div className="h-5 bg-gray-200 rounded w-3/4"></div>
-        <div className="h-4 bg-gray-200 rounded w-full"></div>
-        <div className="flex gap-2 items-center mt-2">
-          <div className="h-5 bg-gray-200 rounded w-1/3"></div>
-        </div>
+    <div className="w-full max-w-[400px] block animate-pulse">
+      <div className="relative aspect-[3/4] overflow-hidden rounded-xl bg-gray-200"></div>
+      <div className="mt-3 min-h-[86px] space-y-2">
+        <div className="h-4 bg-gray-200 rounded w-2/5"></div>
+        <div className="h-6 bg-gray-200 rounded w-4/5"></div>
+        <div className="h-6 bg-gray-200 rounded w-1/3 mt-3"></div>
       </div>
     </div>
   );
@@ -160,7 +307,6 @@ export const ProductCard: React.FC<Product> = (props: any) => {
     primary_variant_id,
     images,
     title,
-    description,
     brand,
     price,
     originalPrice,
@@ -186,6 +332,9 @@ export const ProductCard: React.FC<Product> = (props: any) => {
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [isUpdatingWishlist, setIsUpdatingWishlist] = useState(false);
 
+  const displayTitle = useMemo(() => cleanDisplayTitle(props), [props]);
+  const displayBrand = useMemo(() => cleanDisplayBrand(brand || props.brand_name || props.brandName), [brand, props.brand_name, props.brandName]);
+
   const allowedImageCodes = useMemo(() => {
     const codes = [
       barcode,
@@ -207,28 +356,22 @@ export const ProductCard: React.FC<Product> = (props: any) => {
     const typedMain = findImageByType(imageList, "main", allowedImageCodes);
     const typedBack = findImageByType(imageList, "back", allowedImageCodes);
 
-    const front = firstValidImage(
-      [
-        frontImageUrl,
-        front_image_url,
-        typedFront,
-        mainImageUrl,
-        main_image_url,
-        typedMain,
-        imageUrl,
-        image_url,
-      ],
-      allowedImageCodes
-    ) || "/placeholder.svg";
+    const front =
+      firstValidImage(
+        [
+          frontImageUrl,
+          front_image_url,
+          typedFront,
+          mainImageUrl,
+          main_image_url,
+          typedMain,
+          imageUrl,
+          image_url,
+        ],
+        allowedImageCodes
+      ) || "/placeholder.svg";
 
-    const back = firstValidImage(
-      [
-        backImageUrl,
-        back_image_url,
-        typedBack,
-      ],
-      allowedImageCodes
-    );
+    const back = firstValidImage([backImageUrl, back_image_url, typedBack], allowedImageCodes);
 
     return {
       front,
@@ -261,24 +404,28 @@ export const ProductCard: React.FC<Product> = (props: any) => {
     return encodeURIComponent(String(finalVariantId || id));
   }, [finalVariantId, id]);
 
-  const discount = originalPrice && originalPrice > price ? Math.round(((originalPrice - price) / originalPrice) * 100) : 0;
+  const finalPrice = Number(price || 0);
+  const finalOriginalPrice = Number(originalPrice || props.original_price || props.mrp || 0);
+  const discount = finalOriginalPrice && finalOriginalPrice > finalPrice ? Math.round(((finalOriginalPrice - finalPrice) / finalOriginalPrice) * 100) : 0;
   const frontImg = frontFailed ? "/placeholder.svg" : resolvedImages.front || "/placeholder.svg";
   const backImg = !backFailed && resolvedImages.back && !sameImage(resolvedImages.back, frontImg) ? resolvedImages.back : "";
   const hasBackImage = Boolean(backImg);
 
-  React.useEffect(() => {
+  useEffect(() => {
     setFrontFailed(false);
     setBackFailed(false);
   }, [resolvedImages.front, resolvedImages.back, finalVariantId, id]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const syncWishlistState = () => {
       const user = getStoredUser();
       const userId = Number(user?.id || 0);
+
       if (!userId || !wishlistVariantId) {
         setIsWishlisted(false);
         return;
       }
+
       const ids = readWishlistIds(userId);
       setIsWishlisted(ids.includes(wishlistVariantId));
     };
@@ -367,17 +514,17 @@ export const ProductCard: React.FC<Product> = (props: any) => {
   };
 
   return (
-    <Link to={`/product/${routeId}`} className={`max-w-[400px] cursor-pointer block ${hasBackImage ? "group" : ""}`}>
-      <div className="relative aspect-2/3 overflow-hidden rounded-xl bg-gray-100">
+    <Link to={`/product/${routeId}`} className={`w-full max-w-[400px] cursor-pointer block overflow-hidden ${hasBackImage ? "group" : ""}`}>
+      <div className="relative aspect-[3/4] overflow-hidden rounded-xl bg-gray-100">
         {(isSale || discount > 0) && (
-          <div className="absolute top-3 left-3 z-20 bg-primary text-black px-2 py-0.5 h-[18px] flex items-center justify-center rounded-xs">
-            <span className="font-big-shoulders font-bold text-[0.8rem] uppercase">Sale</span>
+          <div className="absolute top-0 left-3 z-20 bg-primary text-black px-3 py-0.5 h-[22px] flex items-center justify-center rounded-b-sm">
+            <span className="font-big-shoulders font-bold text-[0.82rem] leading-none uppercase">Sale</span>
           </div>
         )}
 
         <img
           src={frontImg}
-          alt={title}
+          alt={displayTitle || title}
           loading="lazy"
           onError={() => setFrontFailed(true)}
           className={`h-full w-full object-cover object-top transition-all duration-500 relative z-10 ${
@@ -388,7 +535,7 @@ export const ProductCard: React.FC<Product> = (props: any) => {
         {hasBackImage ? (
           <img
             src={backImg}
-            alt={`${title} back`}
+            alt={`${displayTitle || title} back`}
             loading="lazy"
             onError={() => setBackFailed(true)}
             className="h-full w-full object-cover object-top transition-all duration-500 group-hover:scale-105 absolute inset-0 opacity-0 group-hover:opacity-100 z-10"
@@ -399,31 +546,32 @@ export const ProductCard: React.FC<Product> = (props: any) => {
           type="button"
           onClick={handleWishlistToggle}
           disabled={isUpdatingWishlist}
-          className="cursor-pointer hover:bg-gray-100 absolute bottom-3 right-3 z-40 bg-white rounded-full p-2 shadow-sm transition-transform hover:scale-110 disabled:opacity-60"
+          className="cursor-pointer hover:bg-gray-100 absolute bottom-3 right-3 z-40 bg-white rounded-full p-2.5 shadow-md transition-transform hover:scale-110 disabled:opacity-60"
         >
           <Heart size={18} className={isWishlisted ? "fill-red-500 text-red-500" : "text-black"} />
         </button>
       </div>
 
-      <div className="mt-2">
-        {brand ? (
-          <p className="text-[0.72rem] font-bold tracking-wide text-gray-500 font-poppins uppercase truncate">{brand}</p>
-        ) : null}
-
-        <h3 aria-label={title} className="text-[1.2rem] font-bold tracking-tight text-black font-big-shoulders capitalize truncate">
-          {title}
-        </h3>
-
-        <p aria-label={description} className="text-gray-500 max-w-[96%] font-poppins text-[0.8rem] leading-relaxed line-clamp-1">
-          {description}
+      <div className="mt-3 min-h-[86px] flex flex-col">
+        <p className="text-[0.72rem] md:text-[0.78rem] font-extrabold tracking-wide text-gray-500 font-poppins uppercase truncate leading-tight">
+          {displayBrand}
         </p>
 
-        <div className="flex items-center font-source-sans gap-2 mt-0.5">
-          <span className="text-[1.2rem] font-bold text-black">₹{price}</span>
-          {originalPrice && price < originalPrice && (
+        <h3
+          aria-label={displayTitle}
+          title={displayTitle}
+          className="mt-1 text-[1.1rem] md:text-[1.2rem] font-bold tracking-tight text-black font-big-shoulders uppercase leading-[1.05] line-clamp-2 min-h-[2.35rem]"
+        >
+          {displayTitle}
+        </h3>
+
+        <div className="mt-auto pt-2 flex items-center font-source-sans gap-2 min-h-[32px] overflow-hidden">
+          <span className="text-[1.15rem] md:text-[1.22rem] font-extrabold text-black whitespace-nowrap">₹{formatPrice(finalPrice)}</span>
+
+          {finalOriginalPrice > finalPrice && (
             <>
-              <span className="text-[1rem] font-medium text-gray-400 line-through">₹{originalPrice}</span>
-              <span className="text-[13px] font-bold text-green-600 tracking-tight">{discount}% OFF</span>
+              <span className="text-[0.9rem] md:text-[1rem] font-medium text-gray-400 line-through whitespace-nowrap">₹{formatPrice(finalOriginalPrice)}</span>
+              <span className="text-[0.72rem] md:text-[0.78rem] font-extrabold text-green-600 tracking-tight whitespace-nowrap">{discount}% OFF</span>
             </>
           )}
         </div>

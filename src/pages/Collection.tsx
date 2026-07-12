@@ -4,9 +4,8 @@ import { FiChevronDown, FiChevronUp, FiFilter, FiX } from "react-icons/fi";
 import { FaStar } from "react-icons/fa";
 import { BiSortAlt2 } from "react-icons/bi";
 import { ProductCard, ProductCardSkeleton } from "../components/ProductCard";
-import type { Product } from "../Models/Product";
-import categories from "../Data/categories.json";
-import { fetchBranchProducts } from "../services/productsApi";
+import type { Product, ProductGender } from "../Models/Product";
+import { fetchBranchProducts, fetchCategoriesTree, flattenCategoryTree, type StorefrontCategory } from "../services/productsApi";
 
 const normalizeText = (value: any) =>
   String(value || "")
@@ -17,14 +16,12 @@ const normalizeText = (value: any) =>
     .replace(/\s+/g, " ")
     .trim();
 
-const toTitleCase = (value: any) => {
-  const text = String(value || "").trim().toLowerCase();
-  if (!text) return "";
-  return text.charAt(0).toUpperCase() + text.slice(1);
+const toTitleGender = (value: any): ProductGender => {
+  const text = normalizeText(value);
+  if (text === "women") return "Women";
+  if (text === "kids" || text === "kid") return "Kids";
+  return "Men";
 };
-
-const getProductName = (product: any) =>
-  normalizeText(product?.title || product?.name || product?.product_name || product?.productName || "");
 
 const getProductGender = (product: any) =>
   normalizeText(product?.gender || product?.category || "");
@@ -52,286 +49,86 @@ const getProductCardKey = (product: any, index: number) => {
     .join("-");
 };
 
-const getCategoryRoot = (category: any) => {
-  if (!category) return null;
-  if (category.level === 0) return category;
+const findCategoryFromParams = (categories: StorefrontCategory[], searchParams: URLSearchParams) => {
+  const categoryId = searchParams.get("category_id") || searchParams.get("categoryId") || "";
+  const categorySlug = searchParams.get("category_slug") || searchParams.get("categorySlug") || "";
+  const category = searchParams.get("category") || "";
 
-  const parent = categories.find((item: any) => item.id === category.parentId);
-  if (!parent) return null;
-  if (parent.level === 0) return parent;
-
-  return categories.find((item: any) => item.id === parent.parentId) || null;
-};
-
-const getCategoryRootName = (category: any) => {
-  const root = getCategoryRoot(category);
-  return root?.name || "";
-};
-
-const categoryBelongsToGender = (category: any, gender: string) => {
-  if (!gender) return true;
-  return normalizeText(getCategoryRootName(category)) === normalizeText(gender);
-};
-
-const findCategoryFromParam = (value: any, preferredGender?: string) => {
-  const query = normalizeText(value);
-  if (!query) return null;
-
-  const candidates = categories.filter((category: any) => {
-    const name = normalizeText(category.name);
-    const slug = normalizeText(category.slug);
-    const genderName = normalizeText(`${getCategoryRootName(category)} ${category.name}`);
-    return name === query || slug === query || genderName === query || slug.endsWith(query) || query.endsWith(name);
-  });
-
-  if (preferredGender) {
-    const genderMatch = candidates.find((category: any) => categoryBelongsToGender(category, preferredGender));
-    if (genderMatch) return genderMatch;
+  if (categoryId) {
+    const found = categories.find((item) => String(item.id) === String(categoryId));
+    if (found) return found;
   }
 
-  return candidates[0] || null;
-};
-
-const getInitialFilters = (searchParams: URLSearchParams) => {
-  const initial: Record<string, string[]> = {};
-  const cat = searchParams.get("category");
-  const storedGender = localStorage.getItem("preferred_gender");
-  const matchedCategory = cat ? findCategoryFromParam(cat, storedGender || undefined) || findCategoryFromParam(cat) : null;
-  const matchedGender = matchedCategory ? getCategoryRootName(matchedCategory) : "";
-  const finalGender = matchedGender || toTitleCase(storedGender || "");
-
-  if (finalGender) initial["Gender"] = [finalGender];
-  if (matchedCategory) {
-    initial["Category"] = [matchedCategory.name];
-  } else if (cat) {
-    initial["Category"] = [String(cat).replace(/-/g, " ")];
+  if (categorySlug) {
+    const found = categories.find((item) => normalizeText(item.slug) === normalizeText(categorySlug));
+    if (found) return found;
   }
 
-  return initial;
-};
+  if (category) {
+    const query = normalizeText(category);
 
-const getCategoryKeywords = (categoryName: string) => {
-  const category = normalizeText(categoryName);
-
-  if (category.includes("kurti")) return ["kurti pant set", "kurti"];
-  if (category.includes("polo")) return ["polo"];
-  if (category.includes("cargo")) return ["cargo pant", "cargo"];
-  if (category.includes("night dress")) return ["night dress"];
-  if (category.includes("beggi") || category.includes("baggy") || category.includes("bagge")) return ["beggi", "baggy", "bagge"];
-  if (category.includes("jean")) return ["jean", "denim"];
-  if (category.includes("top") && !category.includes("topwear")) return ["top", "h s top"];
-  if (category.includes("t shirt") || category.includes("tshirt") || category.includes("tee")) return ["t shirt", "tshirt", "oversized t shirt"];
-  if (category.includes("pant")) return ["pant"];
-  if (category.includes("shirt")) return ["shirt"];
-  if (category.includes("dress")) return ["dress", "frock"];
-  if (category.includes("jogger")) return ["jogger"];
-  if (category.includes("short")) return ["short"];
-  if (category.includes("pyjama") || category.includes("pajama")) return ["pyjama", "pajama"];
-  if (category.includes("vest")) return ["vest"];
-  if (category.includes("hoodie")) return ["hoodie"];
-  if (category.includes("sweatshirt")) return ["sweatshirt"];
-
-  return category.split(" ").filter((item) => item.length > 2);
-};
-
-const productMatchesKeyword = (title: string, keyword: string, categoryName: string) => {
-  const t = normalizeText(title);
-  const k = normalizeText(keyword);
-  const c = normalizeText(categoryName);
-
-  if (!t || !k) return false;
-
-  if (c.includes("kurti")) {
-    return t.includes("kurti pant set") || t.includes("kurti");
-  }
-
-  if (c.includes("polo")) {
-    return t.includes("polo");
-  }
-
-  if (c.includes("cargo")) {
-    return t.includes("cargo");
-  }
-
-  if (c.includes("night dress")) {
-    return t.includes("night dress");
-  }
-
-  if (c.includes("beggi") || c.includes("baggy") || c.includes("bagge")) {
-    return t.includes("beggi") || t.includes("baggy") || t.includes("bagge");
-  }
-
-  if (c.includes("jean")) {
-    return t.includes("jean") || t.includes("denim");
-  }
-
-  if (c.includes("top") && !c.includes("topwear")) {
-    return t.includes("top") || t.includes("h s top");
-  }
-
-  if (c.includes("t shirt") || c.includes("tshirt") || c.includes("tee")) {
-    return (t.includes("t shirt") || t.includes("tshirt") || t.includes("oversized")) && !t.includes("polo");
-  }
-
-  if (c.includes("pant")) {
-    if (t.includes("kurti pant set")) return false;
-    if (c === "pants" || c.endsWith(" pants")) {
-      return t.includes("pant") && !t.includes("jean") && !t.includes("beggi") && !t.includes("bagge") && !t.includes("cargo");
-    }
-    return t.includes("pant");
-  }
-
-  if (c.includes("shirt")) {
-    return t.includes("shirt") && !t.includes("t shirt") && !t.includes("tshirt") && !t.includes("polo");
-  }
-
-  return t.includes(k);
-};
-
-const productMatchesCategoryName = (product: Product, categoryName: string) => {
-  const title = getProductName(product);
-  const keywords = getCategoryKeywords(categoryName);
-  return keywords.some((keyword) => productMatchesKeyword(title, keyword, categoryName));
-};
-
-const productMatchesLevel1Category = (product: Product, category: any) => {
-  const title = getProductName(product);
-  const categoryName = normalizeText(category?.name || category?.slug);
-
-  if (categoryName.includes("topwear")) {
-    return (
-      title.includes("t shirt") ||
-      title.includes("tshirt") ||
-      title.includes("shirt") ||
-      title.includes("polo") ||
-      title.includes("top") ||
-      title.includes("kurti") ||
-      title.includes("dress") ||
-      title.includes("frock") ||
-      title.includes("vest") ||
-      title.includes("hoodie") ||
-      title.includes("sweatshirt")
-    );
-  }
-
-  if (categoryName.includes("bottomwear")) {
-    return (
-      title.includes("pant") ||
-      title.includes("jean") ||
-      title.includes("denim") ||
-      title.includes("cargo") ||
-      title.includes("jogger") ||
-      title.includes("short") ||
-      title.includes("pyjama") ||
-      title.includes("pajama") ||
-      title.includes("beggi") ||
-      title.includes("bagge") ||
-      title.includes("baggy")
-    );
-  }
-
-  return productMatchesCategoryName(product, category.name || "");
-};
-
-const productMatchesCategory = (product: Product, category: any) => {
-  if (!category) return true;
-  const productGender = getProductGender(product);
-  const rootGender = normalizeText(getCategoryRootName(category));
-
-  if (rootGender && productGender && rootGender !== productGender) return false;
-
-  if (category.level === 0) return true;
-  if (category.level === 1) return productMatchesLevel1Category(product, category);
-
-  return productMatchesCategoryName(product, category.name || category.slug || "");
-};
-
-const getValidSelectedCategories = (selectedNames: string[], gender: string) => {
-  const selectedNormalized = selectedNames.map(normalizeText).filter(Boolean);
-
-  const matched = categories.filter((category: any) => {
-    const name = normalizeText(category.name);
-    const slug = normalizeText(category.slug);
-    const genderName = normalizeText(`${getCategoryRootName(category)} ${category.name}`);
-    const isSelected = selectedNormalized.some((selected) => selected === name || selected === slug || selected === genderName || slug.endsWith(selected));
-    return isSelected && categoryBelongsToGender(category, gender);
-  });
-
-  const selectedLevel2Ids = new Set(
-    matched.filter((category: any) => category.level === 2).map((category: any) => category.id),
-  );
-
-  const effective: any[] = [];
-
-  matched
-    .filter((category: any) => category.level === 2)
-    .forEach((category: any) => effective.push(category));
-
-  matched
-    .filter((category: any) => category.level === 1)
-    .forEach((category: any) => {
-      const children = categories.filter((item: any) => item.parentId === category.id);
-      const selectedChildren = children.filter((child: any) => selectedLevel2Ids.has(child.id));
-      if (!selectedChildren.length) effective.push(category);
+    const found = categories.find((item) => {
+      const name = normalizeText(item.name);
+      const slug = normalizeText(item.slug);
+      const path = normalizeText(item.categoryPath || item.category_path);
+      return name === query || slug === query || path === query || slug.endsWith(query) || query.endsWith(name);
     });
 
-  matched
-    .filter((category: any) => category.level === 0)
-    .forEach((category: any) => effective.push(category));
+    if (found) return found;
+  }
 
-  return effective;
+  return null;
 };
 
-const getFilterConfig = (gender: string, products: Product[]) => {
-  const genderCats = categories.filter(
-    (c: any) => c.name.toLowerCase() === gender.toLowerCase() && c.level === 0,
-  );
-  const genderCatIds = genderCats.map((c: any) => c.id);
-  const level1Cats = categories.filter(
-    (c: any) => c.level === 1 && genderCatIds.includes(c.parentId || ""),
-  );
+const getCategoryGender = (category: StorefrontCategory | null): ProductGender | "" => {
+  if (!category) return "";
 
-  const categoryOptions: any[] = [];
-  level1Cats.forEach((l1: any) => {
-    categoryOptions.push({ label: l1.name, value: l1.name, isLevel1: true });
-    const level2Cats = categories.filter((c: any) => c.parentId === l1.id);
-    level2Cats.forEach((l2: any) => {
-      categoryOptions.push({ label: l2.name, value: l2.name, isLevel1: false });
-    });
-  });
+  const gender = String(category.gender || "").toUpperCase();
 
-  const genderProducts = products.filter(
-    (product: any) => getProductGender(product) === normalizeText(gender),
-  );
+  if (gender === "MEN") return "Men";
+  if (gender === "WOMEN") return "Women";
+  if (gender === "KIDS") return "Kids";
 
-  const brandOptions = Array.from(
-    new Set(genderProducts.map((product: any) => product.brand || product.brand_name || "").filter(Boolean)),
-  );
+  return "";
+};
 
-  const colorOptions = Array.from(
-    new Set(
-      genderProducts
-        .flatMap((product: any) => [
-          getProductSelectedColor(product),
-          ...(product.colors || []),
-          ...(product.colours || []),
-        ])
-        .filter(Boolean),
-    ),
-  );
+const getCategoryLabel = (category: StorefrontCategory) => {
+  return category.categoryPath || category.category_path || category.name;
+};
 
-  const sizeOptions = Array.from(
-    new Set(genderProducts.flatMap((product: any) => product.sizes || []).filter(Boolean)),
-  );
+const getProductCategoryId = (product: any) => String(product?.categoryId || product?.category_id || "");
+const getProductCategorySlug = (product: any) => normalizeText(product?.categorySlug || product?.category_slug || "");
+const getProductCategoryName = (product: any) => normalizeText(product?.categoryName || product?.category_name || "");
 
-  return {
-    Category: categoryOptions,
-    Sizes: sizeOptions.length ? sizeOptions : ["S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL", "6XL"],
-    Brand: brandOptions.length ? brandOptions : ["Vandhana"],
-    Color: colorOptions.length ? colorOptions : ["Black", "White", "Red", "Blue", "Green", "Yellow", "Grey", "Brown"],
-    Discount: ["10% and above", "20% and above", "30% and above", "40% and above", "50% and above"],
-    Ratings: [4, 3, 2, 1],
-  };
+const productMatchesCategory = (product: Product, category: StorefrontCategory) => {
+  const productCategoryId = getProductCategoryId(product);
+  if (productCategoryId && productCategoryId === String(category.id)) return true;
+
+  const productCategorySlug = getProductCategorySlug(product);
+  if (productCategorySlug && productCategorySlug === normalizeText(category.slug)) return true;
+
+  const productCategoryName = getProductCategoryName(product);
+  if (productCategoryName && productCategoryName === normalizeText(category.name)) return true;
+
+  const productTitle = normalizeText((product as any).title || (product as any).name || (product as any).product_name || "");
+  const categoryName = normalizeText(category.name);
+
+  return Boolean(categoryName && productTitle.includes(categoryName.replace(/s$/, "")));
+};
+
+const getLeafCategoriesForGender = (categories: StorefrontCategory[], gender: string) => {
+  const genderKey = gender === "Women" ? "WOMEN" : gender === "Kids" ? "KIDS" : "MEN";
+  const filtered = categories.filter((item) => item.gender === genderKey && item.level > 0);
+  const parentIds = new Set(filtered.map((item) => String(item.parentId || item.parent_id || "")).filter(Boolean));
+  return filtered.filter((item) => !parentIds.has(String(item.id)));
+};
+
+const getInitialGender = (searchParams: URLSearchParams): ProductGender => {
+  const queryGender = searchParams.get("gender") || "";
+  if (queryGender) return toTitleGender(queryGender);
+
+  const storedGender = localStorage.getItem("preferred_gender") || "";
+  return toTitleGender(storedGender || "Men");
 };
 
 type SortOption =
@@ -357,9 +154,12 @@ const getDiscountPercent = (product: Product) => {
 export default function Collection() {
   const [searchParams] = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<StorefrontCategory[]>([]);
   const [productsLoading, setProductsLoading] = useState(true);
   const [productsError, setProductsError] = useState("");
-  const [activeFilters, setActiveFilters] = useState<Record<string, string[]>>(() => getInitialFilters(searchParams));
+  const [activeFilters, setActiveFilters] = useState<Record<string, string[]>>(() => ({
+    Gender: [getInitialGender(searchParams)]
+  }));
   const [sortBy, setSortBy] = useState<SortOption>("Popularity");
   const [expandedFilters, setExpandedFilters] = useState<Record<string, boolean>>({
     Gender: true,
@@ -373,28 +173,27 @@ export default function Collection() {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const observerTarget = useRef<HTMLDivElement>(null);
 
-  const filterConfig = useMemo(() => {
-    return getFilterConfig(
-      activeFilters["Gender"]?.[0] ||
-        localStorage.getItem("preferred_gender") ||
-        "Men",
-      products,
-    );
-  }, [activeFilters, products]);
-
   useEffect(() => {
     let alive = true;
 
-    const loadProducts = async () => {
+    const loadData = async () => {
       setProductsLoading(true);
       setProductsError("");
 
       try {
-        const data = await fetchBranchProducts(3);
-        if (alive) setProducts(data);
+        const [productData, tree] = await Promise.all([
+          fetchBranchProducts(3),
+          fetchCategoriesTree(),
+        ]);
+
+        if (alive) {
+          setProducts(productData);
+          setCategories(flattenCategoryTree(tree));
+        }
       } catch (err: any) {
         if (alive) {
           setProducts([]);
+          setCategories([]);
           setProductsError(err?.message || "Unable to load products");
         }
       } finally {
@@ -402,7 +201,7 @@ export default function Collection() {
       }
     };
 
-    void loadProducts();
+    void loadData();
 
     return () => {
       alive = false;
@@ -410,27 +209,29 @@ export default function Collection() {
   }, []);
 
   useEffect(() => {
-    const cat = searchParams.get("category");
+    if (!categories.length) return;
 
-    if (cat) {
-      setActiveFilters((prev) => {
-        const currentGender = prev["Gender"]?.[0] || localStorage.getItem("preferred_gender") || "";
-        const matched = findCategoryFromParam(cat, currentGender) || findCategoryFromParam(cat);
-        const matchedGender = matched ? getCategoryRootName(matched) : "";
-        const nextGender = matchedGender || currentGender || "Men";
-        const nextCategory = matched ? matched.name : String(cat).replace(/-/g, " ");
+    const matchedCategory = findCategoryFromParams(categories, searchParams);
+    const matchedGender = getCategoryGender(matchedCategory);
+    const queryGender = searchParams.get("gender");
+    const nextGender = matchedGender || (queryGender ? toTitleGender(queryGender) : activeFilters["Gender"]?.[0] || "Men");
 
-        localStorage.setItem("preferred_gender", nextGender);
-        localStorage.setItem("preferred_gender_url", `/${nextGender.toLowerCase()}`);
+    localStorage.setItem("preferred_gender", nextGender);
+    localStorage.setItem("preferred_gender_url", `/${nextGender.toLowerCase()}`);
 
-        return {
-          ...prev,
-          Gender: [nextGender],
-          Category: [nextCategory],
-        };
-      });
-    }
-  }, [searchParams]);
+    setActiveFilters((prev) => {
+      const next: Record<string, string[]> = {
+        ...prev,
+        Gender: [nextGender],
+      };
+
+      if (matchedCategory) {
+        next.Category = [String(matchedCategory.id)];
+      }
+
+      return next;
+    });
+  }, [categories, searchParams]);
 
   useEffect(() => {
     setVisibleCount(12);
@@ -442,37 +243,89 @@ export default function Collection() {
     } else {
       document.body.style.overflow = "auto";
     }
+
     return () => {
       document.body.style.overflow = "auto";
     };
   }, [isMobileFilterOpen, isMobileSortOpen]);
 
+  const selectedGender = activeFilters["Gender"]?.[0] || "Men";
+
+  const filterConfig = useMemo(() => {
+    const genderProducts = products.filter((product: any) => getProductGender(product) === normalizeText(selectedGender));
+    const genderCategories = getLeafCategoriesForGender(categories, selectedGender);
+
+    const categoryOptions = genderCategories.map((category) => ({
+      label: getCategoryLabel(category),
+      value: String(category.id),
+      isLevel1: category.level === 1,
+    }));
+
+    const brandOptions = Array.from(
+      new Set(genderProducts.map((product: any) => product.brand || product.brand_name || "").filter(Boolean))
+    );
+
+    const colorOptions = Array.from(
+      new Set(
+        genderProducts
+          .flatMap((product: any) => [
+            getProductSelectedColor(product),
+            ...(product.colors || []),
+            ...(product.colours || []),
+          ])
+          .filter(Boolean)
+      )
+    );
+
+    const sizeOptions = Array.from(
+      new Set(genderProducts.flatMap((product: any) => product.sizes || []).filter(Boolean))
+    );
+
+    return {
+      Category: categoryOptions,
+      Sizes: sizeOptions.length ? sizeOptions : ["S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL", "6XL"],
+      Brand: brandOptions.length ? brandOptions : ["Vandhana"],
+      Color: colorOptions.length ? colorOptions : ["Black", "White", "Red", "Blue", "Green", "Yellow", "Grey", "Brown"],
+      Discount: ["10% and above", "20% and above", "30% and above", "40% and above", "50% and above"],
+      Ratings: [4, 3, 2, 1],
+    };
+  }, [categories, products, selectedGender]);
+
   const toggleFilter = (category: string, value: string) => {
     setActiveFilters((prev) => {
+      if (category === "Gender") {
+        localStorage.setItem("preferred_gender", value);
+        localStorage.setItem("preferred_gender_url", `/${value.toLowerCase()}`);
+
+        return {
+          Gender: [value],
+        };
+      }
+
       const current = prev[category] || [];
+
       if (current.includes(value)) {
         const nextValues = current.filter((v) => v !== value);
         const next = { ...prev };
+
         if (nextValues.length) next[category] = nextValues;
         else delete next[category];
+
         return next;
       }
+
       return { ...prev, [category]: [...current, value] };
     });
   };
 
   const clearAllFilters = () => {
-    const gen = activeFilters["Gender"]?.[0] || localStorage.getItem("preferred_gender");
-    if (gen) {
-      setActiveFilters({ Gender: [gen] });
-    } else {
-      setActiveFilters({});
-    }
+    const gen = activeFilters["Gender"]?.[0] || localStorage.getItem("preferred_gender") || "Men";
+    setActiveFilters({ Gender: [gen] });
   };
 
   const filterCount = Object.values(activeFilters).reduce(
     (acc, curr) => acc + curr.length,
-    0,
+    0
   );
 
   const toggleExpanded = (category: string) => {
@@ -487,30 +340,26 @@ export default function Collection() {
 
     if (activeFilters["Gender"]?.length) {
       const activeGenders = activeFilters["Gender"].map((g) => normalizeText(g));
+
       result = result.filter((p: any) =>
-        activeGenders.includes(getProductGender(p)),
+        activeGenders.includes(getProductGender(p))
       );
     }
 
     if (activeFilters["Category"]?.length) {
-      const selectedCatNames = activeFilters["Category"];
-      const currentGender = activeFilters["Gender"]?.[0] || localStorage.getItem("preferred_gender") || "";
-      const validCats = getValidSelectedCategories(selectedCatNames, currentGender);
+      const selectedCategoryIds = activeFilters["Category"];
+      const selectedCategories = categories.filter((category) => selectedCategoryIds.includes(String(category.id)));
 
-      if (validCats.length) {
+      if (selectedCategories.length) {
         result = result.filter((product) =>
-          validCats.some((category) => productMatchesCategory(product, category)),
-        );
-      } else {
-        result = result.filter((product) =>
-          selectedCatNames.some((categoryName) => productMatchesCategoryName(product, categoryName)),
+          selectedCategories.some((category) => productMatchesCategory(product, category))
         );
       }
     }
 
     if (activeFilters["Sizes"]?.length) {
       result = result.filter((p: any) =>
-        (p.sizes || []).some((s: string) => activeFilters["Sizes"].includes(s)),
+        (p.sizes || []).some((s: string) => activeFilters["Sizes"].includes(s))
       );
     }
 
@@ -525,7 +374,7 @@ export default function Collection() {
 
     if (activeFilters["Brand"]?.length) {
       result = result.filter((p: any) =>
-        activeFilters["Brand"].includes(p.brand || p.brand_name || ""),
+        activeFilters["Brand"].includes(p.brand || p.brand_name || "")
       );
     }
 
@@ -534,6 +383,7 @@ export default function Collection() {
         const match = item.match(/\d+/);
         return match ? Number(match[0]) : 0;
       });
+
       const minRequired = Math.min(...required);
       result = result.filter((p) => getDiscountPercent(p) >= minRequired);
     }
@@ -548,7 +398,7 @@ export default function Collection() {
       case "New Arrival":
         result.sort(
           (a: any, b: any) =>
-            new Date(b.createdAt || b.created_at || 0).getTime() - new Date(a.createdAt || a.created_at || 0).getTime(),
+            new Date(b.createdAt || b.created_at || 0).getTime() - new Date(a.createdAt || a.created_at || 0).getTime()
         );
         break;
       case "Popularity":
@@ -557,7 +407,7 @@ export default function Collection() {
     }
 
     return result;
-  }, [activeFilters, sortBy, products]);
+  }, [activeFilters, sortBy, products, categories]);
 
   useEffect(() => {
     const currentTarget = observerTarget.current;
@@ -567,13 +417,14 @@ export default function Collection() {
       (entries) => {
         if (entries[0].isIntersecting && visibleCount < filteredProducts.length) {
           setIsLoadingMore(true);
+
           setTimeout(() => {
             setVisibleCount((prev) => prev + 12);
             setIsLoadingMore(false);
           }, 350);
         }
       },
-      { threshold: 0.1, rootMargin: "100px" },
+      { threshold: 0.1, rootMargin: "100px" }
     );
 
     observer.observe(currentTarget);
@@ -583,6 +434,12 @@ export default function Collection() {
     };
   }, [visibleCount, filteredProducts.length]);
 
+  const getHeaderTitle = () => {
+    const categoryId = activeFilters["Category"]?.[0] || "";
+    const category = categories.find((item) => String(item.id) === String(categoryId));
+    return category ? `${selectedGender} ${category.name}` : `${selectedGender} Products`;
+  };
+
   const FilterCheckboxes = ({
     categoryKey,
     options,
@@ -590,9 +447,14 @@ export default function Collection() {
     categoryKey: string;
     options: any[];
   }) => {
+    const finalOptions =
+      categoryKey === "Gender"
+        ? ["Men", "Women", "Kids"]
+        : options;
+
     return (
       <div className="flex flex-col gap-3 mt-3 px-1">
-        {options.map((optionObj, idx) => {
+        {finalOptions.map((optionObj: any, idx: number) => {
           const isObj = typeof optionObj === "object" && optionObj !== null;
           const optionValue = isObj ? optionObj.value : optionObj.toString();
           const optionLabel = isObj ? optionObj.label : optionObj.toString();
@@ -630,6 +492,7 @@ export default function Collection() {
                     </svg>
                   )}
                 </div>
+
                 <span
                   className={`text-sm tracking-wide ${
                     isSelected ? "text-gray-900 font-bold" : "text-gray-500"
@@ -660,8 +523,7 @@ export default function Collection() {
         <div className="max-w-[1440px] mx-auto px-4 md:px-8 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <h1 className="text-xl md:text-2xl font-bold text-gray-900 tracking-tight capitalize">
-              {(activeFilters["Gender"] || ["All"]).join(", ")}{" "}
-              {activeFilters["Category"]?.[0] || searchParams.get("category")?.replace(/-/g, " ") || "Products"}
+              {getHeaderTitle()}
             </h1>
             <span className="text-gray-500 text-sm hidden md:inline">
               {filteredProducts.length} Products
@@ -675,6 +537,7 @@ export default function Collection() {
                 {sortBy}
                 <FiChevronDown />
               </button>
+
               <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-gray-100 shadow-xl rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
                 {SORT_OPTIONS.map((opt) => (
                   <div
@@ -712,6 +575,7 @@ export default function Collection() {
                   </span>
                 )}
               </h2>
+
               {filterCount > 0 && (
                 <button
                   onClick={clearAllFilters}
@@ -723,7 +587,7 @@ export default function Collection() {
             </div>
 
             <div className="flex flex-col gap-6">
-              {Object.entries(filterConfig).map(([key, options]) => (
+              {Object.entries({ Gender: ["Men", "Women", "Kids"], ...filterConfig }).map(([key, options]) => (
                 <div key={key} className="border-b border-gray-50 pb-4">
                   <button
                     onClick={() => toggleExpanded(key)}
@@ -738,12 +602,10 @@ export default function Collection() {
                       <FiChevronDown className="text-gray-400" />
                     )}
                   </button>
+
                   {expandedFilters[key] && (
-                    <div
-                      className="mt-4 pr-2"
-                      style={{ scrollbarWidth: "thin" }}
-                    >
-                      <FilterCheckboxes categoryKey={key} options={options} />
+                    <div className="mt-4 pr-2" style={{ scrollbarWidth: "thin" }}>
+                      <FilterCheckboxes categoryKey={key} options={options as any[]} />
                     </div>
                   )}
                 </div>
@@ -766,6 +628,7 @@ export default function Collection() {
                   {filteredProducts.slice(0, visibleCount).map((product: any, index) => (
                     <ProductCard key={getProductCardKey(product, index)} {...product} />
                   ))}
+
                   {isLoadingMore &&
                     visibleCount < filteredProducts.length &&
                     Array.from({ length: 4 }).map((_, idx) => (
@@ -774,11 +637,9 @@ export default function Collection() {
                       </div>
                     ))}
                 </div>
+
                 {visibleCount < filteredProducts.length && (
-                  <div
-                    ref={observerTarget}
-                    className="w-full h-4 flex items-center justify-center mt-2"
-                  ></div>
+                  <div ref={observerTarget} className="w-full h-4 flex items-center justify-center mt-2"></div>
                 )}
               </>
             ) : (
@@ -813,6 +674,7 @@ export default function Collection() {
             <span className="w-1.5 h-1.5 bg-primary rounded-full"></span>
           )}
         </button>
+
         <button
           onClick={() => setIsMobileFilterOpen(true)}
           className="flex items-center justify-center gap-2 font-bold uppercase tracking-wider text-sm text-gray-800"
@@ -839,23 +701,19 @@ export default function Collection() {
                 <FiX size={20} />
               </button>
             </div>
+
             <div className="flex flex-col gap-5">
               {SORT_OPTIONS.map((opt) => (
-                <label
-                  key={opt}
-                  className="flex items-center justify-between cursor-pointer group"
-                >
-                  <span
-                    className={`text-[17px] ${sortBy === opt ? "font-bold text-black" : "text-gray-600 font-medium"}`}
-                  >
+                <label key={opt} className="flex items-center justify-between cursor-pointer group">
+                  <span className={`text-[17px] ${sortBy === opt ? "font-bold text-black" : "text-gray-600 font-medium"}`}>
                     {opt}
                   </span>
                   <div
-                    className={`w-5 h-5 rounded-full border-[1.5px] p-[3px] flex items-center justify-center transition-colors ${sortBy === opt ? "border-primary" : "border-gray-400 group-hover:border-gray-500"}`}
+                    className={`w-5 h-5 rounded-full border-[1.5px] p-[3px] flex items-center justify-center transition-colors ${
+                      sortBy === opt ? "border-primary" : "border-gray-400 group-hover:border-gray-500"
+                    }`}
                   >
-                    {sortBy === opt && (
-                      <div className="w-full h-full bg-primary rounded-full" />
-                    )}
+                    {sortBy === opt && <div className="w-full h-full bg-primary rounded-full" />}
                   </div>
                 </label>
               ))}
@@ -884,30 +742,22 @@ export default function Collection() {
         </div>
 
         <div className="flex-1 flex overflow-hidden bg-[#f9f9f9]">
-          <div
-            className="w-1/3 border-r border-gray-200 overflow-y-auto"
-            style={{ scrollbarWidth: "none" }}
-          >
-            {Object.keys(filterConfig).map((key) => {
+          <div className="w-1/3 border-r border-gray-200 overflow-y-auto" style={{ scrollbarWidth: "none" }}>
+            {Object.keys({ Gender: ["Men", "Women", "Kids"], ...filterConfig }).map((key) => {
               const isActive = mobileActiveTab === key;
               const activeCount = activeFilters[key]?.length || 0;
+
               return (
                 <button
                   key={key}
                   onClick={() => setMobileActiveTab(key)}
                   className={`w-full text-left py-4 px-3 text-[13px] uppercase tracking-wider font-bold transition-colors relative ${
-                    isActive
-                      ? "bg-white text-black"
-                      : "text-gray-500 hover:bg-gray-100"
+                    isActive ? "bg-white text-black" : "text-gray-500 hover:bg-gray-100"
                   }`}
                 >
-                  {isActive && (
-                    <div className="absolute left-0 top-0 h-full w-1 bg-primary" />
-                  )}
+                  {isActive && <div className="absolute left-0 top-0 h-full w-1 bg-primary" />}
                   {key}
-                  {activeCount > 0 && (
-                    <span className="ml-1 text-primary">({activeCount})</span>
-                  )}
+                  {activeCount > 0 && <span className="ml-1 text-primary">({activeCount})</span>}
                 </button>
               );
             })}
@@ -916,7 +766,7 @@ export default function Collection() {
           <div className="w-2/3 bg-white p-4 overflow-y-auto">
             <FilterCheckboxes
               categoryKey={mobileActiveTab}
-              options={(filterConfig as any)[mobileActiveTab] || []}
+              options={(mobileActiveTab === "Gender" ? ["Men", "Women", "Kids"] : (filterConfig as any)[mobileActiveTab]) || []}
             />
           </div>
         </div>

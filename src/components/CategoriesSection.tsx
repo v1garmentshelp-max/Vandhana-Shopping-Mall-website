@@ -9,6 +9,7 @@ const normalizeText = (value: any) =>
   String(value || "")
     .toLowerCase()
     .replace(/&/g, "and")
+    .replace(/-/g, " ")
     .replace(/[^a-z0-9]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
@@ -22,6 +23,7 @@ const imageFromValue = (value: any) => {
 const parseImages = (value: any) => {
   if (!value) return [];
   if (Array.isArray(value)) return value;
+
   if (typeof value === "string") {
     try {
       const parsed = JSON.parse(value);
@@ -30,11 +32,13 @@ const parseImages = (value: any) => {
       return [value];
     }
   }
+
   return [];
 };
 
 const productImage = (product: any) => {
   const images = parseImages(product?.images);
+
   return (
     imageFromValue(product?.frontImageUrl) ||
     imageFromValue(product?.front_image_url) ||
@@ -56,67 +60,21 @@ const isGoodImage = (value: any) => {
   return true;
 };
 
-const productMatchesCategory = (product: any, category: Category) => {
+const productMatchesCategory = (product: any, category: any) => {
   const categoryId = String(category.id || "");
   const productCategoryId = String(product?.categoryId || product?.category_id || "");
   if (categoryId && productCategoryId && categoryId === productCategoryId) return true;
 
+  const categorySlug = normalizeText(category.slug);
+  const productCategorySlug = normalizeText(product?.categorySlug || product?.category_slug);
+  if (categorySlug && productCategorySlug && categorySlug === productCategorySlug) return true;
+
   const categoryName = normalizeText(category.name);
+  const productCategoryName = normalizeText(product?.categoryName || product?.category_name);
+  if (categoryName && productCategoryName && categoryName === productCategoryName) return true;
+
   const productName = normalizeText(product?.title || product?.name || product?.product_name || "");
-  const productDescription = normalizeText(product?.description || "");
-  const productText = `${productName} ${productDescription}`;
-
-  if (!categoryName || !productText.trim()) return false;
-
-  if (categoryName === "night dresses") {
-    return productText.includes("night dress") || productText.includes("nightwear") || productText.includes("sleepwear");
-  }
-
-  if (categoryName === "t shirts") {
-    return productText.includes("t shirt") || productText.includes("tshirt") || productText.includes("tee");
-  }
-
-  if (categoryName === "full sleeves t shirts") {
-    return productText.includes("full sleeve") || productText.includes("full sleeves");
-  }
-
-  if (categoryName === "oversized t shirts") {
-    return productText.includes("oversized") && (productText.includes("t shirt") || productText.includes("tshirt") || productText.includes("tee"));
-  }
-
-  if (categoryName === "pants") {
-    return productText.includes("pant") || productText.includes("trouser");
-  }
-
-  if (categoryName === "track pants") {
-    return productText.includes("track pant");
-  }
-
-  if (categoryName === "joggers") {
-    return productText.includes("jogger");
-  }
-
-  if (categoryName === "jeans") {
-    return productText.includes("jean") || productText.includes("denim");
-  }
-
-  if (categoryName === "shirts") {
-    return productText.includes("shirt") && !productText.includes("t shirt") && !productText.includes("tshirt");
-  }
-
-  if (categoryName === "shorts") {
-    return productText.includes("short");
-  }
-
-  if (categoryName === "vests") {
-    return productText.includes("vest");
-  }
-
-  if (categoryName === "pyjamas") {
-    return productText.includes("pyjama") || productText.includes("pajama");
-  }
-
-  return productText.includes(categoryName.replace(/s$/, ""));
+  return Boolean(categoryName && productName.includes(categoryName.replace(/s$/, "")));
 };
 
 const stableIndex = (key: string, length: number) => {
@@ -128,11 +86,26 @@ const stableIndex = (key: string, length: number) => {
   return hash % length;
 };
 
-const getCategoryParam = (name: string) =>
-  String(name || "")
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, "-");
+const getGenderParam = (category: any, productData: Product[]) => {
+  const gender = String(category.gender || "").toUpperCase();
+  if (gender === "MEN") return "Men";
+  if (gender === "WOMEN") return "Women";
+  if (gender === "KIDS") return "Kids";
+
+  const matchedProduct = productData.find((product: any) => String(product.categoryId || product.category_id || "") === String(category.id || ""));
+  return matchedProduct?.gender || "";
+};
+
+const getCategoryLink = (category: any, productData: Product[]) => {
+  const params = new URLSearchParams();
+  const gender = getGenderParam(category, productData);
+
+  if (gender) params.set("gender", gender);
+  if (category.id) params.set("category_id", String(category.id));
+  if (category.slug) params.set("category_slug", String(category.slug));
+
+  return `/collections?${params.toString()}`;
+};
 
 const CategoriesSection = ({
   categories,
@@ -151,9 +124,7 @@ const CategoriesSection = ({
     },
   });
 
-  const allProductImages = productData
-    .map((product) => productImage(product))
-    .filter(isGoodImage);
+  const allProductImages = productData.map((product) => productImage(product)).filter(isGoodImage);
 
   const getCategoryImage = (category: Category) => {
     const matchingProducts = productData.filter((product) => productMatchesCategory(product, category));
@@ -167,7 +138,7 @@ const CategoriesSection = ({
       return allProductImages[stableIndex(String(category.id || category.name), allProductImages.length)];
     }
 
-    if (isGoodImage(category.image)) return category.image;
+    if (isGoodImage((category as any).image)) return (category as any).image;
 
     return "/placeholder.svg";
   };
@@ -186,14 +157,13 @@ const CategoriesSection = ({
 
         <div className="overflow-hidden md:overflow-visible" ref={emblaRef}>
           <div className="flex flex-col flex-wrap h-[440px] lg:h-auto lg:flex-row lg:grid lg:grid-cols-5 gap-2 lg:gap-4">
-            {categories.map((category) => {
-              const catParam = getCategoryParam(category.name);
+            {categories.map((category: any) => {
               const image = getCategoryImage(category);
 
               return (
                 <Link
                   key={category.id}
-                  to={`/collections?category=${encodeURIComponent(catParam)}`}
+                  to={getCategoryLink(category, productData)}
                   className="flex-[0_0_48%] lg:flex-none relative group cursor-pointer overflow-hidden rounded-2xl md:rounded-3xl shadow-xl aspect-3/4 block"
                 >
                   <img

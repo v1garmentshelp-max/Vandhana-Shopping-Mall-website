@@ -1,162 +1,353 @@
 [
   {
-    "id": "men-root",
+    "id": "2",
     "name": "Men",
     "slug": "men",
     "image": "/placeholder.svg",
     "parentId": null,
-    "level": 0
+    "level": 0,
+    "gender": "MEN"
   },
   {
-    "id": "women-root",
+    "id": "4",
+    "name": "T-Shirts & Polo",
+    "slug": "t-shirts-polo",
+    "image": "/placeholder.svg",
+    "parentId": "2",
+    "level": 1,
+    "gender": "MEN"
+  },
+  {
+    "id": "5",
+    "name": "Shirts",
+    "slug": "shirts",
+    "image": "/placeholder.svg",
+    "parentId": "2",
+    "level": 1,
+    "gender": "MEN"
+  },
+  {
+    "id": "6",
+    "name": "Jeans",
+    "slug": "jeans",
+    "image": "/placeholder.svg",
+    "parentId": "2",
+    "level": 1,
+    "gender": "MEN"
+  },
+  {
+    "id": "7",
+    "name": "Pants",
+    "slug": "pants",
+    "image": "/placeholder.svg",
+    "parentId": "2",
+    "level": 1,
+    "gender": "MEN"
+  },
+  {
+    "id": "8",
+    "name": "Joggers",
+    "slug": "joggers",
+    "image": "/placeholder.svg",
+    "parentId": "2",
+    "level": 1,
+    "gender": "MEN"
+  },
+  {
+    "id": "9",
+    "name": "Cargo Pants",
+    "slug": "cargo-pants",
+    "image": "/placeholder.svg",
+    "parentId": "2",
+    "level": 1,
+    "gender": "MEN"
+  },
+  {
+    "id": "10",
+    "name": "Dress",
+    "slug": "dress",
+    "image": "/placeholder.svg",
+    "parentId": "2",
+    "level": 1,
+    "gender": "MEN"
+  },
+  {
+    "id": "11",
+    "name": "Shorts & 3/4th",
+    "slug": "shorts-3-4th",
+    "image": "/placeholder.svg",
+    "parentId": "2",
+    "level": 1,
+    "gender": "MEN"
+  },
+  {
+    "id": "3",
     "name": "Women",
     "slug": "women",
     "image": "/placeholder.svg",
     "parentId": null,
-    "level": 0
+    "level": 0,
+    "gender": "WOMEN"
   },
   {
-    "id": "kids-root",
+    "id": "12",
+    "name": "T-Shirts",
+    "slug": "t-shirts",
+    "image": "/placeholder.svg",
+    "parentId": "3",
+    "level": 1,
+    "gender": "WOMEN"
+  },
+  {
+    "id": "13",
+    "name": "Tops",
+    "slug": "tops",
+    "image": "/placeholder.svg",
+    "parentId": "3",
+    "level": 1,
+    "gender": "WOMEN"
+  },
+  {
+    "id": "14",
+    "name": "Dress",
+    "slug": "dress",
+    "image": "/placeholder.svg",
+    "parentId": "3",
+    "level": 1,
+    "gender": "WOMEN"
+  },
+  {
+    "id": "15",
+    "name": "Kurthi Pant Set",
+    "slug": "kurthi-pant-set",
+    "image": "/placeholder.svg",
+    "parentId": "3",
+    "level": 1,
+    "gender": "WOMEN"
+  },
+  {
+    "id": "16",
+    "name": "Jeans",
+    "slug": "jeans",
+    "image": "/placeholder.svg",
+    "parentId": "3",
+    "level": 1,
+    "gender": "WOMEN"
+  },
+  {
+    "id": "17",
+    "name": "Cargo Pants",
+    "slug": "cargo-pants",
+    "image": "/placeholder.svg",
+    "parentId": "3",
+    "level": 1,
+    "gender": "WOMEN"
+  },
+  {
+    "id": "18",
+    "name": "Pants",
+    "slug": "pants",
+    "image": "/placeholder.svg",
+    "parentId": "3",
+    "level": 1,
+    "gender": "WOMEN"
+  },
+  {
+    "id": "19",
+    "name": "Nightys",
+    "slug": "nightys",
+    "image": "/placeholder.svg",
+    "parentId": "3",
+    "level": 1,
+    "gender": "WOMEN"
+  },
+  {
+    "id": "20",
+    "name": "Night Dress",
+    "slug": "night-dress",
+    "image": "/placeholder.svg",
+    "parentId": "3",
+    "level": 1,
+    "gender": "WOMEN"
+  },
+  {
+    "id": "1",
     "name": "Kids",
     "slug": "kids",
     "image": "/placeholder.svg",
     "parentId": null,
-    "level": 0
+    "level": 0,
+    "gender": "KIDS"
   },
   {
-    "id": "m-top",
-    "name": "Topwear",
-    "slug": "men-topwear",
+    "id": "21",
+    "name": "Boys",
+    "slug": "boys",
     "image": "/placeholder.svg",
-    "parentId": "men-root",
-    "level": 1
+    "parentId": "1",
+    "level": 1,
+    "gender": "KIDS"
   },
   {
-    "id": "m-bottom",
-    "name": "Bottomwear",
-    "slug": "men-bottomwear",
+    "id": "22",
+    "name": "Girls",
+    "slug": "girls",
     "image": "/placeholder.svg",
-    "parentId": "men-root",
-    "level": 1
+    "parentId": "1",
+    "level": 1,
+    "gender": "KIDS"
   },
   {
-    "id": "w-top",
-    "name": "Topwear",
-    "slug": "women-topwear",
+    "id": "23",
+    "name": "Baba Suits",
+    "slug": "baba-suits",
     "image": "/placeholder.svg",
-    "parentId": "women-root",
-    "level": 1
+    "parentId": "21",
+    "level": 2,
+    "gender": "KIDS"
   },
   {
-    "id": "w-bottom",
-    "name": "Bottomwear",
-    "slug": "women-bottomwear",
+    "id": "24",
+    "name": "Night Dress",
+    "slug": "night-dress",
     "image": "/placeholder.svg",
-    "parentId": "women-root",
-    "level": 1
+    "parentId": "21",
+    "level": 2,
+    "gender": "KIDS"
   },
   {
-    "id": "k-top",
-    "name": "Topwear",
-    "slug": "kids-topwear",
+    "id": "25",
+    "name": "Shorts & 3/4th",
+    "slug": "shorts-3-4th",
     "image": "/placeholder.svg",
-    "parentId": "kids-root",
-    "level": 1
+    "parentId": "21",
+    "level": 2,
+    "gender": "KIDS"
   },
   {
-    "id": "k-bottom",
-    "name": "Bottomwear",
-    "slug": "kids-bottomwear",
+    "id": "26",
+    "name": "Joggers",
+    "slug": "joggers",
     "image": "/placeholder.svg",
-    "parentId": "kids-root",
-    "level": 1
+    "parentId": "21",
+    "level": 2,
+    "gender": "KIDS"
   },
   {
-    "id": "cat_4",
-    "name": "T-Shirts",
-    "slug": "men-t-shirts",
-    "image": "/placeholder.svg",
-    "parentId": "m-top",
-    "level": 2
-  },
-  {
-    "id": "cat_6",
-    "name": "Polo T-Shirts",
-    "slug": "men-polo-t-shirts",
-    "image": "/placeholder.svg",
-    "parentId": "m-top",
-    "level": 2
-  },
-  {
-    "id": "cat_7",
-    "name": "Cargo Pants",
-    "slug": "men-cargo-pants",
-    "image": "/placeholder.svg",
-    "parentId": "m-bottom",
-    "level": 2
-  },
-  {
-    "id": "cat_11",
-    "name": "T-Shirts",
-    "slug": "women-t-shirts",
-    "image": "/placeholder.svg",
-    "parentId": "w-top",
-    "level": 2
-  },
-  {
-    "id": "cat_30",
-    "name": "Tops",
-    "slug": "women-tops",
-    "image": "/placeholder.svg",
-    "parentId": "w-top",
-    "level": 2
-  },
-  {
-    "id": "cat_19",
-    "name": "Kurti Pant Sets",
-    "slug": "women-kurti-pant-sets",
-    "image": "/placeholder.svg",
-    "parentId": "w-top",
-    "level": 2
-  },
-  {
-    "id": "cat_15",
+    "id": "27",
     "name": "Jeans",
-    "slug": "women-jeans",
+    "slug": "jeans",
     "image": "/placeholder.svg",
-    "parentId": "w-bottom",
-    "level": 2
+    "parentId": "21",
+    "level": 2,
+    "gender": "KIDS"
   },
   {
-    "id": "cat_13",
+    "id": "28",
+    "name": "Cargo Pants",
+    "slug": "cargo-pants",
+    "image": "/placeholder.svg",
+    "parentId": "21",
+    "level": 2,
+    "gender": "KIDS"
+  },
+  {
+    "id": "29",
     "name": "Pants",
-    "slug": "women-pants",
+    "slug": "pants",
     "image": "/placeholder.svg",
-    "parentId": "w-bottom",
-    "level": 2
+    "parentId": "21",
+    "level": 2,
+    "gender": "KIDS"
   },
   {
-    "id": "cat_14",
-    "name": "Beggi",
-    "slug": "women-beggi",
+    "id": "30",
+    "name": "Dress",
+    "slug": "dress",
     "image": "/placeholder.svg",
-    "parentId": "w-bottom",
-    "level": 2
+    "parentId": "21",
+    "level": 2,
+    "gender": "KIDS"
   },
   {
-    "id": "cat_25",
-    "name": "Night Dresses",
-    "slug": "kids-night-dresses",
+    "id": "31",
+    "name": "T-Shirts & Polo",
+    "slug": "t-shirts-polo",
     "image": "/placeholder.svg",
-    "parentId": "k-top",
-    "level": 2
+    "parentId": "21",
+    "level": 2,
+    "gender": "KIDS"
   },
   {
-    "id": "cat_23",
-    "name": "Pants",
-    "slug": "kids-pants",
+    "id": "32",
+    "name": "Western Wear",
+    "slug": "western-wear",
     "image": "/placeholder.svg",
-    "parentId": "k-bottom",
-    "level": 2
+    "parentId": "22",
+    "level": 2,
+    "gender": "KIDS"
+  },
+  {
+    "id": "33",
+    "name": "Tops",
+    "slug": "tops",
+    "image": "/placeholder.svg",
+    "parentId": "22",
+    "level": 2,
+    "gender": "KIDS"
+  },
+  {
+    "id": "34",
+    "name": "T-Shirts",
+    "slug": "t-shirts",
+    "image": "/placeholder.svg",
+    "parentId": "22",
+    "level": 2,
+    "gender": "KIDS"
+  },
+  {
+    "id": "35",
+    "name": "Jeans",
+    "slug": "jeans",
+    "image": "/placeholder.svg",
+    "parentId": "22",
+    "level": 2,
+    "gender": "KIDS"
+  },
+  {
+    "id": "36",
+    "name": "Girls Night Dress",
+    "slug": "girls-night-dress",
+    "image": "/placeholder.svg",
+    "parentId": "22",
+    "level": 2,
+    "gender": "KIDS"
+  },
+  {
+    "id": "37",
+    "name": "Shorts & 3/4th",
+    "slug": "shorts-3-4th",
+    "image": "/placeholder.svg",
+    "parentId": "22",
+    "level": 2,
+    "gender": "KIDS"
+  },
+  {
+    "id": "38",
+    "name": "Joggers",
+    "slug": "joggers",
+    "image": "/placeholder.svg",
+    "parentId": "22",
+    "level": 2,
+    "gender": "KIDS"
+  },
+  {
+    "id": "39",
+    "name": "Dress",
+    "slug": "dress",
+    "image": "/placeholder.svg",
+    "parentId": "22",
+    "level": 2,
+    "gender": "KIDS"
   }
 ]
