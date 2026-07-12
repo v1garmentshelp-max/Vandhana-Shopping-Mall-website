@@ -478,22 +478,6 @@ const normalizeVariant = (variant: any, row: any) => {
   };
 };
 
-const getProductCardKey = (row: any) => {
-  const barcode = String(firstValue(row?.barcode, row?.ean_code, row?.eanCode)).trim();
-  if (barcode) return `barcode:${barcode.toLowerCase()}`;
-
-  const variantId = String(firstValue(row?.variant_id, row?.variantId, row?.primary_variant_id, row?.primaryVariantId)).trim();
-  if (variantId) return `variant:${variantId}`;
-
-  const id = String(firstValue(row?.id, row?.product_id, row?.productId)).trim();
-  const brand = normalizeText(row?.brand_name || row?.brand || "");
-  const name = normalizeText(row?.product_name || row?.name || row?.title || "");
-  const color = normalizeText(getVariantColorValue(row, row));
-  const size = normalizeText(getVariantSizeValue(row, row));
-
-  return `details:${id}|${brand}|${name}|${color}|${size}`;
-};
-
 const normalizeProduct = (row: any): Product => {
   const productName = String(row.product_name || row.productName || row.name || row.title || "Product").trim();
   const brandName = String(row.brand_name || row.brandName || row.brand || "Vandhana").trim();
