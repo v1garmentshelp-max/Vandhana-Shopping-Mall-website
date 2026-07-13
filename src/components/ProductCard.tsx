@@ -350,7 +350,18 @@ export const ProductCard: React.FC<Product> = (props: any) => {
   }, [barcode, ean_code, eanCode, barcodes, ean_codes]);
 
   const resolvedImages = useMemo(() => {
-    const imageList = Array.isArray(images) ? images : [];
+    let imageList: any[] = [];
+
+    if (Array.isArray(images)) {
+      imageList = images;
+    } else if (typeof images === "string") {
+      try {
+        const parsed = JSON.parse(images);
+        imageList = Array.isArray(parsed) ? parsed : [];
+      } catch {
+        imageList = [];
+      }
+    }
 
     const typedFront = findImageByType(imageList, "front", allowedImageCodes);
     const typedMain = findImageByType(imageList, "main", allowedImageCodes);

@@ -238,16 +238,6 @@ const imageByType = (images: any[], ...types: string[]) => {
   return getImageString(found);
 };
 
-const firstDifferentImage = (images: any[], front: string) => {
-  const frontKey = String(front || "").trim().toLowerCase();
-  return getImageString(
-    images.find((image) => {
-      const value = getImageString(image);
-      return value && value.toLowerCase() !== frontKey;
-    }),
-  );
-};
-
 const imagePairFromSource = (source: any) => {
   const rawImages = parseImages(source?.images);
 
@@ -276,17 +266,7 @@ const imagePairFromSource = (source: any) => {
       source?.backImage ||
       source?.rear_image_url ||
       source?.rearImageUrl ||
-      source?.secondary_image_url ||
-      source?.secondaryImageUrl ||
-      source?.hover_image_url ||
-      source?.hoverImageUrl ||
-      source?.image2 ||
-      source?.image_2 ||
-      source?.second_image_url ||
-      source?.secondImageUrl ||
-      imageByType(rawImages, "back", "rear", "secondary", "hover", "second", "alternate") ||
-      rawImages[1] ||
-      firstDifferentImage(rawImages, front),
+      imageByType(rawImages, "back", "rear"),
   );
 
   return uniqueImages([front, back]).slice(0, 2);
@@ -364,7 +344,12 @@ const normalizeVariant = (item: any, product: any): ProductVariantOption => {
   const size = cleanSingleValue(item?.size || item?.selected_size || "");
   const colour = cleanSingleValue(item?.colour || item?.color || item?.selected_colour || item?.selectedColor || "");
 
-  const variantImages = imagePairFromSource(item);
+  const itemImages = imagePairFromSource(item);
+  const productImages = imagePairFromSource(product);
+  const variantImages = uniqueImages([
+    itemImages[0] || productImages[0],
+    itemImages[1] || productImages[1],
+  ]).slice(0, 2);
 
   return {
     id: item?.id || item?.variant_id || item?.variantId || "",
@@ -523,19 +508,23 @@ const getVariantStockCount = (variant?: ProductVariantOption | null) => {
 };
 
 const productIdentityKeys = (product: any) => {
-  const keys = [
-    product?.productId,
-    product?.product_id,
-    product?.barcode,
-    product?.ean_code,
-  ]
-    .map((item) => String(item || "").trim())
-    .filter(Boolean);
+  const productId = String(product?.productId || product?.product_id || "").trim();
 
-  const titleKey = `${String(product?.brand || product?.brand_name || "").trim().toLowerCase()}|${String(product?.title || product?.name || product?.product_name || "").trim().toLowerCase()}`;
-  if (titleKey !== "|") keys.push(titleKey);
+  if (productId) {
+    return [`product:${productId}`];
+  }
 
-  return keys;
+  const patternCode = getString(product?.patternCode || product?.pattern_code);
+
+  if (patternCode) {
+    return [
+      `pattern:${String(product?.gender || product?.category || "").trim().toLowerCase()}|${String(product?.categoryId || product?.category_id || "").trim().toLowerCase()}|${String(product?.brand || product?.brand_name || "").trim().toLowerCase()}|${patternCode.toLowerCase()}`
+    ];
+  }
+
+  const titleKey = `${String(product?.gender || product?.category || "").trim().toLowerCase()}|${String(product?.categoryId || product?.category_id || "").trim().toLowerCase()}|${String(product?.brand || product?.brand_name || "").trim().toLowerCase()}|${String(product?.title || product?.name || product?.product_name || "").trim().toLowerCase()}`;
+
+  return titleKey === "|||" ? [] : [`details:${titleKey}`];
 };
 
 const hasSameProductIdentity = (a: any, b: any) => {
