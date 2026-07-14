@@ -20,6 +20,30 @@ export type StorefrontCategory = {
 
 const fallbackCategories = categoriesJson as StorefrontCategory[];
 
+const categoryImageMap = new Map<string, string>(
+  fallbackCategories.map((category) => [
+    String(category.id),
+    String(category.image || "/placeholder.svg"),
+  ]),
+);
+
+const getCategoryImage = (category: any) => {
+  const directImage = String(category?.image || "").trim();
+
+  if (
+    directImage &&
+    directImage !== "/placeholder.svg" &&
+    !directImage.includes("placeholder.svg")
+  ) {
+    return directImage;
+  }
+
+  return (
+    categoryImageMap.get(String(category?.id || "")) ||
+    "/placeholder.svg"
+  );
+};
+
 const normalizeText = (value: any) =>
   String(value || "")
     .toLowerCase()
@@ -1653,50 +1677,42 @@ const fetchJson = async (
   return readJson(response);
 };
 
-const flattenFallbackCategories =
-  () => {
-    return fallbackCategories.map(
-      (category: any) => ({
-        id: String(
-          category.id,
-        ),
-        name:
-          category.name,
-        slug:
-          category.slug,
-        image:
-          category.image ||
-          "/placeholder.svg",
-        parentId:
-          category.parentId ===
-          undefined
-            ? category.parent_id ||
-              null
-            : category.parentId,
-        parent_id:
-          category.parent_id ===
-          undefined
-            ? category.parentId ||
-              null
-            : category.parent_id,
-        level:
-          Number(
-            category.level || 0,
-          ),
-        gender:
-          category.gender,
-        categoryPath:
-          category.categoryPath ||
-          category.category_path ||
-          category.name,
-        category_path:
-          category.category_path ||
-          category.categoryPath ||
-          category.name,
-        children: [],
-      }),
-    ) as StorefrontCategory[];
-  };
+const flattenFallbackCategories = () => {
+  return fallbackCategories.map((category: any) => {
+    const resolvedParentId =
+      category.parentId === undefined
+        ? category.parent_id ?? null
+        : category.parentId;
+
+    return {
+      id: String(category.id),
+      name: String(category.name || ""),
+      slug: String(category.slug || ""),
+      image: getCategoryImage(category),
+      parentId:
+        resolvedParentId == null
+          ? null
+          : String(resolvedParentId),
+      parent_id:
+        resolvedParentId == null
+          ? null
+          : String(resolvedParentId),
+      level: Number(category.level || 0),
+      gender: category.gender,
+      categoryPath:
+        category.categoryPath ||
+        category.category_path ||
+        category.name ||
+        "",
+      category_path:
+        category.category_path ||
+        category.categoryPath ||
+        category.name ||
+        "",
+      children: [],
+    };
+  }) as StorefrontCategory[];
+};
 
 const flatToTree = (
   items: StorefrontCategory[],
@@ -1748,61 +1764,42 @@ const normalizeCategoryNode = (
   node: any,
   parentId: string | null = null,
 ): StorefrontCategory => {
-  const id = String(
-    node.id || "",
-  );
+  const id = String(node?.id || "");
+  const resolvedParentId =
+    node?.parentId === undefined
+      ? node?.parent_id ?? parentId
+      : node?.parentId;
 
-  const children =
-    Array.isArray(
-      node.children,
-    )
-      ? node.children.map(
-          (child: any) =>
-            normalizeCategoryNode(
-              child,
-              id,
-            ),
-        )
-      : [];
+  const children = Array.isArray(node?.children)
+    ? node.children.map((child: any) =>
+        normalizeCategoryNode(child, id),
+      )
+    : [];
 
   return {
     id,
-    name: String(
-      node.name || "",
-    ),
-    slug: String(
-      node.slug || "",
-    ),
-    image:
-      node.image ||
-      "/placeholder.svg",
+    name: String(node?.name || ""),
+    slug: String(node?.slug || ""),
+    image: getCategoryImage(node),
     parentId:
-      node.parentId ===
-      undefined
-        ? node.parent_id ??
-          parentId
-        : node.parentId,
+      resolvedParentId == null
+        ? null
+        : String(resolvedParentId),
     parent_id:
-      node.parent_id ===
-      undefined
-        ? node.parentId ??
-          parentId
-        : node.parent_id,
-    level:
-      Number(
-        node.level || 0,
-      ),
-    gender:
-      node.gender,
+      resolvedParentId == null
+        ? null
+        : String(resolvedParentId),
+    level: Number(node?.level || 0),
+    gender: node?.gender,
     categoryPath:
-      node.categoryPath ||
-      node.category_path ||
-      node.name ||
+      node?.categoryPath ||
+      node?.category_path ||
+      node?.name ||
       "",
     category_path:
-      node.category_path ||
-      node.categoryPath ||
-      node.name ||
+      node?.category_path ||
+      node?.categoryPath ||
+      node?.name ||
       "",
     children,
   };

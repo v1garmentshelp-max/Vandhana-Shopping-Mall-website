@@ -3,7 +3,7 @@
     "id": "2",
     "name": "Men",
     "slug": "men",
-    "image": "/placeholder.svg",
+    "image": "https://images.unsplash.com/photo-1520946490831-48eb69430369?auto=format&fit=crop&w=1170&q=80",
     "parentId": null,
     "level": 0,
     "gender": "MEN"
@@ -12,16 +12,34 @@
     "id": "4",
     "name": "T-Shirts & Polo",
     "slug": "t-shirts-polo",
-    "image": "/placeholder.svg",
+    "image": "https://images.bewakoof.com/t640/men-s-navy-blue-polo-t-shirt-685320-1764312952-1.jpg",
     "parentId": "2",
     "level": 1,
+    "gender": "MEN"
+  },
+  {
+    "id": "98",
+    "name": "Half Sleeve",
+    "slug": "half-sleeve",
+    "image": "https://images.bewakoof.com/t640/men-s-grey-oversized-t-shirt-539791-1747030188-1.jpg",
+    "parentId": "4",
+    "level": 2,
+    "gender": "MEN"
+  },
+  {
+    "id": "99",
+    "name": "Full Sleeve",
+    "slug": "full-sleeve",
+    "image": "https://images.bewakoof.com/t640/1500978_2026-02-24t07-35-12_1.jpg",
+    "parentId": "4",
+    "level": 2,
     "gender": "MEN"
   },
   {
     "id": "5",
     "name": "Shirts",
     "slug": "shirts",
-    "image": "/placeholder.svg",
+    "image": "https://images.bewakoof.com/t640/1500978_2026-02-24t07-35-12_1.jpg",
     "parentId": "2",
     "level": 1,
     "gender": "MEN"
@@ -30,52 +48,16 @@
     "id": "6",
     "name": "Jeans",
     "slug": "jeans",
-    "image": "/placeholder.svg",
+    "image": "https://images.bewakoof.com/t640/men-s-light-blue-slim-straight-fit-stretchable-mid-rise-jeans-662623-1754227604-1.jpg",
     "parentId": "2",
     "level": 1,
     "gender": "MEN"
   },
   {
-    "id": "7",
-    "name": "Pants",
-    "slug": "pants",
-    "image": "/placeholder.svg",
-    "parentId": "2",
-    "level": 1,
-    "gender": "MEN"
-  },
-  {
-    "id": "8",
-    "name": "Joggers",
-    "slug": "joggers",
-    "image": "/placeholder.svg",
-    "parentId": "2",
-    "level": 1,
-    "gender": "MEN"
-  },
-  {
-    "id": "9",
-    "name": "Cargo Pants",
-    "slug": "cargo-pants",
-    "image": "/placeholder.svg",
-    "parentId": "2",
-    "level": 1,
-    "gender": "MEN"
-  },
-  {
-    "id": "10",
-    "name": "Dress",
-    "slug": "dress",
-    "image": "/placeholder.svg",
-    "parentId": "2",
-    "level": 1,
-    "gender": "MEN"
-  },
-  {
-    "id": "11",
-    "name": "Shorts & 3/4th",
-    "slug": "shorts-3-4th",
-    "image": "/placeholder.svg",
+    "id": "100",
+    "name": "Daily Wear",
+    "slug": "daily-wear",
+    "image": "https://images.bewakoof.com/t640/men-s-black-go-rogue-color-block-oversized-track-pants-666391-1754630922-1.jpg",
     "parentId": "2",
     "level": 1,
     "gender": "MEN"
@@ -84,7 +66,7 @@
     "id": "3",
     "name": "Women",
     "slug": "women",
-    "image": "/placeholder.svg",
+    "image": "https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=1170&q=80",
     "parentId": null,
     "level": 0,
     "gender": "WOMEN"
@@ -93,7 +75,7 @@
     "id": "12",
     "name": "T-Shirts",
     "slug": "t-shirts",
-    "image": "/placeholder.svg",
+    "image": "https://images.bewakoof.com/t640/women-s-pink-white-camo-printed-oversized-t-shirt-580371-1765193986-1.jpg",
     "parentId": "3",
     "level": 1,
     "gender": "WOMEN"
@@ -102,16 +84,7 @@
     "id": "13",
     "name": "Tops",
     "slug": "tops",
-    "image": "/placeholder.svg",
-    "parentId": "3",
-    "level": 1,
-    "gender": "WOMEN"
-  },
-  {
-    "id": "14",
-    "name": "Dress",
-    "slug": "dress",
-    "image": "/placeholder.svg",
+    "image": "https://images.bewakoof.com/t640/1501032_2026-03-30t09-17-07_1.jpg",
     "parentId": "3",
     "level": 1,
     "gender": "WOMEN"
@@ -120,7 +93,7 @@
     "id": "15",
     "name": "Kurthi Pant Set",
     "slug": "kurthi-pant-set",
-    "image": "/placeholder.svg",
+    "image": "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=900&q=80",
     "parentId": "3",
     "level": 1,
     "gender": "WOMEN"
@@ -129,25 +102,25 @@
     "id": "16",
     "name": "Jeans",
     "slug": "jeans",
-    "image": "/placeholder.svg",
+    "image": "https://images.bewakoof.com/t640/women-s-light-blue-washed-straight-fit-cargo-jeans-671035-1756977298-1.jpg",
     "parentId": "3",
     "level": 1,
     "gender": "WOMEN"
   },
   {
-    "id": "17",
-    "name": "Cargo Pants",
-    "slug": "cargo-pants",
-    "image": "/placeholder.svg",
+    "id": "101",
+    "name": "Co-ord Set",
+    "slug": "co-ord-set",
+    "image": "https://images.bewakoof.com/t640/628247_2025-12-22t14-04-02_1.jpg",
     "parentId": "3",
     "level": 1,
     "gender": "WOMEN"
   },
   {
-    "id": "18",
-    "name": "Pants",
-    "slug": "pants",
-    "image": "/placeholder.svg",
+    "id": "102",
+    "name": "Half Saree",
+    "slug": "half-saree",
+    "image": "https://images.unsplash.com/photo-1583391733956-6c78276477e2?auto=format&fit=crop&w=900&q=80",
     "parentId": "3",
     "level": 1,
     "gender": "WOMEN"
@@ -156,7 +129,7 @@
     "id": "19",
     "name": "Nightys",
     "slug": "nightys",
-    "image": "/placeholder.svg",
+    "image": "https://images.bewakoof.com/t640/women-s-blue-all-over-printed-flared-dress-685541-1763105507-1.jpg",
     "parentId": "3",
     "level": 1,
     "gender": "WOMEN"
@@ -165,7 +138,7 @@
     "id": "20",
     "name": "Night Dress",
     "slug": "night-dress",
-    "image": "/placeholder.svg",
+    "image": "https://images.unsplash.com/photo-1596755389378-c31d21fd1273?auto=format&fit=crop&w=900&q=80",
     "parentId": "3",
     "level": 1,
     "gender": "WOMEN"
@@ -174,7 +147,7 @@
     "id": "1",
     "name": "Kids",
     "slug": "kids",
-    "image": "/placeholder.svg",
+    "image": "https://images.unsplash.com/photo-1519238263530-99bdd11df2ea?auto=format&fit=crop&w=1170&q=80",
     "parentId": null,
     "level": 0,
     "gender": "KIDS"
@@ -183,16 +156,7 @@
     "id": "21",
     "name": "Boys",
     "slug": "boys",
-    "image": "/placeholder.svg",
-    "parentId": "1",
-    "level": 1,
-    "gender": "KIDS"
-  },
-  {
-    "id": "22",
-    "name": "Girls",
-    "slug": "girls",
-    "image": "/placeholder.svg",
+    "image": "https://images.bewakoof.com/t640/kids-t-shirts.jpg",
     "parentId": "1",
     "level": 1,
     "gender": "KIDS"
@@ -201,7 +165,7 @@
     "id": "23",
     "name": "Baba Suits",
     "slug": "baba-suits",
-    "image": "/placeholder.svg",
+    "image": "https://images.unsplash.com/photo-1596870230751-ebdfce98ec42?auto=format&fit=crop&w=900&q=80",
     "parentId": "21",
     "level": 2,
     "gender": "KIDS"
@@ -210,25 +174,7 @@
     "id": "24",
     "name": "Night Dress",
     "slug": "night-dress",
-    "image": "/placeholder.svg",
-    "parentId": "21",
-    "level": 2,
-    "gender": "KIDS"
-  },
-  {
-    "id": "25",
-    "name": "Shorts & 3/4th",
-    "slug": "shorts-3-4th",
-    "image": "/placeholder.svg",
-    "parentId": "21",
-    "level": 2,
-    "gender": "KIDS"
-  },
-  {
-    "id": "26",
-    "name": "Joggers",
-    "slug": "joggers",
-    "image": "/placeholder.svg",
+    "image": "https://images.unsplash.com/photo-1519238263530-99bdd11df2ea?auto=format&fit=crop&w=900&q=80",
     "parentId": "21",
     "level": 2,
     "gender": "KIDS"
@@ -237,34 +183,16 @@
     "id": "27",
     "name": "Jeans",
     "slug": "jeans",
-    "image": "/placeholder.svg",
+    "image": "https://images.bewakoof.com/t640/kids-pants.jpg",
     "parentId": "21",
     "level": 2,
     "gender": "KIDS"
   },
   {
-    "id": "28",
-    "name": "Cargo Pants",
-    "slug": "cargo-pants",
-    "image": "/placeholder.svg",
-    "parentId": "21",
-    "level": 2,
-    "gender": "KIDS"
-  },
-  {
-    "id": "29",
-    "name": "Pants",
-    "slug": "pants",
-    "image": "/placeholder.svg",
-    "parentId": "21",
-    "level": 2,
-    "gender": "KIDS"
-  },
-  {
-    "id": "30",
-    "name": "Dress",
-    "slug": "dress",
-    "image": "/placeholder.svg",
+    "id": "103",
+    "name": "Daily Wear",
+    "slug": "daily-wear",
+    "image": "https://images.bewakoof.com/t640/kids-t-shirts.jpg",
     "parentId": "21",
     "level": 2,
     "gender": "KIDS"
@@ -273,25 +201,43 @@
     "id": "31",
     "name": "T-Shirts & Polo",
     "slug": "t-shirts-polo",
-    "image": "/placeholder.svg",
+    "image": "https://images.bewakoof.com/t640/kids-t-shirts.jpg",
     "parentId": "21",
     "level": 2,
     "gender": "KIDS"
   },
   {
-    "id": "32",
-    "name": "Western Wear",
-    "slug": "western-wear",
-    "image": "/placeholder.svg",
-    "parentId": "22",
-    "level": 2,
+    "id": "104",
+    "name": "Half Sleeve",
+    "slug": "half-sleeve",
+    "image": "https://images.bewakoof.com/t640/kids-t-shirts.jpg",
+    "parentId": "31",
+    "level": 3,
+    "gender": "KIDS"
+  },
+  {
+    "id": "105",
+    "name": "Full Sleeve",
+    "slug": "full-sleeve",
+    "image": "https://images.unsplash.com/photo-1519238263530-99bdd11df2ea?auto=format&fit=crop&w=900&q=80",
+    "parentId": "31",
+    "level": 3,
+    "gender": "KIDS"
+  },
+  {
+    "id": "22",
+    "name": "Girls",
+    "slug": "girls",
+    "image": "https://images.unsplash.com/photo-1518831959646-742c3a14ebf7?auto=format&fit=crop&w=900&q=80",
+    "parentId": "1",
+    "level": 1,
     "gender": "KIDS"
   },
   {
     "id": "33",
     "name": "Tops",
     "slug": "tops",
-    "image": "/placeholder.svg",
+    "image": "https://images.bewakoof.com/t640/kids-t-shirts.jpg",
     "parentId": "22",
     "level": 2,
     "gender": "KIDS"
@@ -300,7 +246,7 @@
     "id": "34",
     "name": "T-Shirts",
     "slug": "t-shirts",
-    "image": "/placeholder.svg",
+    "image": "https://images.bewakoof.com/t640/kids-t-shirts.jpg",
     "parentId": "22",
     "level": 2,
     "gender": "KIDS"
@@ -309,7 +255,7 @@
     "id": "35",
     "name": "Jeans",
     "slug": "jeans",
-    "image": "/placeholder.svg",
+    "image": "https://images.bewakoof.com/t640/kids-pants.jpg",
     "parentId": "22",
     "level": 2,
     "gender": "KIDS"
@@ -318,34 +264,52 @@
     "id": "36",
     "name": "Girls Night Dress",
     "slug": "girls-night-dress",
-    "image": "/placeholder.svg",
+    "image": "https://images.unsplash.com/photo-1518831959646-742c3a14ebf7?auto=format&fit=crop&w=900&q=80",
     "parentId": "22",
     "level": 2,
     "gender": "KIDS"
   },
   {
-    "id": "37",
-    "name": "Shorts & 3/4th",
-    "slug": "shorts-3-4th",
-    "image": "/placeholder.svg",
+    "id": "106",
+    "name": "Daily Wear",
+    "slug": "daily-wear",
+    "image": "https://images.unsplash.com/photo-1518831959646-742c3a14ebf7?auto=format&fit=crop&w=900&q=80",
     "parentId": "22",
     "level": 2,
     "gender": "KIDS"
   },
   {
-    "id": "38",
-    "name": "Joggers",
-    "slug": "joggers",
-    "image": "/placeholder.svg",
+    "id": "107",
+    "name": "Half Saree",
+    "slug": "half-saree",
+    "image": "https://images.unsplash.com/photo-1583391733956-6c78276477e2?auto=format&fit=crop&w=900&q=80",
     "parentId": "22",
     "level": 2,
     "gender": "KIDS"
   },
   {
-    "id": "39",
-    "name": "Dress",
-    "slug": "dress",
-    "image": "/placeholder.svg",
+    "id": "108",
+    "name": "Frocks",
+    "slug": "frocks",
+    "image": "https://images.unsplash.com/photo-1607453998774-d533f65dac99?auto=format&fit=crop&w=900&q=80",
+    "parentId": "22",
+    "level": 2,
+    "gender": "KIDS"
+  },
+  {
+    "id": "109",
+    "name": "Skirts",
+    "slug": "skirts",
+    "image": "https://images.unsplash.com/photo-1518831959646-742c3a14ebf7?auto=format&fit=crop&w=900&q=80",
+    "parentId": "22",
+    "level": 2,
+    "gender": "KIDS"
+  },
+  {
+    "id": "110",
+    "name": "Middies",
+    "slug": "middies",
+    "image": "https://images.unsplash.com/photo-1607453998774-d533f65dac99?auto=format&fit=crop&w=900&q=80",
     "parentId": "22",
     "level": 2,
     "gender": "KIDS"
