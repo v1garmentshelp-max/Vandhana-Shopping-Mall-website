@@ -532,6 +532,47 @@ const sortVariantValues = (values: string[]) => {
   });
 };
 
+const SIZE_ORDER = ["XXS", "XS", "S", "M", "L", "XL", "XXL", "XXXL", "4XL", "5XL", "6XL"];
+
+const normalizeSizeLabel = (value: any) => {
+  const size = String(value || "")
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, "");
+
+  const aliases: Record<string, string> = {
+    "2XL": "XXL",
+    "3XL": "XXXL",
+    "XXXXL": "4XL",
+    "XXXXXL": "5XL",
+    "XXXXXXL": "6XL",
+  };
+
+  return aliases[size] || size;
+};
+
+const sortSizeValues = (values: string[]) => {
+  return uniqueValues(values).sort((a, b) => {
+    const normalizedA = normalizeSizeLabel(a);
+    const normalizedB = normalizeSizeLabel(b);
+    const orderA = SIZE_ORDER.indexOf(normalizedA);
+    const orderB = SIZE_ORDER.indexOf(normalizedB);
+
+    if (orderA !== -1 && orderB !== -1) return orderA - orderB;
+    if (orderA !== -1) return -1;
+    if (orderB !== -1) return 1;
+
+    const numberA = Number(normalizedA);
+    const numberB = Number(normalizedB);
+
+    if (Number.isFinite(numberA) && Number.isFinite(numberB)) {
+      return numberA - numberB;
+    }
+
+    return normalizedA.localeCompare(normalizedB, undefined, { numeric: true });
+  });
+};
+
 const sortColourValues = (values: string[]) => {
   const unique = new Map<string, string>();
 
@@ -939,7 +980,7 @@ const ProductDetails: React.FC = () => {
       ? variantOptions.filter((variant: ProductVariantOption) => sameColour(getVariantColor(variant), selectedColor))
       : variantOptions;
 
-    return sortVariantValues(filtered.map((variant: ProductVariantOption) => cleanSingleValue(variant.size)));
+    return sortSizeValues(filtered.map((variant: ProductVariantOption) => cleanSingleValue(variant.size)));
   }, [variantOptions, selectedColor]);
 
   useEffect(() => {
@@ -1289,7 +1330,7 @@ const ProductDetails: React.FC = () => {
           sameColour(getVariantColor(variant), cleanVal),
         );
 
-        const validSizes = sortVariantValues(matchingColorVariants.map((variant: ProductVariantOption) => cleanSingleValue(variant.size)));
+        const validSizes = sortSizeValues(matchingColorVariants.map((variant: ProductVariantOption) => cleanSingleValue(variant.size)));
         const currentSize = next["Size"] || "";
 
         if (validSizes.length && !validSizes.some((size) => sameValue(size, currentSize))) {
