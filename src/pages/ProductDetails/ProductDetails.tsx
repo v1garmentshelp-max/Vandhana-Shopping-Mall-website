@@ -45,6 +45,12 @@ type ProductVariantOption = {
   size: string;
   colour: string;
   color: string;
+  colour_hex?: string;
+  color_hex?: string;
+  colourHex?: string;
+  colorHex?: string;
+  swatch_color?: string;
+  swatchColor?: string;
   barcode?: string;
   ean_code?: string;
   mrp: number;
@@ -155,11 +161,82 @@ const cleanSingleValue = (value: any) => {
   return s;
 };
 
+const cleanColourValue = (value: any) => {
+  const colour = getString(value).replace(/\s+/g, " ");
+  if (!colour || colour === "[object Object]" || colour.length > 100) return "";
+  return colour;
+};
+
 const sameValue = (a: any, b: any) =>
   String(a || "").trim().toLowerCase() === String(b || "").trim().toLowerCase();
 
+const normalizeColourName = (value: any) => {
+  const colour = String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ");
+
+  const aliases: Record<string, string> = {
+    "dark bblue": "dark blue",
+    darkblue: "dark blue",
+    "dark blu": "dark blue",
+    "dark bluee": "dark blue",
+    "sea blu": "sea blue",
+    seablue: "sea blue",
+    "see blue": "sea blue",
+    iceblue: "ice blue",
+    "ice blu": "ice blue",
+    offwhite: "off white",
+    lightgray: "light grey",
+    "light gray": "light grey",
+    darkgray: "dark grey",
+    "dark gray": "dark grey",
+    "ash gray": "ash grey",
+    "elephant gray": "elephant grey",
+    "bottel green": "bottle green",
+    "botal green": "bottle green",
+    "mehandi green": "mehendi green",
+    ston: "stone",
+    "p olive": "olive",
+    "deep skin": "skin",
+    "skin colour": "skin",
+    "skin color": "skin",
+    "aqua marine": "aquamarine",
+    aquamarine: "aquamarine",
+    violate: "violet",
+    onionpink: "onion",
+    "onion pink": "onion",
+    frenchwine: "french wine",
+    peacockgreen: "peacock green",
+    "light rama": "light rama green",
+    "light rama green": "light rama green",
+    cherrybrown: "cherry brown",
+    "multi colour": "multicolor",
+    "multi color": "multicolor",
+    "multi colored": "multicolor",
+    "multi coloured": "multicolor",
+  };
+
+  return aliases[colour] || colour;
+};
+
+const sameColour = (a: any, b: any) =>
+  normalizeColourName(a) === normalizeColourName(b);
+
 const getVariantColor = (variant?: ProductVariantOption | null) =>
-  cleanSingleValue(variant?.colour || variant?.color || "");
+  cleanColourValue(variant?.colour || variant?.color || "");
+
+const getVariantColourValue = (variant?: ProductVariantOption | null) =>
+  getString(
+    variant?.colour_hex ||
+      variant?.color_hex ||
+      variant?.colourHex ||
+      variant?.colorHex ||
+      variant?.swatch_color ||
+      variant?.swatchColor ||
+      "",
+  );
 
 const getBackendProductId = (product: Product | null) => {
   const p: any = product || {};
@@ -342,7 +419,7 @@ const normalizeVariant = (item: any, product: any): ProductVariantOption => {
   const originalB2b = getNumber(item?.original_price_b2b ?? item?.b2b_original_price ?? item?.cost_price ?? product?.original_price_b2b ?? product?.cost_price, originalB2c);
   const finalB2b = b2bDiscount > 0 && originalB2b > 0 ? calculateDiscountedPrice(originalB2b, b2bDiscount, originalB2b) : getNumber(item?.final_price_b2b ?? item?.b2b_final_price ?? item?.cost_price ?? product?.final_price_b2b, finalB2c);
   const size = cleanSingleValue(item?.size || item?.selected_size || "");
-  const colour = cleanSingleValue(item?.colour || item?.color || item?.selected_colour || item?.selectedColor || "");
+  const colour = cleanColourValue(item?.colour || item?.color || item?.selected_colour || item?.selectedColor || "");
 
   const itemImages = imagePairFromSource(item);
   const productImages = imagePairFromSource(product);
@@ -351,6 +428,22 @@ const normalizeVariant = (item: any, product: any): ProductVariantOption => {
     itemImages[1] || productImages[1],
   ]).slice(0, 2);
 
+  const colourValue = getString(
+    item?.colour_hex ||
+      item?.color_hex ||
+      item?.colourHex ||
+      item?.colorHex ||
+      item?.swatch_color ||
+      item?.swatchColor ||
+      product?.colour_hex ||
+      product?.color_hex ||
+      product?.colourHex ||
+      product?.colorHex ||
+      product?.swatch_color ||
+      product?.swatchColor ||
+      "",
+  );
+
   return {
     id: item?.id || item?.variant_id || item?.variantId || "",
     variant_id: item?.variant_id || item?.variantId || item?.id || "",
@@ -358,6 +451,12 @@ const normalizeVariant = (item: any, product: any): ProductVariantOption => {
     size,
     colour,
     color: colour,
+    colour_hex: colourValue,
+    color_hex: colourValue,
+    colourHex: colourValue,
+    colorHex: colourValue,
+    swatch_color: colourValue,
+    swatchColor: colourValue,
     barcode: getString(item?.barcode || item?.ean_code || ""),
     ean_code: getString(item?.ean_code || item?.barcode || ""),
     mrp,
@@ -393,7 +492,7 @@ const normalizeVariant = (item: any, product: any): ProductVariantOption => {
 
 const isValidVariantOption = (variant: ProductVariantOption) => {
   const hasSize = !!cleanSingleValue(variant.size);
-  const hasColor = !!cleanSingleValue(variant.colour || variant.color);
+  const hasColor = !!cleanColourValue(variant.colour || variant.color);
   const hasId = !!getString(variant.variant_id || variant.id || variant.barcode || variant.ean_code);
   return hasId && (hasSize || hasColor);
 };
@@ -433,6 +532,25 @@ const sortVariantValues = (values: string[]) => {
   });
 };
 
+const sortColourValues = (values: string[]) => {
+  const unique = new Map<string, string>();
+
+  values.forEach((value) => {
+    const clean = cleanColourValue(value);
+    const key = normalizeColourName(clean);
+
+    if (!clean || !key || unique.has(key)) return;
+
+    unique.set(key, clean);
+  });
+
+  return Array.from(unique.values()).sort((a, b) =>
+    normalizeColourName(a).localeCompare(normalizeColourName(b), undefined, {
+      numeric: true,
+    }),
+  );
+};
+
 const findVariantByRouteId = (variants: ProductVariantOption[], routeId: any) => {
   const target = String(routeId || "").trim();
   if (!target) return null;
@@ -456,7 +574,7 @@ const findExactVariant = (
   return (
     variants.find((variant: ProductVariantOption) => {
       const sizeOk = selectedSize ? sameValue(variant.size, selectedSize) : true;
-      const colorOk = selectedColor ? sameValue(getVariantColor(variant), selectedColor) : true;
+      const colorOk = selectedColor ? sameColour(getVariantColor(variant), selectedColor) : true;
       return sizeOk && colorOk;
     }) || null
   );
@@ -464,7 +582,7 @@ const findExactVariant = (
 
 const findVariantByColor = (variants: ProductVariantOption[], selectedColor: string) => {
   if (!selectedColor) return null;
-  return variants.find((variant: ProductVariantOption) => sameValue(getVariantColor(variant), selectedColor)) || null;
+  return variants.find((variant: ProductVariantOption) => sameColour(getVariantColor(variant), selectedColor)) || null;
 };
 
 const findVariantBySize = (variants: ProductVariantOption[], selectedSize: string) => {
@@ -530,6 +648,219 @@ const productIdentityKeys = (product: any) => {
 const hasSameProductIdentity = (a: any, b: any) => {
   const aKeys = new Set(productIdentityKeys(a));
   return productIdentityKeys(b).some((key) => aKeys.has(key));
+};
+
+const COLOR_MAP: Record<string, string> = {
+  black: "#000000",
+  white: "#ffffff",
+  red: "#dc2626",
+  crimson: "#dc143c",
+  scarlet: "#ff2400",
+  maroon: "#800000",
+  burgundy: "#800020",
+  wine: "#722f37",
+  "french wine": "#781f3d",
+  cherry: "#de3163",
+  "cherry red": "#de3163",
+  "cherry brown": "#7c2935",
+  pink: "#ec4899",
+  "light pink": "#f9a8d4",
+  "baby pink": "#f4c2c2",
+  "hot pink": "#ff69b4",
+  "rose pink": "#ff66cc",
+  "dusty pink": "#d8a7b1",
+  "strawberry pink": "#fc5a8d",
+  onion: "#c7789f",
+  peach: "#ffcba4",
+  coral: "#ff7f50",
+  salmon: "#fa8072",
+  orange: "#f97316",
+  mango: "#f4a300",
+  spice: "#b85c38",
+  rust: "#b7410e",
+  copper: "#b87333",
+  brown: "#78350f",
+  chocolate: "#7b3f00",
+  "coffee brown": "#4b2e1f",
+  coffee: "#6f4e37",
+  tan: "#d2b48c",
+  beige: "#d8c3a5",
+  biscuit: "#d2b48c",
+  camel: "#c19a6b",
+  khaki: "#bdb76b",
+  cream: "#fffdd0",
+  ivory: "#fffff0",
+  "off white": "#faf9f6",
+  skin: "#d2a679",
+  gold: "#d4af37",
+  golden: "#d4af37",
+  mustard: "#c99700",
+  silver: "#c0c0c0",
+  grey: "#6b7280",
+  gray: "#6b7280",
+  "light grey": "#d1d5db",
+  "dark grey": "#374151",
+  "ash grey": "#b2beb5",
+  "elephant grey": "#8b8c89",
+  charcoal: "#36454f",
+  stone: "#8f8f8f",
+  limestone: "#d8d6cf",
+  blue: "#2563eb",
+  "dark blue": "#1e3a8a",
+  "light blue": "#add8e6",
+  navy: "#000080",
+  "navy blue": "#000080",
+  "royal blue": "#4169e1",
+  "sky blue": "#87ceeb",
+  "sea blue": "#2e8b9e",
+  "ice blue": "#d9f2ff",
+  "aqua blue": "#00ffff",
+  aqua: "#00ffff",
+  aquamarine: "#7fffd4",
+  cyan: "#00bcd4",
+  turquoise: "#40e0d0",
+  teal: "#008080",
+  indigo: "#4b0082",
+  green: "#16a34a",
+  "dark green": "#14532d",
+  "light green": "#90ee90",
+  "bottle green": "#006a4e",
+  "forest green": "#228b22",
+  "sea green": "#2e8b57",
+  "peacock green": "#007f72",
+  "olive green": "#556b2f",
+  olive: "#808000",
+  "mehendi green": "#556b2f",
+  "rama green": "#008f83",
+  "light rama green": "#78d7c4",
+  "ice green": "#d7f7e8",
+  fern: "#4f7942",
+  pista: "#93c572",
+  pistachio: "#93c572",
+  mint: "#98ff98",
+  lime: "#84cc16",
+  yellow: "#eab308",
+  lemon: "#fff44f",
+  purple: "#7e22ce",
+  violet: "#7f00ff",
+  lavender: "#c4a7e7",
+  mauve: "#b784a7",
+  lilac: "#c8a2c8",
+  plum: "#8e4585",
+  magenta: "#d946ef",
+};
+
+const normalizeProvidedColour = (value: any) => {
+  const provided = getString(value);
+
+  if (!provided) return "";
+
+  if (
+    /^#([0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(provided) ||
+    /^(rgb|rgba|hsl|hsla)\(/i.test(provided) ||
+    /^(linear-gradient|radial-gradient|conic-gradient)\(/i.test(provided)
+  ) {
+    return provided;
+  }
+
+  return "";
+};
+
+const getNamedColour = (value: any) => {
+  const normalized = normalizeColourName(value);
+
+  if (!normalized) return "";
+
+  return COLOR_MAP[normalized] || "";
+};
+
+const getColourParts = (value: any) => {
+  return String(value || "")
+    .trim()
+    .split(/\s*(?:\/|\+|&|,)\s*/)
+    .map((part) => normalizeColourName(part))
+    .filter(Boolean);
+};
+
+const COMBINATION_MAP: Record<string, string> = {
+  "light rama green & onion":
+    "linear-gradient(135deg,#78d7c4 0%,#78d7c4 50%,#c7789f 50%,#c7789f 100%)",
+  "mustard & mango":
+    "linear-gradient(135deg,#c99700 0%,#c99700 50%,#f4a300 50%,#f4a300 100%)",
+  "peacock green & onion":
+    "linear-gradient(135deg,#007f72 0%,#007f72 50%,#c7789f 50%,#c7789f 100%)",
+  "mauve & aquamarine":
+    "linear-gradient(135deg,#b784a7 0%,#b784a7 50%,#7fffd4 50%,#7fffd4 100%)",
+  "cherry brown & ice green":
+    "linear-gradient(135deg,#7c2935 0%,#7c2935 50%,#d7f7e8 50%,#d7f7e8 100%)",
+  "indigo & violet":
+    "linear-gradient(135deg,#4b0082 0%,#4b0082 50%,#7f00ff 50%,#7f00ff 100%)",
+  "spice & mango":
+    "linear-gradient(135deg,#b85c38 0%,#b85c38 50%,#f4a300 50%,#f4a300 100%)",
+  "plum & fern":
+    "linear-gradient(135deg,#8e4585 0%,#8e4585 50%,#4f7942 50%,#4f7942 100%)",
+  "french wine & lavender":
+    "linear-gradient(135deg,#781f3d 0%,#781f3d 50%,#c4a7e7 50%,#c4a7e7 100%)",
+  "plum & peacock green":
+    "linear-gradient(135deg,#8e4585 0%,#8e4585 50%,#007f72 50%,#007f72 100%)",
+};
+
+const getMultiColourBackground = (value: any) => {
+  const normalized = normalizeColourName(value);
+
+  if (
+    normalized === "multicolor" ||
+    normalized.includes("rainbow") ||
+    normalized.includes("assorted")
+  ) {
+    return "conic-gradient(#ef4444,#f59e0b,#eab308,#22c55e,#06b6d4,#3b82f6,#8b5cf6,#ec4899,#ef4444)";
+  }
+
+  const parts = getColourParts(value);
+
+  if (parts.length < 2) return "";
+
+  const combinationKey = parts.join(" & ");
+
+  if (COMBINATION_MAP[combinationKey]) {
+    return COMBINATION_MAP[combinationKey];
+  }
+
+  const colours = parts.map((part) => getNamedColour(part));
+
+  if (colours.some((colour) => !colour)) return "";
+
+  const stops = colours
+    .map((colour, index) => {
+      const start = Math.round((index / colours.length) * 100);
+      const end = Math.round(((index + 1) / colours.length) * 100);
+
+      return `${colour} ${start}% ${end}%`;
+    })
+    .join(",");
+
+  return `linear-gradient(135deg,${stops})`;
+};
+
+const getColorBackground = (value: any, providedColour?: any) => {
+  const provided = normalizeProvidedColour(providedColour);
+
+  if (provided) return provided;
+
+  const rawValue = getString(value);
+  const direct = normalizeProvidedColour(rawValue);
+
+  if (direct) return direct;
+
+  const multiColour = getMultiColourBackground(rawValue);
+
+  if (multiColour) return multiColour;
+
+  const namedColour = getNamedColour(rawValue);
+
+  if (namedColour) return namedColour;
+
+  return "#d1d5db";
 };
 
 const CustomLeftArrow = ({ onClick }: any) => (
@@ -599,13 +930,13 @@ const ProductDetails: React.FC = () => {
   );
 
   const colorValues = useMemo(
-    () => sortVariantValues(variantOptions.map((variant: ProductVariantOption) => getVariantColor(variant))),
+    () => sortColourValues(variantOptions.map((variant: ProductVariantOption) => getVariantColor(variant))),
     [variantOptions],
   );
 
   const sizeValues = useMemo(() => {
     const filtered = selectedColor
-      ? variantOptions.filter((variant: ProductVariantOption) => sameValue(getVariantColor(variant), selectedColor))
+      ? variantOptions.filter((variant: ProductVariantOption) => sameColour(getVariantColor(variant), selectedColor))
       : variantOptions;
 
     return sortVariantValues(filtered.map((variant: ProductVariantOption) => cleanSingleValue(variant.size)));
@@ -670,7 +1001,7 @@ const ProductDetails: React.FC = () => {
 
         const routeVariant = findVariantByRouteId(variants, id) || findVariantByRouteId(allVariants, id);
 
-        const productColor = cleanSingleValue(
+        const productColor = cleanColourValue(
           (foundProduct as any).selectedColor ||
             (foundProduct as any).selected_colour ||
             (foundProduct as any).displayColor ||
@@ -695,7 +1026,7 @@ const ProductDetails: React.FC = () => {
         const firstVariant = routeVariant || fieldVariant || variants[0];
         const initialOptions: Record<string, string> = {};
 
-        const initialColor = getVariantColor(firstVariant) || productColor || cleanSingleValue((foundProduct as any).colors?.[0]);
+        const initialColor = getVariantColor(firstVariant) || productColor || cleanColourValue((foundProduct as any).colors?.[0]);
         const initialSize = cleanSingleValue(firstVariant?.size || productSize || (foundProduct as any).sizes?.[0]);
 
         if (initialColor) {
@@ -749,7 +1080,7 @@ const ProductDetails: React.FC = () => {
       if (exact) return prev;
 
       const colorMatch = currentColor
-        ? variantOptions.find((variant: ProductVariantOption) => sameValue(getVariantColor(variant), currentColor))
+        ? variantOptions.find((variant: ProductVariantOption) => sameColour(getVariantColor(variant), currentColor))
         : null;
 
       const sizeMatch = currentSize
@@ -768,7 +1099,7 @@ const ProductDetails: React.FC = () => {
       if (nextSize) next["Size"] = nextSize;
       else delete next["Size"];
 
-      if (sameValue(currentColor, next["Color"]) && sameValue(currentSize, next["Size"])) return prev;
+      if (sameColour(currentColor, next["Color"]) && sameValue(currentSize, next["Size"])) return prev;
 
       return next;
     });
@@ -940,7 +1271,8 @@ const ProductDetails: React.FC = () => {
     setCartError("");
     setCartMessage("");
 
-    const cleanVal = cleanSingleValue(val);
+    const optionKey = name.toLowerCase();
+    const cleanVal = optionKey === "color" || optionKey === "colour" ? cleanColourValue(val) : cleanSingleValue(val);
 
     if (!cleanVal) return;
 
@@ -950,11 +1282,11 @@ const ProductDetails: React.FC = () => {
         [name]: cleanVal,
       };
 
-      const key = name.toLowerCase();
+      const key = optionKey;
 
       if (key === "color" || key === "colour") {
         const matchingColorVariants = variantOptions.filter((variant: ProductVariantOption) =>
-          sameValue(getVariantColor(variant), cleanVal),
+          sameColour(getVariantColor(variant), cleanVal),
         );
 
         const validSizes = sortVariantValues(matchingColorVariants.map((variant: ProductVariantOption) => cleanSingleValue(variant.size)));
@@ -976,7 +1308,7 @@ const ProductDetails: React.FC = () => {
 
         const currentColor = next["Color"] || "";
 
-        if (currentColor && !matchingSizeVariants.some((variant: ProductVariantOption) => sameValue(getVariantColor(variant), currentColor))) {
+        if (currentColor && !matchingSizeVariants.some((variant: ProductVariantOption) => sameColour(getVariantColor(variant), currentColor))) {
           const nextColor = sortVariantValues(matchingSizeVariants.map((variant: ProductVariantOption) => getVariantColor(variant)))[0] || "";
           if (nextColor) next["Color"] = nextColor;
           else delete next["Color"];
@@ -985,65 +1317,6 @@ const ProductDetails: React.FC = () => {
 
       return next;
     });
-  };
-
-  const getColorHex = (val: string) => {
-    const key = String(val || "").trim().toLowerCase();
-    const map: Record<string, string> = {
-      black: "#000000",
-      white: "#ffffff",
-      red: "#ef4444",
-      blue: "#3b82f6",
-      green: "#22c55e",
-      yellow: "#eab308",
-      gray: "#6b7280",
-      grey: "#6b7280",
-      brown: "#78350f",
-      pink: "#ec4899",
-      olive: "#808000",
-      "p olive": "#808000",
-      "sky blue": "#87ceeb",
-      "ice blue": "#d9f2ff",
-      khaki: "#bdb76b",
-      chocolate: "#7b3f00",
-      wine: "#722f37",
-      "sea green": "#2e8b57",
-      "dark bblue": "#1e3a8a",
-      "dark blue": "#1e3a8a",
-      "aqua blue": "#00ffff",
-      mauve: "#e0b0ff",
-      limestone: "#d8d6cf",
-      "forest green": "#228b22",
-      "dark grey": "#374151",
-      "light grey": "#d1d5db",
-      "olive green": "#556b2f",
-      "cherry red": "#de3163",
-      "ash grey": "#b2beb5",
-      "elephant grey": "#8b8c89",
-      pista: "#93c572",
-      ston: "#8f8f8f",
-      stone: "#8f8f8f",
-      biscuit: "#d2b48c",
-      "coffee brown": "#4b2e1f",
-      cream: "#fffdd0",
-      lavender: "#b57edc",
-      "mehandi green": "#556b2f",
-      orange: "#f97316",
-      "deep skin": "#d2a679",
-      "bottel green": "#006a4e",
-      "bottle green": "#006a4e",
-      "ice green": "#d7fff0",
-      "light pink": "#f9a8d4",
-      "rama green": "#00897b",
-      "strawberry pink": "#fc5a8d",
-      purple: "#7e22ce",
-    };
-
-    const isHex = /^#([0-9A-F]{3}){1,2}$/i.test(val);
-
-    if (isHex) return val;
-    if (map[key]) return map[key];
-    return "#d1d5db";
   };
 
   const handleQuantityChange = (type: "plus" | "minus") => {
@@ -1481,22 +1754,35 @@ const ProductDetails: React.FC = () => {
 
                     <div className="flex flex-wrap gap-3">
                       {option.values.map((val) => {
-                        const cleanVal = cleanSingleValue(val);
+                        const cleanVal = isColor ? cleanColourValue(val) : cleanSingleValue(val);
                         if (!cleanVal) return null;
-                        const isSelected = selectedOptions[option.name] === cleanVal;
+                        const isSelected = isColor
+                          ? sameColour(selectedOptions[option.name], cleanVal)
+                          : selectedOptions[option.name] === cleanVal;
 
                         if (isColor) {
+                          const matchingVariant = variantOptions.find((variant: ProductVariantOption) =>
+                            sameColour(getVariantColor(variant), cleanVal),
+                          );
+                          const swatchBackground = getColorBackground(
+                            cleanVal,
+                            getVariantColourValue(matchingVariant),
+                          );
+
                           return (
                             <button
                               key={cleanVal}
                               onClick={() => handleOptionChange(option.name, cleanVal)}
                               title={cleanVal}
-                              className={`w-8 h-8 rounded-full border border-gray-100 transition-all ${
+                              className={`w-8 h-8 rounded-full border border-gray-300 transition-all ${
                                 isSelected
-                                  ? "ring-2 ring-gray-400 ring-offset-2 scale-110"
+                                  ? "ring-2 ring-gray-500 ring-offset-2 scale-110"
                                   : "hover:scale-110"
                               }`}
-                              style={{ backgroundColor: getColorHex(cleanVal) }}
+                              style={{
+                                background: swatchBackground,
+                                boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.08)",
+                              }}
                               aria-label={`Select Color ${cleanVal}`}
                             />
                           );
