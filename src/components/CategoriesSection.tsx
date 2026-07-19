@@ -4,25 +4,31 @@ import { ChevronRight } from "lucide-react";
 import { Link } from "react-router";
 import type { Category } from "../Models/Category";
 import type { Product } from "../Models/Product";
-
-const normalizeText = (value: any) =>
-  String(value || "")
-    .toLowerCase()
-    .replace(/&/g, "and")
-    .replace(/-/g, " ")
-    .replace(/[^a-z0-9]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+import categoriesJson from "../Data/categories.json";
 
 const imageFromValue = (value: any) => {
   if (!value) return "";
   if (typeof value === "string") return value.trim();
-  return String(value.image_url || value.secure_url || value.url || "").trim();
+
+  return String(
+    value.image_url ||
+      value.imageUrl ||
+      value.front_image_url ||
+      value.frontImageUrl ||
+      value.main_image_url ||
+      value.mainImageUrl ||
+      value.secure_url ||
+      value.url ||
+      "",
+  ).trim();
 };
 
 const parseImages = (value: any) => {
   if (!value) return [];
-  if (Array.isArray(value)) return value;
+
+  if (Array.isArray(value)) {
+    return value;
+  }
 
   if (typeof value === "string") {
     try {
@@ -36,73 +42,146 @@ const parseImages = (value: any) => {
   return [];
 };
 
-const productImage = (product: any) => {
-  const images = parseImages(product?.images);
+const isGoodImage = (value: any) => {
+  const image = String(value || "").trim().toLowerCase();
 
-  return (
-    imageFromValue(product?.frontImageUrl) ||
-    imageFromValue(product?.front_image_url) ||
-    imageFromValue(product?.imageUrl) ||
-    imageFromValue(product?.image_url) ||
-    imageFromValue(product?.mainImageUrl) ||
-    imageFromValue(product?.main_image_url) ||
-    imageFromValue(images[0])
+  return Boolean(
+    image &&
+      image !== "[object object]" &&
+      !image.includes("undefined") &&
+      !image.includes("null") &&
+      !image.includes("placeholder.svg"),
   );
 };
 
-const isGoodImage = (value: any) => {
-  const image = String(value || "").trim().toLowerCase();
-  if (!image) return false;
-  if (image.includes("bewakoof.com")) return false;
-  if (image.includes("undefined")) return false;
-  if (image.includes("null")) return false;
-  if (image === "[object object]") return false;
-  return true;
+const uniqueImages = (values: any[]) => {
+  const seen = new Set<string>();
+  const output: string[] = [];
+
+  values.forEach((value) => {
+    const image = imageFromValue(value);
+
+    if (!isGoodImage(image)) return;
+
+    const key = image.toLowerCase();
+
+    if (seen.has(key)) return;
+
+    seen.add(key);
+    output.push(image);
+  });
+
+  return output;
 };
 
-const productMatchesCategory = (product: any, category: any) => {
-  const categoryId = String(category.id || "");
-  const productCategoryId = String(product?.categoryId || product?.category_id || "");
-  if (categoryId && productCategoryId && categoryId === productCategoryId) return true;
+const productImages = (product: any) => {
+  const images = parseImages(product?.images);
 
-  const categorySlug = normalizeText(category.slug);
-  const productCategorySlug = normalizeText(product?.categorySlug || product?.category_slug);
-  if (categorySlug && productCategorySlug && categorySlug === productCategorySlug) return true;
-
-  const categoryName = normalizeText(category.name);
-  const productCategoryName = normalizeText(product?.categoryName || product?.category_name);
-  if (categoryName && productCategoryName && categoryName === productCategoryName) return true;
-
-  const productName = normalizeText(product?.title || product?.name || product?.product_name || "");
-  return Boolean(categoryName && productName.includes(categoryName.replace(/s$/, "")));
+  return uniqueImages([
+    product?.frontImageUrl,
+    product?.front_image_url,
+    product?.imageUrl,
+    product?.image_url,
+    product?.mainImageUrl,
+    product?.main_image_url,
+    product?.backImageUrl,
+    product?.back_image_url,
+    ...images,
+  ]);
 };
 
-const stableIndex = (key: string, length: number) => {
-  if (!length) return 0;
-  let hash = 0;
-  for (let i = 0; i < key.length; i += 1) {
-    hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
+const categoryImageMap = new Map<string, string>(
+  (categoriesJson as any[]).map((category) => [
+    String(category.id),
+    String(category.image || ""),
+  ]),
+);
+
+const getProductCategoryId = (product: any) =>
+  String(product?.categoryId || product?.category_id || "").trim();
+
+const getExactCategoryProducts = (
+  category: any,
+  productData: Product[],
+) => {
+  const categoryId = String(category?.id || "").trim();
+
+  if (!categoryId) return [];
+
+  return productData.filter(
+    (product: any) => getProductCategoryId(product) === categoryId,
+  );
+};
+
+const getCategoryImage = (
+  category: any,
+  productData: Product[],
+) => {
+  const matchingProducts = getExactCategoryProducts(
+    category,
+    productData,
+  );
+
+  for (const product of matchingProducts) {
+    const images = productImages(product);
+
+    if (images.length) {
+      return images[0];
+    }
   }
-  return hash % length;
+
+  const mappedImage = categoryImageMap.get(
+    String(category?.id || ""),
+  );
+
+  if (isGoodImage(mappedImage)) {
+    return mappedImage as string;
+  }
+
+  if (isGoodImage(category?.image)) {
+    return String(category.image);
+  }
+
+  return "/placeholder.svg";
 };
 
-const getGenderParam = (category: any, productData: Product[]) => {
-  const gender = String(category.gender || "").toUpperCase();
+const getGenderParam = (
+  category: any,
+  productData: Product[],
+) => {
+  const gender = String(category?.gender || "").toUpperCase();
+
   if (gender === "MEN") return "Men";
   if (gender === "WOMEN") return "Women";
   if (gender === "KIDS") return "Kids";
 
-  const matchedProduct = productData.find((product: any) => String(product.categoryId || product.category_id || "") === String(category.id || ""));
-  return matchedProduct?.gender || "";
+  const matchedProduct = productData.find(
+    (product: any) =>
+      getProductCategoryId(product) ===
+      String(category?.id || ""),
+  );
+
+  return String(matchedProduct?.gender || "");
 };
 
-const getCategoryLink = (category: any, productData: Product[]) => {
+const getCategoryLink = (
+  category: any,
+  productData: Product[],
+) => {
   const params = new URLSearchParams();
   const gender = getGenderParam(category, productData);
 
-  if (gender) params.set("gender", gender);
-  if (category.id) params.set("category_id", String(category.id));
-  if (category.slug) params.set("category_slug", String(category.slug));
+  if (gender) {
+    params.set("gender", gender);
+  }
+
+  if (category?.id) {
+    params.set("category_id", String(category.id));
+  }
+
+  if (category?.slug) {
+    params.set("category_slug", String(category.slug));
+  }
 
   return `/collections?${params.toString()}`;
 };
@@ -120,74 +199,81 @@ const CategoriesSection = ({
     dragFree: true,
     containScroll: "trimSnaps",
     breakpoints: {
-      "(min-width: 1024px)": { active: false },
+      "(min-width: 1024px)": {
+        active: false,
+      },
     },
   });
-
-  const allProductImages = productData.map((product) => productImage(product)).filter(isGoodImage);
-
-  const getCategoryImage = (category: Category) => {
-    const matchingProducts = productData.filter((product) => productMatchesCategory(product, category));
-    const matchingImages = matchingProducts.map((product) => productImage(product)).filter(isGoodImage);
-
-    if (matchingImages.length) {
-      return matchingImages[stableIndex(String(category.id || category.name), matchingImages.length)];
-    }
-
-    if (allProductImages.length) {
-      return allProductImages[stableIndex(String(category.id || category.name), allProductImages.length)];
-    }
-
-    if (isGoodImage((category as any).image)) return (category as any).image;
-
-    return "/placeholder.svg";
-  };
 
   return (
     <div className="w-full bg-white pt-6 md:pt-10 md:py-16 px-2 md:px-6">
       <Wrapper className="px-0!">
-        {title && (
+        {title ? (
           <div className="text-left mb-4">
             <h2 className="text-4xl md:text-5xl font-black tracking-tight text-black font-big-shoulders uppercase">
               {title}
               <span className="text-[#FFD700]">.</span>
             </h2>
           </div>
-        )}
+        ) : null}
 
-        <div className="overflow-hidden md:overflow-visible" ref={emblaRef}>
+        <div
+          className="overflow-hidden md:overflow-visible"
+          ref={emblaRef}
+        >
           <div className="flex flex-col flex-wrap h-[440px] lg:h-auto lg:flex-row lg:grid lg:grid-cols-5 gap-2 lg:gap-4">
             {categories.map((category: any) => {
-              const image = getCategoryImage(category);
+              const image = getCategoryImage(
+                category,
+                productData,
+              );
 
               return (
                 <Link
-                  key={category.id}
-                  to={getCategoryLink(category, productData)}
+                  key={String(category.id)}
+                  to={getCategoryLink(
+                    category,
+                    productData,
+                  )}
                   className="flex-[0_0_48%] lg:flex-none relative group cursor-pointer overflow-hidden rounded-2xl md:rounded-3xl shadow-xl aspect-3/4 block"
                 >
                   <img
                     src={image}
-                    alt={category.name}
-                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                    alt={String(category.name || "")}
+                    loading="lazy"
+                    className="absolute inset-0 w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-110"
                     onError={(event) => {
-                      event.currentTarget.src = "/placeholder.svg";
+                      const fallbackImage =
+                        categoryImageMap.get(
+                          String(category.id),
+                        ) || "/placeholder.svg";
+
+                      if (
+                        event.currentTarget.src !==
+                        fallbackImage
+                      ) {
+                        event.currentTarget.src =
+                          fallbackImage;
+                      } else {
+                        event.currentTarget.src =
+                          "/placeholder.svg";
+                      }
                     }}
                   />
 
-                  <div className="absolute inset-0 bg-linear-to-t from-black/90 via-transparent to-transparent"></div>
+                  <div className="absolute inset-0 bg-linear-to-t from-black/90 via-transparent to-transparent" />
 
                   <div className="absolute bottom-4 left-4 flex items-center justify-between w-[calc(100%-2rem)] gap-2">
                     <h3 className="text-lg md:text-xl lg:text-2xl font-extrabold text-white tracking-tight uppercase font-big-shoulders opacity-90 wrap-break-word">
                       {category.name}
                     </h3>
 
-                    <button className="shrink-0 flex items-center justify-center h-8 w-8 md:h-10 md:w-10 bg-white/20 rounded-full">
+                    <span className="shrink-0 flex items-center justify-center h-8 w-8 md:h-10 md:w-10 bg-white/20 rounded-full">
                       <ChevronRight
                         size={18}
                         className="text-white transform group-hover:-rotate-40 transition-transform"
                       />
-                    </button>
+                    </span>
                   </div>
                 </Link>
               );
