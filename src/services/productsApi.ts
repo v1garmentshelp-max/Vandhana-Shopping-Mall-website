@@ -15,6 +15,8 @@ export type StorefrontCategory = {
   gender?: "MEN" | "WOMEN" | "KIDS";
   categoryPath?: string;
   category_path?: string;
+  is_active?: boolean;
+  sort_order?: number;
   children?: StorefrontCategory[];
 };
 
@@ -54,19 +56,22 @@ const normalizeText = (value: any) =>
     .trim();
 
 const toNumber = (value: any, fallback = 0) => {
-  const n = Number(value);
-  return Number.isFinite(n) ? n : fallback;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
 };
 
-const roundMoney = (value: number) => {
-  return Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100;
-};
+const roundMoney = (value: number) =>
+  Math.round(
+    (Number(value || 0) + Number.EPSILON) * 100,
+  ) / 100;
 
 const clampDiscount = (value: any) => {
-  const n = toNumber(value, 0);
-  if (n < 0) return 0;
-  if (n > 100) return 100;
-  return n;
+  const number = toNumber(value, 0);
+
+  if (number < 0) return 0;
+  if (number > 100) return 100;
+
+  return number;
 };
 
 const firstValue = (...values: any[]) => {
@@ -89,23 +94,27 @@ const calculateDiscountedPrice = (
   fallback = 0,
 ) => {
   const base = toNumber(original, fallback);
-  const pct = clampDiscount(discount);
+  const percentage = clampDiscount(discount);
 
   if (!base) return toNumber(fallback, 0);
-  if (!pct) return base;
+  if (!percentage) return base;
 
-  return roundMoney(base - (base * pct) / 100);
+  return roundMoney(
+    base - (base * percentage) / 100,
+  );
 };
 
 const toGender = (value: any): ProductGender => {
-  const s = normalizeText(value);
+  const gender = normalizeText(value);
 
-  if (s.includes("women")) return "Women";
+  if (gender.includes("women")) {
+    return "Women";
+  }
 
   if (
-    s.includes("kid") ||
-    s.includes("boy") ||
-    s.includes("girl")
+    gender.includes("kid") ||
+    gender.includes("boy") ||
+    gender.includes("girl")
   ) {
     return "Kids";
   }
@@ -116,13 +125,15 @@ const toGender = (value: any): ProductGender => {
 const toBackendGender = (
   gender: ProductGender | string,
 ) => {
-  const s = normalizeText(gender);
+  const value = normalizeText(gender);
 
-  if (s === "women") return "WOMEN";
+  if (value === "women") {
+    return "WOMEN";
+  }
 
   if (
-    s === "kids" ||
-    s === "kid"
+    value === "kids" ||
+    value === "kid"
   ) {
     return "KIDS";
   }
@@ -131,13 +142,13 @@ const toBackendGender = (
 };
 
 const cleanSingleValue = (value: any) => {
-  const s = String(value || "").trim();
+  const text = String(value || "").trim();
 
-  if (!s) return "";
-  if (s.includes(",")) return "";
-  if (s.split(/\s+/).length > 6) return "";
+  if (!text) return "";
+  if (text.includes(",")) return "";
+  if (text.split(/\s+/).length > 6) return "";
 
-  return s;
+  return text;
 };
 
 const normalizeColorDisplay = (value: any) => {
@@ -181,22 +192,22 @@ const imageUrlFromRecord = (image: any) => {
 };
 
 const isBadImage = (value: any) => {
-  const s = String(value || "")
+  const image = String(value || "")
     .trim()
     .toLowerCase();
 
   return (
-    !s ||
-    s === "[object object]" ||
-    s.includes("undefined") ||
-    s.includes("null") ||
-    s.includes("placeholder.svg")
+    !image ||
+    image === "[object object]" ||
+    image.includes("undefined") ||
+    image.includes("null") ||
+    image.includes("placeholder.svg")
   );
 };
 
 const uniqueImages = (items: any[]) => {
   const seen = new Set<string>();
-  const out: string[] = [];
+  const output: string[] = [];
 
   items.forEach((item) => {
     const value = imageUrlFromRecord(item);
@@ -208,15 +219,15 @@ const uniqueImages = (items: any[]) => {
     if (seen.has(key)) return;
 
     seen.add(key);
-    out.push(value);
+    output.push(value);
   });
 
-  return out;
+  return output;
 };
 
 const uniqueStrings = (items: any[]) => {
   const seen = new Set<string>();
-  const out: string[] = [];
+  const output: string[] = [];
 
   items.forEach((item) => {
     const value = cleanSingleValue(item);
@@ -233,37 +244,38 @@ const uniqueStrings = (items: any[]) => {
     if (seen.has(key)) return;
 
     seen.add(key);
-    out.push(value);
+    output.push(value);
   });
 
-  return out;
+  return output;
 };
 
-const sortVariantValues = (items: any[]) => {
-  return uniqueStrings(items).sort((a, b) => {
-    const na = parseFloat(
-      String(a).replace(/[^\d.]/g, ""),
+const sortVariantValues = (items: any[]) =>
+  uniqueStrings(items).sort((first, second) => {
+    const firstNumber = parseFloat(
+      String(first).replace(/[^\d.]/g, ""),
     );
 
-    const nb = parseFloat(
-      String(b).replace(/[^\d.]/g, ""),
+    const secondNumber = parseFloat(
+      String(second).replace(/[^\d.]/g, ""),
     );
 
     if (
-      Number.isFinite(na) &&
-      Number.isFinite(nb) &&
-      na !== nb
+      Number.isFinite(firstNumber) &&
+      Number.isFinite(secondNumber) &&
+      firstNumber !== secondNumber
     ) {
-      return na - nb;
+      return firstNumber - secondNumber;
     }
 
-    return String(a).localeCompare(
-      String(b),
+    return String(first).localeCompare(
+      String(second),
       undefined,
-      { numeric: true },
+      {
+        numeric: true,
+      },
     );
   });
-};
 
 const parseImages = (
   value: any,
@@ -326,14 +338,14 @@ const imageByType = (
     .map(normalizeText)
     .filter(Boolean);
 
-  const found = images.find((img) => {
+  const found = images.find((image) => {
     const imageType = normalizeText(
-      img?.image_type ||
-        img?.type ||
-        img?.label ||
-        img?.name ||
-        img?.view ||
-        img?.position,
+      image?.image_type ||
+        image?.type ||
+        image?.label ||
+        image?.name ||
+        image?.view ||
+        image?.position,
     );
 
     return keys.some((key) =>
@@ -486,8 +498,8 @@ const getVariantSizeValue = (
 const getB2CDiscount = (
   variant: any,
   row: any,
-) => {
-  return clampDiscount(
+) =>
+  clampDiscount(
     firstValue(
       variant?.b2c_discount_pct,
       variant?.b2cDiscountPct,
@@ -508,13 +520,12 @@ const getB2CDiscount = (
       0,
     ),
   );
-};
 
 const getB2BDiscount = (
   variant: any,
   row: any,
-) => {
-  return clampDiscount(
+) =>
+  clampDiscount(
     firstValue(
       variant?.b2b_discount_pct,
       variant?.b2bDiscountPct,
@@ -531,13 +542,12 @@ const getB2BDiscount = (
       0,
     ),
   );
-};
 
 const getOriginalB2C = (
   variant: any,
   row: any,
-) => {
-  return toNumber(
+) =>
+  toNumber(
     firstValue(
       variant?.original_price_b2c,
       variant?.originalPriceB2c,
@@ -557,14 +567,13 @@ const getOriginalB2C = (
     ),
     0,
   );
-};
 
 const getDirectB2CPrice = (
   variant: any,
   row: any,
   fallback: number,
-) => {
-  return toNumber(
+) =>
+  toNumber(
     firstValue(
       variant?.final_price_b2c,
       variant?.finalPriceB2c,
@@ -588,7 +597,6 @@ const getDirectB2CPrice = (
     ),
     fallback,
   );
-};
 
 const normalizeVariant = (
   variant: any,
@@ -716,8 +724,11 @@ const normalizeVariant = (
       variant?.stock,
       variant?.quantity,
       row?.available_qty,
+      row?.availableQty,
       row?.on_hand,
+      row?.onHand,
       row?.stock,
+      row?.quantity,
       0,
     ),
     0,
@@ -763,27 +774,25 @@ const normalizeVariant = (
     ),
   );
 
-  const parentCategoryName =
-    String(
-      firstValue(
-        variant?.parent_category_name,
-        variant?.parentCategoryName,
-        row?.parent_category_name,
-        row?.parentCategoryName,
-        "",
-      ),
-    );
+  const parentCategoryName = String(
+    firstValue(
+      variant?.parent_category_name,
+      variant?.parentCategoryName,
+      row?.parent_category_name,
+      row?.parentCategoryName,
+      "",
+    ),
+  );
 
-  const parentCategorySlug =
-    String(
-      firstValue(
-        variant?.parent_category_slug,
-        variant?.parentCategorySlug,
-        row?.parent_category_slug,
-        row?.parentCategorySlug,
-        "",
-      ),
-    );
+  const parentCategorySlug = String(
+    firstValue(
+      variant?.parent_category_slug,
+      variant?.parentCategorySlug,
+      row?.parent_category_slug,
+      row?.parentCategorySlug,
+      "",
+    ),
+  );
 
   const categoryPath = String(
     firstValue(
@@ -836,33 +845,20 @@ const normalizeVariant = (
     mrp,
     original_price_b2c: mrp,
     originalPriceB2c: mrp,
-    final_price_b2c:
-      salePrice,
-    finalPriceB2c:
-      salePrice,
-    sale_price:
-      salePrice,
+    final_price_b2c: salePrice,
+    finalPriceB2c: salePrice,
+    sale_price: salePrice,
     salePrice,
-    price:
-      salePrice,
-    selling_price:
-      salePrice,
-    sellingPrice:
-      salePrice,
-    discounted_price:
-      salePrice,
-    discountedPrice:
-      salePrice,
-    mahaveer_price:
-      salePrice,
-    mahaveerPrice:
-      salePrice,
-    original_price_b2b:
-      originalB2B,
-    final_price_b2b:
-      finalB2B,
-    cost_price:
-      originalB2B,
+    price: salePrice,
+    selling_price: salePrice,
+    sellingPrice: salePrice,
+    discounted_price: salePrice,
+    discountedPrice: salePrice,
+    mahaveer_price: salePrice,
+    mahaveerPrice: salePrice,
+    original_price_b2b: originalB2B,
+    final_price_b2b: finalB2B,
+    cost_price: originalB2B,
     b2c_discount_pct:
       b2cDiscount,
     b2cDiscountPct:
@@ -881,19 +877,13 @@ const normalizeVariant = (
       b2cDiscount,
     discount_percent:
       b2cDiscount,
-    on_hand:
-      onHand,
+    on_hand: onHand,
     onHand,
-    available_qty:
-      onHand,
-    availableQty:
-      onHand,
-    in_stock:
-      onHand > 0,
-    inStock:
-      onHand > 0,
-    image_url:
-      imageUrl,
+    available_qty: onHand,
+    availableQty: onHand,
+    in_stock: onHand > 0,
+    inStock: onHand > 0,
+    image_url: imageUrl,
     imageUrl,
     front_image_url:
       images[0] || "",
@@ -932,11 +922,10 @@ const normalizeProductCard = (
       "Vandhana",
   ).trim();
 
-  const gender =
-    toGender(
-      row.gender ||
-        row.category,
-    );
+  const gender = toGender(
+    row.gender ||
+      row.category,
+  );
 
   const actualProductId =
     firstValue(
@@ -974,7 +963,9 @@ const normalizeProductCard = (
       (variant: any) =>
         toNumber(
           variant.available_qty ??
+            variant.availableQty ??
             variant.on_hand ??
+            variant.onHand ??
             0,
           0,
         ) > 0,
@@ -991,6 +982,7 @@ const normalizeProductCard = (
       (variant: any) =>
         String(
           variant.variant_id ||
+            variant.variantId ||
             "",
         ) ===
         String(
@@ -1002,6 +994,8 @@ const normalizeProductCard = (
       (variant: any) =>
         String(
           variant.barcode ||
+            variant.ean_code ||
+            variant.eanCode ||
             "",
         ) ===
         String(
@@ -1060,7 +1054,9 @@ const normalizeProductCard = (
         sum +
         toNumber(
           variant.available_qty ??
+            variant.availableQty ??
             variant.on_hand ??
+            variant.onHand ??
             0,
           0,
         ),
@@ -1069,11 +1065,12 @@ const normalizeProductCard = (
 
   const mrp = toNumber(
     firstValue(
-      selectedVariant
-        ?.original_price_b2c,
+      selectedVariant?.original_price_b2c,
+      selectedVariant?.originalPriceB2c,
       selectedVariant?.mrp,
       row.mrp,
       row.original_price_b2c,
+      row.originalPriceB2c,
       row.price,
       0,
     ),
@@ -1133,11 +1130,10 @@ const normalizeProductCard = (
     sameColorImages[1] ||
     "";
 
-  const images =
-    uniqueImages([
-      frontImage,
-      backImage,
-    ]).slice(0, 2);
+  const images = uniqueImages([
+    frontImage,
+    backImage,
+  ]).slice(0, 2);
 
   const imageUrl =
     images[0] ||
@@ -1148,6 +1144,8 @@ const normalizeProductCard = (
       selectedVariant?.variant_id,
       selectedVariant?.variantId,
       selectedVariant?.barcode,
+      selectedVariant?.ean_code,
+      selectedVariant?.eanCode,
       row?.id,
       actualProductId,
       "",
@@ -1184,51 +1182,40 @@ const normalizeProductCard = (
     ),
   );
 
-  const parentCategoryId =
-    String(
-      firstValue(
-        selectedVariant
-          ?.parent_category_id,
-        selectedVariant
-          ?.parentCategoryId,
-        row.parent_category_id,
-        row.parentCategoryId,
-        "",
-      ),
-    );
+  const parentCategoryId = String(
+    firstValue(
+      selectedVariant?.parent_category_id,
+      selectedVariant?.parentCategoryId,
+      row.parent_category_id,
+      row.parentCategoryId,
+      "",
+    ),
+  );
 
-  const parentCategoryName =
-    String(
-      firstValue(
-        selectedVariant
-          ?.parent_category_name,
-        selectedVariant
-          ?.parentCategoryName,
-        row.parent_category_name,
-        row.parentCategoryName,
-        "",
-      ),
-    );
+  const parentCategoryName = String(
+    firstValue(
+      selectedVariant?.parent_category_name,
+      selectedVariant?.parentCategoryName,
+      row.parent_category_name,
+      row.parentCategoryName,
+      "",
+    ),
+  );
 
-  const parentCategorySlug =
-    String(
-      firstValue(
-        selectedVariant
-          ?.parent_category_slug,
-        selectedVariant
-          ?.parentCategorySlug,
-        row.parent_category_slug,
-        row.parentCategorySlug,
-        "",
-      ),
-    );
+  const parentCategorySlug = String(
+    firstValue(
+      selectedVariant?.parent_category_slug,
+      selectedVariant?.parentCategorySlug,
+      row.parent_category_slug,
+      row.parentCategorySlug,
+      "",
+    ),
+  );
 
   const categoryPath = String(
     firstValue(
-      selectedVariant
-        ?.category_path,
-      selectedVariant
-        ?.categoryPath,
+      selectedVariant?.category_path,
+      selectedVariant?.categoryPath,
       row.category_path,
       row.categoryPath,
       [
@@ -1249,7 +1236,8 @@ const normalizeProductCard = (
       ) => {
         const size =
           cleanSingleValue(
-            variant.size || "",
+            variant.size ||
+              "",
           );
 
         if (!size) {
@@ -1263,7 +1251,9 @@ const normalizeProductCard = (
           ) +
           toNumber(
             variant.available_qty ??
+              variant.availableQty ??
               variant.on_hand ??
+              variant.onHand ??
               0,
             0,
           );
@@ -1534,7 +1524,9 @@ const normalizeProductCards = (
       (variant: any) =>
         toNumber(
           variant.available_qty ??
+            variant.availableQty ??
             variant.on_hand ??
+            variant.onHand ??
             0,
           0,
         ) > 0,
@@ -1678,41 +1670,112 @@ const fetchJson = async (
 };
 
 const flattenFallbackCategories = () => {
-  return fallbackCategories.map((category: any) => {
-    const resolvedParentId =
-      category.parentId === undefined
-        ? category.parent_id ?? null
-        : category.parentId;
+  return fallbackCategories
+    .filter(
+      (category: any) =>
+        category?.is_active !== false,
+    )
+    .map((category: any) => {
+      const resolvedParentId =
+        category.parentId === undefined
+          ? category.parent_id ?? null
+          : category.parentId;
+
+      return {
+        id: String(category.id),
+        name: String(
+          category.name || "",
+        ),
+        slug: String(
+          category.slug || "",
+        ),
+        image:
+          getCategoryImage(category),
+        parentId:
+          resolvedParentId == null
+            ? null
+            : String(resolvedParentId),
+        parent_id:
+          resolvedParentId == null
+            ? null
+            : String(resolvedParentId),
+        level:
+          Number(category.level || 0),
+        gender:
+          category.gender,
+        categoryPath:
+          category.categoryPath ||
+          category.category_path ||
+          category.name ||
+          "",
+        category_path:
+          category.category_path ||
+          category.categoryPath ||
+          category.name ||
+          "",
+        is_active: true,
+        sort_order:
+          Number(
+            category.sort_order || 0,
+          ),
+        children: [],
+      };
+    }) as StorefrontCategory[];
+};
+
+const sortCategories = (
+  items: StorefrontCategory[],
+) =>
+  [...items].sort((first, second) => {
+    const sortDifference =
+      Number(first.sort_order || 0) -
+      Number(second.sort_order || 0);
+
+    if (sortDifference !== 0) {
+      return sortDifference;
+    }
+
+    return String(
+      first.name || "",
+    ).localeCompare(
+      String(second.name || ""),
+      undefined,
+      {
+        numeric: true,
+      },
+    );
+  });
+
+const applyCategoryPaths = (
+  items: StorefrontCategory[],
+  parentPath = "",
+): StorefrontCategory[] =>
+  sortCategories(items).map((item) => {
+    const name =
+      String(item.name || "").trim();
+
+    const path = [
+      parentPath,
+      name,
+    ]
+      .filter(Boolean)
+      .join(" > ");
+
+    const children =
+      applyCategoryPaths(
+        Array.isArray(item.children)
+          ? item.children
+          : [],
+        path,
+      );
 
     return {
-      id: String(category.id),
-      name: String(category.name || ""),
-      slug: String(category.slug || ""),
-      image: getCategoryImage(category),
-      parentId:
-        resolvedParentId == null
-          ? null
-          : String(resolvedParentId),
-      parent_id:
-        resolvedParentId == null
-          ? null
-          : String(resolvedParentId),
-      level: Number(category.level || 0),
-      gender: category.gender,
-      categoryPath:
-        category.categoryPath ||
-        category.category_path ||
-        category.name ||
-        "",
-      category_path:
-        category.category_path ||
-        category.categoryPath ||
-        category.name ||
-        "",
-      children: [],
+      ...item,
+      categoryPath: path,
+      category_path: path,
+      children,
     };
-  }) as StorefrontCategory[];
-};
+  });
 
 const flatToTree = (
   items: StorefrontCategory[],
@@ -1726,15 +1789,24 @@ const flatToTree = (
   const roots:
     StorefrontCategory[] = [];
 
-  items.forEach((item) => {
-    map.set(
-      String(item.id),
-      {
-        ...item,
-        children: [],
-      },
-    );
-  });
+  items
+    .filter(
+      (item) =>
+        item?.is_active !== false &&
+        String(
+          item?.id || "",
+        ).trim(),
+    )
+    .forEach((item) => {
+      map.set(
+        String(item.id),
+        {
+          ...item,
+          is_active: true,
+          children: [],
+        },
+      );
+    });
 
   map.forEach((item) => {
     const parentId =
@@ -1747,9 +1819,7 @@ const flatToTree = (
       map.has(String(parentId))
     ) {
       map
-        .get(
-          String(parentId),
-        )!
+        .get(String(parentId))!
         .children!
         .push(item);
     } else {
@@ -1757,30 +1827,55 @@ const flatToTree = (
     }
   });
 
-  return roots;
+  return applyCategoryPaths(roots);
 };
 
 const normalizeCategoryNode = (
   node: any,
   parentId: string | null = null,
+  parentPath = "",
 ): StorefrontCategory => {
-  const id = String(node?.id || "");
+  const id =
+    String(node?.id || "").trim();
+
+  const name =
+    String(node?.name || "").trim();
+
   const resolvedParentId =
     node?.parentId === undefined
       ? node?.parent_id ?? parentId
       : node?.parentId;
 
-  const children = Array.isArray(node?.children)
-    ? node.children.map((child: any) =>
-        normalizeCategoryNode(child, id),
-      )
-    : [];
+  const categoryPath = [
+    parentPath,
+    name,
+  ]
+    .filter(Boolean)
+    .join(" > ");
+
+  const children =
+    Array.isArray(node?.children)
+      ? node.children
+          .filter(
+            (child: any) =>
+              child?.is_active !== false,
+          )
+          .map((child: any) =>
+            normalizeCategoryNode(
+              child,
+              id,
+              categoryPath,
+            ),
+          )
+      : [];
 
   return {
     id,
-    name: String(node?.name || ""),
-    slug: String(node?.slug || ""),
-    image: getCategoryImage(node),
+    name,
+    slug:
+      String(node?.slug || ""),
+    image:
+      getCategoryImage(node),
     parentId:
       resolvedParentId == null
         ? null
@@ -1789,19 +1884,19 @@ const normalizeCategoryNode = (
       resolvedParentId == null
         ? null
         : String(resolvedParentId),
-    level: Number(node?.level || 0),
-    gender: node?.gender,
-    categoryPath:
-      node?.categoryPath ||
-      node?.category_path ||
-      node?.name ||
-      "",
+    level:
+      Number(node?.level || 0),
+    gender:
+      node?.gender,
+    categoryPath,
     category_path:
-      node?.category_path ||
-      node?.categoryPath ||
-      node?.name ||
-      "",
-    children,
+      categoryPath,
+    is_active:
+      node?.is_active !== false,
+    sort_order:
+      Number(node?.sort_order || 0),
+    children:
+      sortCategories(children),
   };
 };
 
@@ -1812,145 +1907,245 @@ export const flattenCategoryTree = (
     StorefrontCategory[] = [];
 
   const walk = (
-    items:
-      StorefrontCategory[],
+    items: StorefrontCategory[],
   ) => {
-    items.forEach((item) => {
-      output.push(item);
+    sortCategories(items)
+      .filter(
+        (item) =>
+          item?.is_active !== false,
+      )
+      .forEach((item) => {
+        output.push(item);
 
-      if (
-        item.children?.length
-      ) {
-        walk(item.children);
-      }
-    });
+        if (
+          item.children?.length
+        ) {
+          walk(item.children);
+        }
+      });
   };
 
-  walk(tree);
+  walk(
+    Array.isArray(tree)
+      ? tree
+      : [],
+  );
 
   return output;
 };
 
-export const fetchCategoriesTree =
-  async (
-    gender?:
-      ProductGender |
-      string,
-  ): Promise<
-    StorefrontCategory[]
-  > => {
-    const backendGender =
-      gender
-        ? toBackendGender(
-            gender,
-          )
-        : "";
+export const fetchCategoriesTree = async (
+  gender?: ProductGender | string,
+): Promise<StorefrontCategory[]> => {
+  const backendGender =
+    gender
+      ? toBackendGender(gender)
+      : "";
 
-    const url =
-      backendGender
-        ? `${API_BASE}/api/categories/tree?gender=${encodeURIComponent(
-            backendGender,
-          )}`
-        : `${API_BASE}/api/categories/tree`;
+  const url =
+    backendGender
+      ? `${API_BASE}/api/categories/tree?gender=${encodeURIComponent(
+          backendGender,
+        )}`
+      : `${API_BASE}/api/categories/tree`;
 
-    try {
-      const data =
-        await fetchJson(url);
+  try {
+    const data =
+      await fetchJson(url);
 
-      return Array.isArray(data)
-        ? data.map(
-            (node: any) =>
-              normalizeCategoryNode(
-                node,
-              ),
-          )
-        : [];
-    } catch {
-      const flat =
-        flattenFallbackCategories();
+    const rows =
+      Array.isArray(data)
+        ? data
+        : Array.isArray(data?.tree)
+          ? data.tree
+          : Array.isArray(
+                data?.categories,
+              )
+            ? data.categories
+            : Array.isArray(
+                  data?.data,
+                )
+              ? data.data
+              : [];
 
-      const filtered =
-        backendGender
-          ? flat.filter(
-              (item) =>
-                item.gender ===
-                backendGender,
-            )
-          : flat;
+    const activeRows =
+      rows.filter(
+        (node: any) =>
+          node?.is_active !== false,
+      );
 
-      return flatToTree(
-        filtered,
+    const hasNestedChildren =
+      activeRows.some(
+        (node: any) =>
+          Array.isArray(
+            node?.children,
+          ),
+      );
+
+    if (hasNestedChildren) {
+      return sortCategories(
+        activeRows.map(
+          (node: any) =>
+            normalizeCategoryNode(
+              node,
+            ),
+        ),
       );
     }
-  };
-
-export const fetchCategoriesByGender =
-  async (
-    gender: ProductGender,
-  ): Promise<
-    StorefrontCategory[]
-  > => {
-    const tree =
-      await fetchCategoriesTree(
-        gender,
-      );
 
     const flat =
-      flattenCategoryTree(
-        tree,
+      activeRows.map(
+        (node: any) => {
+          const resolvedParentId =
+            node?.parentId === undefined
+              ? node?.parent_id ?? null
+              : node?.parentId;
+
+          return {
+            id:
+              String(node?.id || ""),
+            name:
+              String(node?.name || ""),
+            slug:
+              String(node?.slug || ""),
+            image:
+              getCategoryImage(node),
+            parentId:
+              resolvedParentId == null
+                ? null
+                : String(
+                    resolvedParentId,
+                  ),
+            parent_id:
+              resolvedParentId == null
+                ? null
+                : String(
+                    resolvedParentId,
+                  ),
+            level:
+              Number(
+                node?.level || 0,
+              ),
+            gender:
+              node?.gender,
+            categoryPath:
+              String(
+                node?.categoryPath ||
+                  node?.category_path ||
+                  node?.name ||
+                  "",
+              ),
+            category_path:
+              String(
+                node?.category_path ||
+                  node?.categoryPath ||
+                  node?.name ||
+                  "",
+              ),
+            is_active: true,
+            sort_order:
+              Number(
+                node?.sort_order || 0,
+              ),
+            children: [],
+          } as StorefrontCategory;
+        },
       );
 
-    const childIds =
-      new Set(
-        flat
-          .map((item) =>
-            String(
-              item.parentId ||
-                item.parent_id ||
-                "",
-            ),
+    return flatToTree(flat);
+  } catch {
+    const flat =
+      flattenFallbackCategories();
+
+    const filtered =
+      backendGender
+        ? flat.filter(
+            (item) =>
+              item.gender ===
+              backendGender,
           )
-          .filter(Boolean),
+        : flat;
+
+    return flatToTree(filtered);
+  }
+};
+
+export const fetchCategoriesByGender = async (
+  gender: ProductGender,
+): Promise<StorefrontCategory[]> => {
+  const backendGender =
+    toBackendGender(gender);
+
+  const tree =
+    await fetchCategoriesTree(gender);
+
+  return flattenCategoryTree(tree)
+    .filter(
+      (item) =>
+        item.is_active !== false &&
+        Number(item.level || 0) > 0 &&
+        (
+          !item.gender ||
+          item.gender === backendGender
+        ),
+    )
+    .sort((first, second) => {
+      const pathComparison = String(
+        first.categoryPath ||
+          first.category_path ||
+          first.name ||
+          "",
+      ).localeCompare(
+        String(
+          second.categoryPath ||
+            second.category_path ||
+            second.name ||
+            "",
+        ),
+        undefined,
+        {
+          numeric: true,
+        },
       );
 
-    return flat.filter(
-      (item) =>
-        item.level > 0 &&
-        !childIds.has(
-          String(item.id),
-        ),
-    );
-  };
+      if (pathComparison !== 0) {
+        return pathComparison;
+      }
 
-const fetchFromProductsApi =
-  async (
-    branchId: number,
-  ) => {
-    const url =
-      `${API_BASE}/api/products?branch_id=${encodeURIComponent(
-        branchId,
-      )}&all=true`;
+      return (
+        Number(first.sort_order || 0) -
+        Number(second.sort_order || 0)
+      );
+    });
+};
 
-    const data =
-      await fetchJson(url);
+const fetchFromProductsApi = async (
+  branchId: number,
+) => {
+  const url =
+    `${API_BASE}/api/products?branch_id=${encodeURIComponent(
+      branchId,
+    )}&all=true`;
 
-    return extractRows(data);
-  };
+  const data =
+    await fetchJson(url);
 
-const fetchFromBranchApi =
-  async (
-    branchId: number,
-  ) => {
-    const url =
-      `${API_BASE}/api/branch/${encodeURIComponent(
-        branchId,
-      )}/stock`;
+  return extractRows(data);
+};
 
-    const data =
-      await fetchJson(url);
+const fetchFromBranchApi = async (
+  branchId: number,
+) => {
+  const url =
+    `${API_BASE}/api/branch/${encodeURIComponent(
+      branchId,
+    )}/stock`;
 
-    return extractRows(data);
-  };
+  const data =
+    await fetchJson(url);
+
+  return extractRows(data);
+};
 
 const getRawProductKey = (
   row: any,
@@ -2147,9 +2342,7 @@ const mergeRawProductRows = (
     const group =
       groups.get(key)!;
 
-    Object.entries(
-      row,
-    ).forEach(
+    Object.entries(row).forEach(
       ([field, value]) => {
         const current =
           group.base[field];
@@ -2186,9 +2379,7 @@ const mergeRawProductRows = (
       },
     );
 
-    getRawVariants(
-      row,
-    ).forEach(
+    getRawVariants(row).forEach(
       (variant: any) => {
         const variantKey =
           getRawVariantKey(
@@ -2342,336 +2533,317 @@ const dedupeProducts = (
   );
 };
 
-export const productMatchesCategoryId =
-  (
-    product: any,
-    categoryId:
-      string |
-      number,
-  ) => {
-    const target =
-      String(
-        categoryId || "",
-      ).trim();
+export const productMatchesCategoryId = (
+  product: any,
+  categoryId:
+    string |
+    number,
+) => {
+  const target =
+    String(
+      categoryId || "",
+    ).trim();
 
-    if (!target) {
-      return true;
-    }
+  if (!target) {
+    return true;
+  }
 
-    return (
-      String(
-        product?.categoryId ||
-          product?.category_id ||
-          "",
-      ).trim() === target
-    );
-  };
+  return (
+    String(
+      product?.categoryId ||
+        product?.category_id ||
+        "",
+    ).trim() === target
+  );
+};
 
-export const productMatchesCategorySlug =
-  (
-    product: any,
-    slug: string,
-  ) => {
-    const target =
-      normalizeText(slug);
+export const productMatchesCategorySlug = (
+  product: any,
+  slug: string,
+) => {
+  const target =
+    normalizeText(slug);
 
-    if (!target) {
-      return true;
-    }
+  if (!target) {
+    return true;
+  }
 
-    return (
-      normalizeText(
-        product?.categorySlug ||
-          product?.category_slug ||
-          "",
-      ) === target
-    );
-  };
+  return (
+    normalizeText(
+      product?.categorySlug ||
+        product?.category_slug ||
+        "",
+    ) === target
+  );
+};
 
-export const fetchBranchProducts =
-  async (
-    branchId =
-      DEFAULT_BRANCH_ID,
-  ): Promise<Product[]> => {
-    let rows: any[] = [];
+export const fetchBranchProducts = async (
+  branchId = DEFAULT_BRANCH_ID,
+): Promise<Product[]> => {
+  let rows: any[] = [];
 
+  try {
+    rows =
+      await fetchFromBranchApi(
+        branchId,
+      );
+  } catch {
+    rows =
+      await fetchFromProductsApi(
+        branchId,
+      );
+  }
+
+  if (
+    !Array.isArray(rows) ||
+    !rows.length
+  ) {
     try {
-      rows =
-        await fetchFromBranchApi(
-          branchId,
-        );
-    } catch {
       rows =
         await fetchFromProductsApi(
           branchId,
         );
+    } catch {
+      rows = [];
     }
+  }
 
-    if (
-      !Array.isArray(rows) ||
-      !rows.length
-    ) {
-      try {
-        rows =
-          await fetchFromProductsApi(
-            branchId,
-          );
-      } catch {
-        rows = [];
-      }
-    }
+  const groupedRows =
+    mergeRawProductRows(rows);
 
-    const groupedRows =
-      mergeRawProductRows(
-        rows,
+  const products =
+    groupedRows
+      .flatMap(
+        normalizeProductCards,
+      )
+      .filter(
+        (product) =>
+          product.id,
       );
 
-    const products =
-      groupedRows
-        .flatMap(
-          normalizeProductCards,
-        )
-        .filter(
-          (product) =>
-            product.id,
-        );
+  return dedupeProducts(products);
+};
 
-    return dedupeProducts(
-      products,
+export const fetchProductsByGender = async (
+  gender: ProductGender,
+  branchId = DEFAULT_BRANCH_ID,
+): Promise<Product[]> => {
+  const products =
+    await fetchBranchProducts(
+      branchId,
     );
-  };
 
-export const fetchProductsByGender =
-  async (
-    gender: ProductGender,
-    branchId =
-      DEFAULT_BRANCH_ID,
-  ): Promise<Product[]> => {
-    const products =
-      await fetchBranchProducts(
-        branchId,
-      );
+  return products.filter(
+    (product) =>
+      product.gender.toLowerCase() ===
+      gender.toLowerCase(),
+  );
+};
 
-    return products.filter(
-      (product) =>
-        product.gender.toLowerCase() ===
-        gender.toLowerCase(),
+export const fetchProductsByCategoryId = async (
+  categoryId:
+    string |
+    number,
+  branchId = DEFAULT_BRANCH_ID,
+): Promise<Product[]> => {
+  const products =
+    await fetchBranchProducts(
+      branchId,
     );
-  };
 
-export const fetchProductsByCategoryId =
-  async (
-    categoryId:
-      string |
-      number,
-    branchId =
-      DEFAULT_BRANCH_ID,
-  ): Promise<Product[]> => {
-    const products =
-      await fetchBranchProducts(
-        branchId,
-      );
+  return products.filter(
+    (product) =>
+      productMatchesCategoryId(
+        product,
+        categoryId,
+      ),
+  );
+};
 
-    return products.filter(
-      (product) =>
-        productMatchesCategoryId(
-          product,
-          categoryId,
-        ),
+export const fetchProductsByCategorySlug = async (
+  categorySlug: string,
+  branchId = DEFAULT_BRANCH_ID,
+): Promise<Product[]> => {
+  const products =
+    await fetchBranchProducts(
+      branchId,
     );
-  };
 
-export const fetchProductsByCategorySlug =
-  async (
-    categorySlug: string,
-    branchId =
-      DEFAULT_BRANCH_ID,
-  ): Promise<Product[]> => {
-    const products =
-      await fetchBranchProducts(
-        branchId,
-      );
+  return products.filter(
+    (product) =>
+      productMatchesCategorySlug(
+        product,
+        categorySlug,
+      ),
+  );
+};
 
-    return products.filter(
-      (product) =>
-        productMatchesCategorySlug(
-          product,
-          categorySlug,
-        ),
+export const fetchProductById = async (
+  id:
+    string |
+    number,
+  branchId = DEFAULT_BRANCH_ID,
+): Promise<Product | null> => {
+  const products =
+    await fetchBranchProducts(
+      branchId,
     );
-  };
 
-export const fetchProductById =
-  async (
-    id:
-      string |
-      number,
-    branchId =
-      DEFAULT_BRANCH_ID,
-  ): Promise<
-    Product |
-    null
-  > => {
-    const products =
-      await fetchBranchProducts(
-        branchId,
-      );
+  const target =
+    String(
+      id || "",
+    ).trim();
 
-    const target =
-      String(
-        id || "",
-      ).trim();
-
-    const colorVariantMatch =
-      products.find(
-        (product: any) => {
-          const colorVariants =
-            Array.isArray(
-              product.colorVariants,
-            )
-              ? product.colorVariants
-              : Array.isArray(
-                    product.color_variants,
-                  )
-                ? product.color_variants
-                : [];
-
-          return colorVariants.some(
-            (variant: any) =>
-              String(
-                variant.variant_id ||
-                  "",
-              ).trim() === target ||
-              String(
-                variant.variantId ||
-                  "",
-              ).trim() === target ||
-              String(
-                variant.id ||
-                  "",
-              ).trim() === target ||
-              String(
-                variant.barcode ||
-                  "",
-              ).trim() === target ||
-              String(
-                variant.ean_code ||
-                  "",
-              ).trim() === target ||
-              String(
-                variant.eanCode ||
-                  "",
-              ).trim() === target,
-          );
-        },
-      );
-
-    if (colorVariantMatch) {
-      return colorVariantMatch;
-    }
-
-    const variantMatch =
-      products.find(
-        (product: any) =>
+  const colorVariantMatch =
+    products.find(
+      (product: any) => {
+        const colorVariants =
           Array.isArray(
-            product.variants,
-          ) &&
-          product.variants.some(
-            (variant: any) =>
-              String(
-                variant.variant_id ||
-                  "",
-              ).trim() === target ||
-              String(
-                variant.variantId ||
-                  "",
-              ).trim() === target ||
-              String(
-                variant.id ||
-                  "",
-              ).trim() === target ||
-              String(
-                variant.barcode ||
-                  "",
-              ).trim() === target ||
-              String(
-                variant.ean_code ||
-                  "",
-              ).trim() === target ||
-              String(
-                variant.eanCode ||
-                  "",
-              ).trim() === target,
-          ),
-      );
+            product.colorVariants,
+          )
+            ? product.colorVariants
+            : Array.isArray(
+                  product.color_variants,
+                )
+              ? product.color_variants
+              : [];
 
-    if (variantMatch) {
-      return variantMatch;
-    }
-
-    return (
-      products.find(
-        (product: any) =>
-          String(
-            product.id || "",
-          ).trim() === target,
-      ) ||
-      products.find(
-        (product: any) =>
-          String(
-            product.variantId ||
-              "",
-          ).trim() === target,
-      ) ||
-      products.find(
-        (product: any) =>
-          String(
-            product.variant_id ||
-              "",
-          ).trim() === target,
-      ) ||
-      products.find(
-        (product: any) =>
-          String(
-            product.primaryVariantId ||
-              "",
-          ).trim() === target,
-      ) ||
-      products.find(
-        (product: any) =>
-          String(
-            product.primary_variant_id ||
-              "",
-          ).trim() === target,
-      ) ||
-      products.find(
-        (product: any) =>
-          String(
-            product.barcode ||
-              "",
-          ).trim() === target,
-      ) ||
-      products.find(
-        (product: any) =>
-          String(
-            product.ean_code ||
-              "",
-          ).trim() === target,
-      ) ||
-      products.find(
-        (product: any) =>
-          String(
-            product.productId ||
-              "",
-          ).trim() === target,
-      ) ||
-      products.find(
-        (product: any) =>
-          String(
-            product.product_id ||
-              "",
-          ).trim() === target,
-      ) ||
-      null
+        return colorVariants.some(
+          (variant: any) =>
+            String(
+              variant.variant_id ||
+                "",
+            ).trim() === target ||
+            String(
+              variant.variantId ||
+                "",
+            ).trim() === target ||
+            String(
+              variant.id ||
+                "",
+            ).trim() === target ||
+            String(
+              variant.barcode ||
+                "",
+            ).trim() === target ||
+            String(
+              variant.ean_code ||
+                "",
+            ).trim() === target ||
+            String(
+              variant.eanCode ||
+                "",
+            ).trim() === target,
+        );
+      },
     );
-  };
+
+  if (colorVariantMatch) {
+    return colorVariantMatch;
+  }
+
+  const variantMatch =
+    products.find(
+      (product: any) =>
+        Array.isArray(
+          product.variants,
+        ) &&
+        product.variants.some(
+          (variant: any) =>
+            String(
+              variant.variant_id ||
+                "",
+            ).trim() === target ||
+            String(
+              variant.variantId ||
+                "",
+            ).trim() === target ||
+            String(
+              variant.id ||
+                "",
+            ).trim() === target ||
+            String(
+              variant.barcode ||
+                "",
+            ).trim() === target ||
+            String(
+              variant.ean_code ||
+                "",
+            ).trim() === target ||
+            String(
+              variant.eanCode ||
+                "",
+            ).trim() === target,
+        ),
+    );
+
+  if (variantMatch) {
+    return variantMatch;
+  }
+
+  return (
+    products.find(
+      (product: any) =>
+        String(
+          product.id || "",
+        ).trim() === target,
+    ) ||
+    products.find(
+      (product: any) =>
+        String(
+          product.variantId ||
+            "",
+        ).trim() === target,
+    ) ||
+    products.find(
+      (product: any) =>
+        String(
+          product.variant_id ||
+            "",
+        ).trim() === target,
+    ) ||
+    products.find(
+      (product: any) =>
+        String(
+          product.primaryVariantId ||
+            "",
+        ).trim() === target,
+    ) ||
+    products.find(
+      (product: any) =>
+        String(
+          product.primary_variant_id ||
+            "",
+        ).trim() === target,
+    ) ||
+    products.find(
+      (product: any) =>
+        String(
+          product.barcode ||
+            "",
+        ).trim() === target,
+    ) ||
+    products.find(
+      (product: any) =>
+        String(
+          product.ean_code ||
+            "",
+        ).trim() === target,
+    ) ||
+    products.find(
+      (product: any) =>
+        String(
+          product.productId ||
+            "",
+        ).trim() === target,
+    ) ||
+    products.find(
+      (product: any) =>
+        String(
+          product.product_id ||
+            "",
+        ).trim() === target,
+    ) ||
+    null
+  );
+};

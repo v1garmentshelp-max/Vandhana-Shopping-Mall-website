@@ -14,19 +14,70 @@ import banner1 from "../assets/offers-poster-5.jpeg";
 import banner2 from "../assets/offers-poster-6.jpeg";
 import FeaturesSection from "../components/FeaturesSection";
 import { CollectionTabs } from "../components/CollectionTabs";
-import { fetchCategoriesByGender, fetchProductsByGender, type StorefrontCategory } from "../services/productsApi";
+import {
+  fetchCategoriesByGender,
+  fetchProductsByGender,
+  type StorefrontCategory,
+} from "../services/productsApi";
 
 const HERO_BANNERS: Banner[] = [
-  { id: 1, image: poster1, alt: "Oversized Tees Offer", link: "/collections?gender=Women" },
-  { id: 2, image: poster2, alt: "Oversized Tees Offer", link: "/collections?gender=Women" },
-  { id: 3, image: poster3, alt: "Anniversary Bash Sale", link: "/collections?gender=Women" },
-  { id: 4, image: poster4, alt: "Anniversary Bash Sale", link: "/collections?gender=Women" },
-  { id: 5, image: poster6, alt: "Anniversary Bash Sale", link: "/collections?gender=Women" },
+  {
+    id: 1,
+    image: poster1,
+    alt: "Oversized Tees Offer",
+    link: "/collections?gender=Women&category_id=128",
+  },
+  {
+    id: 2,
+    image: poster2,
+    alt: "Oversized Tees Offer",
+    link: "/collections?gender=Women&category_id=128",
+  },
+  {
+    id: 3,
+    image: poster3,
+    alt: "Anniversary Bash Sale",
+    link: "/collections?gender=Women",
+  },
+  {
+    id: 4,
+    image: poster4,
+    alt: "Anniversary Bash Sale",
+    link: "/collections?gender=Women",
+  },
+  {
+    id: 5,
+    image: poster6,
+    alt: "Anniversary Bash Sale",
+    link: "/collections?gender=Women",
+  },
 ];
 
 const bannerSlides: BannerSlide[] = [
-  { id: 1, desktopImage: banner1, link: "/collections?gender=Women" },
-  { id: 2, desktopImage: banner2, link: "/collections?gender=Women" },
+  {
+    id: 1,
+    desktopImage: banner1,
+    link: "/collections?gender=Women",
+  },
+  {
+    id: 2,
+    desktopImage: banner2,
+    link: "/collections?gender=Women",
+  },
+];
+
+const WOMEN_SHOP_CATEGORY_IDS = [
+  "12",
+  "13",
+  "14",
+  "15",
+  "16",
+  "17",
+  "18",
+  "19",
+  "20",
+  "101",
+  "102",
 ];
 
 const normalizeText = (value: any) =>
@@ -35,27 +86,163 @@ const normalizeText = (value: any) =>
     .replace(/-/g, " ")
     .replace(/&/g, " and ")
     .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
     .trim();
 
-const bySlug = (products: Product[], slugs: string[]) => {
-  const set = new Set(slugs.map(normalizeText));
-  return products.filter((product: any) => set.has(normalizeText(product.categorySlug || product.category_slug)));
+const getCategoryId = (category: any) =>
+  String(category?.id || "").trim();
+
+const getCategoryParentId = (category: any) =>
+  String(
+    category?.parentId ??
+      category?.parent_id ??
+      "",
+  ).trim();
+
+const getProductCategoryId = (product: any) =>
+  String(
+    product?.categoryId ??
+      product?.category_id ??
+      "",
+  ).trim();
+
+const getCategoryDescendantIds = (
+  categories: StorefrontCategory[],
+  rootCategoryIds: string[],
+) => {
+  const ids = new Set(
+    rootCategoryIds
+      .map(String)
+      .map((id) => id.trim())
+      .filter(Boolean),
+  );
+
+  let changed = true;
+
+  while (changed) {
+    changed = false;
+
+    categories.forEach((category) => {
+      const id = getCategoryId(category);
+      const parentId = getCategoryParentId(category);
+
+      if (
+        id &&
+        parentId &&
+        ids.has(parentId) &&
+        !ids.has(id)
+      ) {
+        ids.add(id);
+        changed = true;
+      }
+    });
+  }
+
+  return ids;
 };
 
-const byName = (products: Product[], words: string[]) => {
+const byCategoryIds = (
+  products: Product[],
+  categories: StorefrontCategory[],
+  categoryIds: string[],
+) => {
+  const allowedIds = getCategoryDescendantIds(
+    categories,
+    categoryIds,
+  );
+
+  return products.filter((product: any) =>
+    allowedIds.has(getProductCategoryId(product)),
+  );
+};
+
+const byName = (
+  products: Product[],
+  words: string[],
+) => {
+  const searchWords = words
+    .map(normalizeText)
+    .filter(Boolean);
+
   return products.filter((product: any) => {
-    const text = normalizeText(`${product.title} ${product.product_name} ${product.name} ${product.categoryName} ${product.category_name}`);
-    return words.some((word) => text.includes(normalizeText(word)));
+    const text = normalizeText(
+      `${product.title || ""} ${product.product_name || ""} ${product.name || ""} ${product.categoryName || ""} ${product.category_name || ""} ${product.categoryPath || ""} ${product.category_path || ""}`,
+    );
+
+    return searchWords.some((word) =>
+      text.includes(word),
+    );
   });
 };
 
+const getShopCategories = (
+  categories: StorefrontCategory[],
+  products: Product[],
+  categoryIds: string[],
+) => {
+  const orderMap = new Map(
+    categoryIds.map((id, index) => [
+      String(id),
+      index,
+    ]),
+  );
+
+  const productCategoryIds = new Set(
+    products
+      .map((product: any) =>
+        getProductCategoryId(product),
+      )
+      .filter(Boolean),
+  );
+
+  return categories
+    .filter((category: any) => {
+      const categoryId = getCategoryId(category);
+
+      if (
+        !categoryId ||
+        category?.is_active === false ||
+        !orderMap.has(categoryId)
+      ) {
+        return false;
+      }
+
+      const descendantIds =
+        getCategoryDescendantIds(
+          categories,
+          [categoryId],
+        );
+
+      return Array.from(descendantIds).some(
+        (id) => productCategoryIds.has(id),
+      );
+    })
+    .sort(
+      (first, second) =>
+        (orderMap.get(getCategoryId(first)) ??
+          Number.MAX_SAFE_INTEGER) -
+        (orderMap.get(getCategoryId(second)) ??
+          Number.MAX_SAFE_INTEGER),
+    );
+};
+
 const Women = () => {
-  const [typedProducts, setTypedProducts] = useState<Product[]>([]);
-  const [pageCategories, setPageCategories] = useState<StorefrontCategory[]>([]);
+  const [typedProducts, setTypedProducts] =
+    useState<Product[]>([]);
+
+  const [pageCategories, setPageCategories] =
+    useState<StorefrontCategory[]>([]);
 
   useEffect(() => {
-    localStorage.setItem("preferred_gender", "Women");
-    localStorage.setItem("preferred_gender_url", "/women");
+    localStorage.setItem(
+      "preferred_gender",
+      "Women",
+    );
+
+    localStorage.setItem(
+      "preferred_gender_url",
+      "/women",
+    );
   }, []);
 
   useEffect(() => {
@@ -63,20 +250,34 @@ const Women = () => {
 
     const loadData = async () => {
       try {
-        const [products, cats] = await Promise.all([
-          fetchProductsByGender("Women", 3),
-          fetchCategoriesByGender("Women"),
-        ]);
+        const [products, categories] =
+          await Promise.all([
+            fetchProductsByGender("Women", 3),
+            fetchCategoriesByGender("Women"),
+          ]);
 
-        if (alive) {
-          setTypedProducts(products);
-          setPageCategories(cats);
-        }
+        if (!alive) return;
+
+        setTypedProducts(
+          Array.isArray(products)
+            ? products
+            : [],
+        );
+
+        setPageCategories(
+          (Array.isArray(categories)
+            ? categories
+            : []
+          ).filter(
+            (category: any) =>
+              category?.is_active !== false,
+          ),
+        );
       } catch {
-        if (alive) {
-          setTypedProducts([]);
-          setPageCategories([]);
-        }
+        if (!alive) return;
+
+        setTypedProducts([]);
+        setPageCategories([]);
       }
     };
 
@@ -87,40 +288,147 @@ const Women = () => {
     };
   }, []);
 
-  const newDrops = useMemo(() => typedProducts, [typedProducts]);
+  const shopCategories = useMemo(
+    () =>
+      getShopCategories(
+        pageCategories,
+        typedProducts,
+        WOMEN_SHOP_CATEGORY_IDS,
+      ),
+    [pageCategories, typedProducts],
+  );
+
+  const newDrops = useMemo(
+    () => typedProducts,
+    [typedProducts],
+  );
 
   const kurthiPantSets = useMemo(() => {
-    const matched = bySlug(typedProducts, ["kurthi-pant-set"]);
-    return matched.length ? matched : byName(typedProducts, ["kurti pant set", "kurthi pant set", "kurti", "kurthi"]);
-  }, [typedProducts]);
+    const matched = byCategoryIds(
+      typedProducts,
+      pageCategories,
+      ["15"],
+    );
+
+    return matched.length
+      ? matched
+      : byName(typedProducts, [
+          "kurti pant set",
+          "kurthi pant set",
+          "kurti",
+          "kurthi",
+        ]);
+  }, [typedProducts, pageCategories]);
 
   const tops = useMemo(() => {
-    const matched = bySlug(typedProducts, ["tops", "t-shirts"]);
-    return matched.length ? matched : byName(typedProducts, ["top", "t shirt"]);
-  }, [typedProducts]);
+    const matched = byCategoryIds(
+      typedProducts,
+      pageCategories,
+      ["12", "13"],
+    );
+
+    return matched.length
+      ? matched
+      : byName(typedProducts, [
+          "top",
+          "t shirt",
+          "oversized",
+          "round neck",
+        ]);
+  }, [typedProducts, pageCategories]);
 
   const pants = useMemo(() => {
-    const matched = bySlug(typedProducts, ["pants", "cargo-pants"]);
-    return matched.length ? matched : byName(typedProducts, ["ladies pant", "pant", "cargo"]);
-  }, [typedProducts]);
+    const matched = byCategoryIds(
+      typedProducts,
+      pageCategories,
+      ["17", "18"],
+    );
+
+    return matched.length
+      ? matched
+      : byName(typedProducts, [
+          "ladies pant",
+          "pant",
+          "cargo",
+        ]);
+  }, [typedProducts, pageCategories]);
 
   const jeans = useMemo(() => {
-    const matched = bySlug(typedProducts, ["jeans"]);
-    return matched.length ? matched : byName(typedProducts, ["jean", "denim", "beggi"]);
-  }, [typedProducts]);
+    const matched = byCategoryIds(
+      typedProducts,
+      pageCategories,
+      ["16"],
+    );
+
+    return matched.length
+      ? matched
+      : byName(typedProducts, [
+          "jean",
+          "denim",
+          "beggi",
+          "baggy",
+        ]);
+  }, [typedProducts, pageCategories]);
 
   return (
-    <div>
+    <div className="w-full bg-white">
       <HeroCarousel banners={HERO_BANNERS} />
-      <CategoriesSection categories={pageCategories as any} title="Shop by Category" productData={typedProducts} />
-      <NamedSection title="NEW DROPS" productData={newDrops} autoplay={false} />
-      <HeroProductSection products={newDrops.slice(0, 10)} className="mb-4" />
-      {!!kurthiPantSets.length && <NamedSection title="KURTHI PANT SETS" productData={kurthiPantSets} />}
-      {!!tops.length && <NamedSection title="TOPWEAR" productData={tops} />}
-      <BannerSlider title="Latest Offers" slides={bannerSlides} className="py-4! md:py-8! md:pb-0!" />
-      {!!pants.length && <NamedSection title="PANTS" productData={pants} />}
-      {!!jeans.length && <NamedSection title="JEANS" productData={jeans} />}
+
+      {shopCategories.length > 0 ? (
+        <CategoriesSection
+          categories={shopCategories as any}
+          title="Shop by Category"
+          productData={typedProducts}
+        />
+      ) : null}
+
+      <NamedSection
+        title="NEW DROPS"
+        productData={newDrops}
+        autoplay={false}
+      />
+
+      <HeroProductSection
+        products={newDrops.slice(0, 10)}
+        className="mb-4"
+      />
+
+      {kurthiPantSets.length > 0 ? (
+        <NamedSection
+          title="KURTHI PANT SETS"
+          productData={kurthiPantSets}
+        />
+      ) : null}
+
+      {tops.length > 0 ? (
+        <NamedSection
+          title="TOPWEAR"
+          productData={tops}
+        />
+      ) : null}
+
+      <BannerSlider
+        title="Latest Offers"
+        slides={bannerSlides}
+        className="py-4! md:py-8! md:pb-0!"
+      />
+
+      {pants.length > 0 ? (
+        <NamedSection
+          title="PANTS"
+          productData={pants}
+        />
+      ) : null}
+
+      {jeans.length > 0 ? (
+        <NamedSection
+          title="JEANS"
+          productData={jeans}
+        />
+      ) : null}
+
       <CollectionTabs />
+
       <FeaturesSection className="my-4" />
     </div>
   );

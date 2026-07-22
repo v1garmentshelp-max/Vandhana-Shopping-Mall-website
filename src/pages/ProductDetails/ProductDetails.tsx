@@ -6,7 +6,10 @@ import type { Product } from "../../Models/Product";
 import CarouselModule from "react-multi-carousel";
 import "react-multi-carousel/lib/styles.css";
 import NamedSection from "../../components/NamedSection";
-import { fetchProductById, fetchProductsByGender } from "../../services/productsApi";
+import {
+  fetchProductById,
+  fetchProductsByGender,
+} from "../../services/productsApi";
 import { addToCart } from "../../services/cartApi";
 import {
   FiChevronLeft,
@@ -23,7 +26,8 @@ import {
 import { FaRegStar, FaStar, FaStarHalfAlt } from "react-icons/fa";
 
 const Carousel = (CarouselModule as any).default || CarouselModule;
-const API_BASE = "https://vandhana-shopping-mall-backend.vercel.app";
+const API_BASE =
+  "https://vandhana-shopping-mall-backend.vercel.app";
 
 type StoredUser = {
   id?: number;
@@ -83,9 +87,143 @@ type ProductVariantOption = {
   images?: any[];
 };
 
+type CategoryRecord = Category & {
+  parentId?: string | number | null;
+  parent_id?: string | number | null;
+  categoryPath?: string;
+  category_path?: string;
+  is_active?: boolean;
+};
+
+const categoryRecords = (categoriesData as CategoryRecord[]).filter(
+  (category) => category?.is_active !== false,
+);
+
+const normalizeCategoryId = (value: any) =>
+  String(value ?? "").trim();
+
+const getCategoryParentId = (category?: CategoryRecord | null) =>
+  normalizeCategoryId(
+    category?.parentId !== undefined
+      ? category.parentId
+      : category?.parent_id,
+  );
+
+const categoryRecordMap = new Map<string, CategoryRecord>(
+  categoryRecords.map((category) => [
+    normalizeCategoryId(category.id),
+    category,
+  ]),
+);
+
+const getCategoryAncestorIds = (categoryId: any) => {
+  const ids: string[] = [];
+  const visited = new Set<string>();
+  let currentId = normalizeCategoryId(categoryId);
+
+  while (currentId && !visited.has(currentId)) {
+    visited.add(currentId);
+    ids.push(currentId);
+
+    const category = categoryRecordMap.get(currentId);
+    currentId = getCategoryParentId(category);
+  }
+
+  return ids;
+};
+
+const getCategoryPathById = (categoryId: any) => {
+  const names: string[] = [];
+  const visited = new Set<string>();
+  let currentId = normalizeCategoryId(categoryId);
+
+  while (currentId && !visited.has(currentId)) {
+    visited.add(currentId);
+
+    const category = categoryRecordMap.get(currentId);
+
+    if (!category) break;
+
+    if (category.name) {
+      names.unshift(String(category.name));
+    }
+
+    currentId = getCategoryParentId(category);
+  }
+
+  return names.join(" > ");
+};
+
+const getProductCategoryIdValue = (product: any) =>
+  normalizeCategoryId(
+    product?.categoryId ||
+      product?.category_id ||
+      "",
+  );
+
+const getProductCategoryPathValue = (product: any) => {
+  const directPath = String(
+    product?.categoryPath ||
+      product?.category_path ||
+      "",
+  ).trim();
+
+  if (directPath) return directPath;
+
+  return getCategoryPathById(
+    getProductCategoryIdValue(product),
+  );
+};
+
+const getCategoryAffinityScore = (
+  sourceCategoryId: any,
+  targetCategoryId: any,
+) => {
+  const sourceId = normalizeCategoryId(sourceCategoryId);
+  const targetId = normalizeCategoryId(targetCategoryId);
+
+  if (!sourceId || !targetId) return 0;
+
+  const sourceAncestors = getCategoryAncestorIds(sourceId);
+  const targetAncestors = new Set(
+    getCategoryAncestorIds(targetId),
+  );
+
+  let score = sourceId === targetId ? 1000 : 0;
+
+  sourceAncestors.forEach((ancestorId, index) => {
+    if (targetAncestors.has(ancestorId)) {
+      score += Math.max(1, 100 - index * 15);
+    }
+  });
+
+  const sourceParent = getCategoryParentId(
+    categoryRecordMap.get(sourceId),
+  );
+
+  const targetParent = getCategoryParentId(
+    categoryRecordMap.get(targetId),
+  );
+
+  if (
+    sourceParent &&
+    targetParent &&
+    sourceParent === targetParent
+  ) {
+    score += 250;
+  }
+
+  return score;
+};
+
 const getStoredUser = (): StoredUser | null => {
-  const raw = localStorage.getItem("user") || sessionStorage.getItem("user") || null;
+  const raw =
+    localStorage.getItem("user") ||
+    sessionStorage.getItem("user") ||
+    null;
+
   if (!raw) return null;
+
   try {
     return JSON.parse(raw);
   } catch {
@@ -93,82 +231,124 @@ const getStoredUser = (): StoredUser | null => {
   }
 };
 
-const getWishlistKey = (userId: number) => `wishlist_product_ids_${userId}`;
+const getWishlistKey = (userId: number) =>
+  `wishlist_product_ids_${userId}`;
 
 const readWishlistIds = (userId: number): number[] => {
   try {
     const raw = localStorage.getItem(getWishlistKey(userId));
+
     if (!raw) return [];
+
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.map(Number).filter(Boolean) : [];
+
+    return Array.isArray(parsed)
+      ? parsed.map(Number).filter(Boolean)
+      : [];
   } catch {
     return [];
   }
 };
 
 const writeWishlistIds = (userId: number, ids: number[]) => {
-  localStorage.setItem(getWishlistKey(userId), JSON.stringify(ids));
+  localStorage.setItem(
+    getWishlistKey(userId),
+    JSON.stringify(ids),
+  );
+
   window.dispatchEvent(new Event("wishlist-updated"));
 };
 
 const getNumber = (value: any, fallback = 0) => {
-  const n = Number(value);
-  return Number.isFinite(n) ? n : fallback;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
 };
 
 const getPositiveId = (value: any) => {
-  const n = Number(String(value || "").trim());
-  return Number.isInteger(n) && n > 0 ? n : null;
+  const number = Number(String(value || "").trim());
+
+  return Number.isInteger(number) && number > 0
+    ? number
+    : null;
 };
 
 const clampDiscount = (value: any) => {
-  const n = getNumber(value, 0);
-  if (n < 0) return 0;
-  if (n > 100) return 100;
-  return n;
+  const number = getNumber(value, 0);
+
+  if (number < 0) return 0;
+  if (number > 100) return 100;
+
+  return number;
 };
 
 const firstPositiveDiscount = (...values: any[]) => {
   for (const value of values) {
-    const n = clampDiscount(value);
-    if (n > 0) return n;
+    const number = clampDiscount(value);
+
+    if (number > 0) return number;
   }
+
   return 0;
 };
 
-const calculateDiscountedPrice = (price: any, discount: any, fallback = 0) => {
+const calculateDiscountedPrice = (
+  price: any,
+  discount: any,
+  fallback = 0,
+) => {
   const base = getNumber(price, fallback);
-  const pct = clampDiscount(discount);
+  const percentage = clampDiscount(discount);
+
   if (!base) return getNumber(fallback, 0);
-  if (!pct) return base;
-  return Math.round((base - (base * pct) / 100 + Number.EPSILON) * 100) / 100;
+  if (!percentage) return base;
+
+  return (
+    Math.round(
+      (base - (base * percentage) / 100 + Number.EPSILON) *
+        100,
+    ) / 100
+  );
 };
 
-const getString = (value: any) => String(value || "").trim();
+const getString = (value: any) =>
+  String(value || "").trim();
 
 const isGroupedValue = (value: any) => {
-  const s = getString(value);
-  if (!s) return false;
-  if (s.includes(",")) return true;
-  if (s.split(/\s+/).length > 4) return true;
+  const text = getString(value);
+
+  if (!text) return false;
+  if (text.includes(",")) return true;
+  if (text.split(/\s+/).length > 4) return true;
+
   return false;
 };
 
 const cleanSingleValue = (value: any) => {
-  const s = getString(value);
-  if (!s) return "";
-  if (isGroupedValue(s)) return "";
-  return s;
+  const text = getString(value);
+
+  if (!text) return "";
+  if (isGroupedValue(text)) return "";
+
+  return text;
 };
 
 const cleanColourValue = (value: any) => {
   const colour = getString(value).replace(/\s+/g, " ");
-  if (!colour || colour === "[object Object]" || colour.length > 100) return "";
+
+  if (
+    !colour ||
+    colour === "[object Object]" ||
+    colour.length > 100
+  ) {
+    return "";
+  }
+
   return colour;
 };
 
 const sameValue = (a: any, b: any) =>
-  String(a || "").trim().toLowerCase() === String(b || "").trim().toLowerCase();
+  String(a || "").trim().toLowerCase() ===
+  String(b || "").trim().toLowerCase();
 
 const normalizeColourName = (value: any) => {
   const colour = String(value || "")
@@ -187,6 +367,12 @@ const normalizeColourName = (value: any) => {
     "see blue": "sea blue",
     iceblue: "ice blue",
     "ice blu": "ice blue",
+    "navy b": "navy blue",
+    navyb: "navy blue",
+    "navy blu": "navy blue",
+    navyblue: "navy blue",
+    horizonblue: "horizon blue",
+    "horizon blu": "horizon blue",
     offwhite: "off white",
     lightgray: "light grey",
     "light gray": "light grey",
@@ -224,10 +410,18 @@ const normalizeColourName = (value: any) => {
 const sameColour = (a: any, b: any) =>
   normalizeColourName(a) === normalizeColourName(b);
 
-const getVariantColor = (variant?: ProductVariantOption | null) =>
-  cleanColourValue(variant?.colour || variant?.color || "");
+const getVariantColor = (
+  variant?: ProductVariantOption | null,
+) =>
+  cleanColourValue(
+    variant?.colour ||
+      variant?.color ||
+      "",
+  );
 
-const getVariantColourValue = (variant?: ProductVariantOption | null) =>
+const getVariantColourValue = (
+  variant?: ProductVariantOption | null,
+) =>
   getString(
     variant?.colour_hex ||
       variant?.color_hex ||
@@ -239,64 +433,102 @@ const getVariantColourValue = (variant?: ProductVariantOption | null) =>
   );
 
 const getBackendProductId = (product: Product | null) => {
-  const p: any = product || {};
-  const value = p.productId || p.product_id || "";
+  const currentProduct: any = product || {};
+  const value =
+    currentProduct.productId ||
+    currentProduct.product_id ||
+    "";
+
   const parsed = Number(String(value).trim());
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : getPositiveId(p.id);
+
+  return Number.isInteger(parsed) && parsed > 0
+    ? parsed
+    : getPositiveId(currentProduct.id);
 };
 
-const getVariantIdValue = (variant?: ProductVariantOption | null, product?: Product | null) => {
-  const p: any = product || {};
+const getVariantIdValue = (
+  variant?: ProductVariantOption | null,
+  product?: Product | null,
+) => {
+  const currentProduct: any = product || {};
+
   const value =
     variant?.variant_id ||
     variant?.id ||
-    p.variantId ||
-    p.variant_id ||
-    p.primaryVariantId ||
-    p.primary_variant_id ||
-    p.id ||
+    currentProduct.variantId ||
+    currentProduct.variant_id ||
+    currentProduct.primaryVariantId ||
+    currentProduct.primary_variant_id ||
+    currentProduct.id ||
     "";
+
   const parsed = Number(String(value).trim());
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+
+  return Number.isInteger(parsed) && parsed > 0
+    ? parsed
+    : null;
 };
 
 const getImageString = (value: any) => {
   if (!value) return "";
   if (typeof value === "string") return value.trim();
-  return String(value.image_url || value.secure_url || value.url || "").trim();
+
+  return String(
+    value.image_url ||
+      value.secure_url ||
+      value.url ||
+      "",
+  ).trim();
 };
 
 const isBadImage = (value: any) => {
-  const s = String(value || "").trim().toLowerCase();
-  return !s || s === "[object object]" || s.includes("undefined") || s.includes("null");
+  const image = String(value || "").trim().toLowerCase();
+
+  return (
+    !image ||
+    image === "[object object]" ||
+    image.includes("undefined") ||
+    image.includes("null")
+  );
 };
 
 const uniqueImages = (values: any[]) => {
   const seen = new Set<string>();
-  const out: string[] = [];
+  const output: string[] = [];
 
   values.forEach((value) => {
     const image = getImageString(value);
+
     if (isBadImage(image)) return;
+
     const key = image.toLowerCase();
+
     if (seen.has(key)) return;
+
     seen.add(key);
-    out.push(image);
+    output.push(image);
   });
 
-  return out;
+  return output;
 };
 
 const parseImages = (value: any) => {
-  if (Array.isArray(value)) return value.filter(Boolean);
+  if (Array.isArray(value)) {
+    return value.filter(Boolean);
+  }
+
   if (typeof value === "string") {
     try {
       const parsed = JSON.parse(value);
-      if (Array.isArray(parsed)) return parsed.filter(Boolean);
+
+      if (Array.isArray(parsed)) {
+        return parsed.filter(Boolean);
+      }
     } catch {
       return value ? [value] : [];
     }
   }
+
   return [];
 };
 
@@ -306,12 +538,29 @@ const normalizeImageType = (value: any) =>
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
 
-const imageByType = (images: any[], ...types: string[]) => {
-  const targets = types.map(normalizeImageType).filter(Boolean);
+const imageByType = (
+  images: any[],
+  ...types: string[]
+) => {
+  const targets = types
+    .map(normalizeImageType)
+    .filter(Boolean);
+
   const found = images.find((item: any) => {
-    const imageType = normalizeImageType(item?.image_type || item?.type || item?.label || item?.name || item?.view || item?.position);
-    return targets.some((target) => imageType.includes(target));
+    const imageType = normalizeImageType(
+      item?.image_type ||
+        item?.type ||
+        item?.label ||
+        item?.name ||
+        item?.view ||
+        item?.position,
+    );
+
+    return targets.some((target) =>
+      imageType.includes(target),
+    );
   });
+
   return getImageString(found);
 };
 
@@ -349,17 +598,24 @@ const imagePairFromSource = (source: any) => {
   return uniqueImages([front, back]).slice(0, 2);
 };
 
-const imageListFromVariant = (variant?: ProductVariantOption | null) => {
+const imageListFromVariant = (
+  variant?: ProductVariantOption | null,
+) => {
   if (!variant) return [];
+
   return imagePairFromSource(variant);
 };
 
 const productFallbackImages = (product: Product | null) => {
-  const p: any = product || {};
-  return imagePairFromSource(p);
+  const currentProduct: any = product || {};
+
+  return imagePairFromSource(currentProduct);
 };
 
-const normalizeVariant = (item: any, product: any): ProductVariantOption => {
+const normalizeVariant = (
+  item: any,
+  product: any,
+): ProductVariantOption => {
   const originalB2c = getNumber(
     item?.original_price_b2c ??
       item?.b2c_original_price ??
@@ -415,14 +671,57 @@ const normalizeVariant = (item: any, product: any): ProductVariantOption => {
   );
 
   const mrp = originalB2c;
-  const finalB2c = b2cDiscount > 0 && mrp > 0 ? calculateDiscountedPrice(mrp, b2cDiscount, directFinalB2c) : directFinalB2c;
-  const originalB2b = getNumber(item?.original_price_b2b ?? item?.b2b_original_price ?? item?.cost_price ?? product?.original_price_b2b ?? product?.cost_price, originalB2c);
-  const finalB2b = b2bDiscount > 0 && originalB2b > 0 ? calculateDiscountedPrice(originalB2b, b2bDiscount, originalB2b) : getNumber(item?.final_price_b2b ?? item?.b2b_final_price ?? item?.cost_price ?? product?.final_price_b2b, finalB2c);
-  const size = cleanSingleValue(item?.size || item?.selected_size || "");
-  const colour = cleanColourValue(item?.colour || item?.color || item?.selected_colour || item?.selectedColor || "");
+
+  const finalB2c =
+    b2cDiscount > 0 && mrp > 0
+      ? calculateDiscountedPrice(
+          mrp,
+          b2cDiscount,
+          directFinalB2c,
+        )
+      : directFinalB2c;
+
+  const originalB2b = getNumber(
+    item?.original_price_b2b ??
+      item?.b2b_original_price ??
+      item?.cost_price ??
+      product?.original_price_b2b ??
+      product?.cost_price,
+    originalB2c,
+  );
+
+  const finalB2b =
+    b2bDiscount > 0 && originalB2b > 0
+      ? calculateDiscountedPrice(
+          originalB2b,
+          b2bDiscount,
+          originalB2b,
+        )
+      : getNumber(
+          item?.final_price_b2b ??
+            item?.b2b_final_price ??
+            item?.cost_price ??
+            product?.final_price_b2b,
+          finalB2c,
+        );
+
+  const size = cleanSingleValue(
+    item?.size ||
+      item?.selected_size ||
+      "",
+  );
+
+  const colour = cleanColourValue(
+    item?.colour ||
+      item?.color ||
+      item?.selected_colour ||
+      item?.selectedColor ||
+      "",
+  );
 
   const itemImages = imagePairFromSource(item);
   const productImages = imagePairFromSource(product);
+
   const variantImages = uniqueImages([
     itemImages[0] || productImages[0],
     itemImages[1] || productImages[1],
@@ -445,9 +744,22 @@ const normalizeVariant = (item: any, product: any): ProductVariantOption => {
   );
 
   return {
-    id: item?.id || item?.variant_id || item?.variantId || "",
-    variant_id: item?.variant_id || item?.variantId || item?.id || "",
-    product_id: item?.product_id || item?.productId || product?.productId || product?.product_id || "",
+    id:
+      item?.id ||
+      item?.variant_id ||
+      item?.variantId ||
+      "",
+    variant_id:
+      item?.variant_id ||
+      item?.variantId ||
+      item?.id ||
+      "",
+    product_id:
+      item?.product_id ||
+      item?.productId ||
+      product?.productId ||
+      product?.product_id ||
+      "",
     size,
     colour,
     color: colour,
@@ -457,82 +769,246 @@ const normalizeVariant = (item: any, product: any): ProductVariantOption => {
     colorHex: colourValue,
     swatch_color: colourValue,
     swatchColor: colourValue,
-    barcode: getString(item?.barcode || item?.ean_code || ""),
-    ean_code: getString(item?.ean_code || item?.barcode || ""),
+    barcode: getString(
+      item?.barcode ||
+        item?.ean_code ||
+        "",
+    ),
+    ean_code: getString(
+      item?.ean_code ||
+        item?.barcode ||
+        "",
+    ),
     mrp,
-    base_sale_price: getNumber(item?.base_sale_price ?? item?.original_sale_price ?? item?.sale_price, finalB2c),
-    original_sale_price: getNumber(item?.original_sale_price ?? item?.base_sale_price ?? item?.sale_price, finalB2c),
+    base_sale_price: getNumber(
+      item?.base_sale_price ??
+        item?.original_sale_price ??
+        item?.sale_price,
+      finalB2c,
+    ),
+    original_sale_price: getNumber(
+      item?.original_sale_price ??
+        item?.base_sale_price ??
+        item?.sale_price,
+      finalB2c,
+    ),
     sale_price: finalB2c,
-    price: getNumber(item?.price ?? item?.sale_price ?? item?.final_price_b2c, finalB2c),
-    selling_price: getNumber(item?.selling_price ?? item?.sale_price ?? item?.final_price_b2c, finalB2c),
-    discounted_price: getNumber(item?.discounted_price ?? item?.sale_price ?? item?.final_price_b2c, finalB2c),
-    mahaveer_price: getNumber(item?.mahaveer_price ?? item?.sale_price ?? item?.final_price_b2c, finalB2c),
-    cost_price: getNumber(item?.cost_price ?? product?.cost_price, 0),
+    price: getNumber(
+      item?.price ??
+        item?.sale_price ??
+        item?.final_price_b2c,
+      finalB2c,
+    ),
+    selling_price: getNumber(
+      item?.selling_price ??
+        item?.sale_price ??
+        item?.final_price_b2c,
+      finalB2c,
+    ),
+    discounted_price: getNumber(
+      item?.discounted_price ??
+        item?.sale_price ??
+        item?.final_price_b2c,
+      finalB2c,
+    ),
+    mahaveer_price: getNumber(
+      item?.mahaveer_price ??
+        item?.sale_price ??
+        item?.final_price_b2c,
+      finalB2c,
+    ),
+    cost_price: getNumber(
+      item?.cost_price ??
+        product?.cost_price,
+      0,
+    ),
     b2c_discount_pct: b2cDiscount,
     b2b_discount_pct: b2bDiscount,
     original_price_b2c: originalB2c,
     final_price_b2c: finalB2c,
     original_price_b2b: originalB2b,
     final_price_b2b: finalB2b,
-    on_hand: getNumber(item?.on_hand ?? item?.onHand ?? 0),
-    reserved: getNumber(item?.reserved ?? 0),
-    available_qty: getNumber(item?.available_qty ?? item?.availableQty ?? item?.on_hand ?? item?.onHand ?? 0),
-    in_stock: Boolean(item?.in_stock ?? item?.inStock ?? true),
-    image_url: variantImages[0] || item?.image_url || item?.imageUrl || "",
-    imageUrl: variantImages[0] || item?.imageUrl || item?.image_url || "",
-    front_image_url: variantImages[0] || item?.front_image_url || item?.frontImageUrl || "",
-    frontImageUrl: variantImages[0] || item?.frontImageUrl || item?.front_image_url || "",
-    back_image_url: variantImages[1] || item?.back_image_url || item?.backImageUrl || "",
-    backImageUrl: variantImages[1] || item?.backImageUrl || item?.back_image_url || "",
-    main_image_url: variantImages[0] || item?.main_image_url || item?.mainImageUrl || "",
-    mainImageUrl: variantImages[0] || item?.mainImageUrl || item?.main_image_url || "",
-    images: variantImages.length ? variantImages : parseImages(item?.images),
+    on_hand: getNumber(
+      item?.on_hand ??
+        item?.onHand ??
+        0,
+    ),
+    reserved: getNumber(
+      item?.reserved ??
+        0,
+    ),
+    available_qty: getNumber(
+      item?.available_qty ??
+        item?.availableQty ??
+        item?.on_hand ??
+        item?.onHand ??
+        0,
+    ),
+    in_stock: Boolean(
+      item?.in_stock ??
+        item?.inStock ??
+        true,
+    ),
+    image_url:
+      variantImages[0] ||
+      item?.image_url ||
+      item?.imageUrl ||
+      "",
+    imageUrl:
+      variantImages[0] ||
+      item?.imageUrl ||
+      item?.image_url ||
+      "",
+    front_image_url:
+      variantImages[0] ||
+      item?.front_image_url ||
+      item?.frontImageUrl ||
+      "",
+    frontImageUrl:
+      variantImages[0] ||
+      item?.frontImageUrl ||
+      item?.front_image_url ||
+      "",
+    back_image_url:
+      variantImages[1] ||
+      item?.back_image_url ||
+      item?.backImageUrl ||
+      "",
+    backImageUrl:
+      variantImages[1] ||
+      item?.backImageUrl ||
+      item?.back_image_url ||
+      "",
+    main_image_url:
+      variantImages[0] ||
+      item?.main_image_url ||
+      item?.mainImageUrl ||
+      "",
+    mainImageUrl:
+      variantImages[0] ||
+      item?.mainImageUrl ||
+      item?.main_image_url ||
+      "",
+    images: variantImages.length
+      ? variantImages
+      : parseImages(item?.images),
   };
 };
 
-const isValidVariantOption = (variant: ProductVariantOption) => {
-  const hasSize = !!cleanSingleValue(variant.size);
-  const hasColor = !!cleanColourValue(variant.colour || variant.color);
-  const hasId = !!getString(variant.variant_id || variant.id || variant.barcode || variant.ean_code);
+const isValidVariantOption = (
+  variant: ProductVariantOption,
+) => {
+  const hasSize = Boolean(cleanSingleValue(variant.size));
+
+  const hasColor = Boolean(
+    cleanColourValue(
+      variant.colour ||
+        variant.color,
+    ),
+  );
+
+  const hasId = Boolean(
+    getString(
+      variant.variant_id ||
+        variant.id ||
+        variant.barcode ||
+        variant.ean_code,
+    ),
+  );
+
   return hasId && (hasSize || hasColor);
 };
 
-const getProductVariants = (product: Product | null): ProductVariantOption[] => {
+const getProductVariants = (
+  product: Product | null,
+): ProductVariantOption[] => {
   if (!product) return [];
-  const p: any = product;
-  const rawVariants = Array.isArray(p.variants) ? p.variants : [];
-  const normalized: ProductVariantOption[] = rawVariants.length ? rawVariants.map((item: any) => normalizeVariant(item, p)) : [normalizeVariant(p, p)];
-  const cleanVariants = normalized.filter(isValidVariantOption);
-  return cleanVariants.length ? cleanVariants : normalized.filter((variant: ProductVariantOption) => getString(variant.variant_id || variant.id));
+
+  const currentProduct: any = product;
+
+  const rawVariants = Array.isArray(currentProduct.variants)
+    ? currentProduct.variants
+    : [];
+
+  const normalized: ProductVariantOption[] =
+    rawVariants.length
+      ? rawVariants.map((item: any) =>
+          normalizeVariant(item, currentProduct),
+        )
+      : [normalizeVariant(currentProduct, currentProduct)];
+
+  const cleanVariants = normalized.filter(
+    isValidVariantOption,
+  );
+
+  return cleanVariants.length
+    ? cleanVariants
+    : normalized.filter((variant) =>
+        getString(
+          variant.variant_id ||
+            variant.id,
+        ),
+      );
 };
 
 const uniqueValues = (values: string[]) => {
   const seen = new Set<string>();
-  const out: string[] = [];
+  const output: string[] = [];
 
   values.forEach((value) => {
     const clean = cleanSingleValue(value);
+
     if (!clean) return;
+
     const key = clean.toLowerCase();
+
     if (!seen.has(key)) {
       seen.add(key);
-      out.push(clean);
+      output.push(clean);
     }
   });
 
-  return out;
+  return output;
 };
 
-const sortVariantValues = (values: string[]) => {
-  return uniqueValues(values).sort((a, b) => {
-    const na = parseFloat(String(a).replace(/[^\d.]/g, ""));
-    const nb = parseFloat(String(b).replace(/[^\d.]/g, ""));
-    if (Number.isFinite(na) && Number.isFinite(nb) && na !== nb) return na - nb;
-    return String(a).localeCompare(String(b), undefined, { numeric: true });
+const sortVariantValues = (values: string[]) =>
+  uniqueValues(values).sort((a, b) => {
+    const firstNumber = parseFloat(
+      String(a).replace(/[^\d.]/g, ""),
+    );
+
+    const secondNumber = parseFloat(
+      String(b).replace(/[^\d.]/g, ""),
+    );
+
+    if (
+      Number.isFinite(firstNumber) &&
+      Number.isFinite(secondNumber) &&
+      firstNumber !== secondNumber
+    ) {
+      return firstNumber - secondNumber;
+    }
+
+    return String(a).localeCompare(
+      String(b),
+      undefined,
+      { numeric: true },
+    );
   });
-};
 
-const SIZE_ORDER = ["XXS", "XS", "S", "M", "L", "XL", "XXL", "XXXL", "4XL", "5XL", "6XL"];
+const SIZE_ORDER = [
+  "XXS",
+  "XS",
+  "S",
+  "M",
+  "L",
+  "XL",
+  "XXL",
+  "XXXL",
+  "4XL",
+  "5XL",
+  "6XL",
+];
 
 const normalizeSizeLabel = (value: any) => {
   const size = String(value || "")
@@ -543,35 +1019,44 @@ const normalizeSizeLabel = (value: any) => {
   const aliases: Record<string, string> = {
     "2XL": "XXL",
     "3XL": "XXXL",
-    "XXXXL": "4XL",
-    "XXXXXL": "5XL",
-    "XXXXXXL": "6XL",
+    XXXXL: "4XL",
+    XXXXXL: "5XL",
+    XXXXXXL: "6XL",
   };
 
   return aliases[size] || size;
 };
 
-const sortSizeValues = (values: string[]) => {
-  return uniqueValues(values).sort((a, b) => {
+const sortSizeValues = (values: string[]) =>
+  uniqueValues(values).sort((a, b) => {
     const normalizedA = normalizeSizeLabel(a);
     const normalizedB = normalizeSizeLabel(b);
     const orderA = SIZE_ORDER.indexOf(normalizedA);
     const orderB = SIZE_ORDER.indexOf(normalizedB);
 
-    if (orderA !== -1 && orderB !== -1) return orderA - orderB;
+    if (orderA !== -1 && orderB !== -1) {
+      return orderA - orderB;
+    }
+
     if (orderA !== -1) return -1;
     if (orderB !== -1) return 1;
 
     const numberA = Number(normalizedA);
     const numberB = Number(normalizedB);
 
-    if (Number.isFinite(numberA) && Number.isFinite(numberB)) {
+    if (
+      Number.isFinite(numberA) &&
+      Number.isFinite(numberB)
+    ) {
       return numberA - numberB;
     }
 
-    return normalizedA.localeCompare(normalizedB, undefined, { numeric: true });
+    return normalizedA.localeCompare(
+      normalizedB,
+      undefined,
+      { numeric: true },
+    );
   });
-};
 
 const sortColourValues = (values: string[]) => {
   const unique = new Map<string, string>();
@@ -586,21 +1071,39 @@ const sortColourValues = (values: string[]) => {
   });
 
   return Array.from(unique.values()).sort((a, b) =>
-    normalizeColourName(a).localeCompare(normalizeColourName(b), undefined, {
-      numeric: true,
-    }),
+    normalizeColourName(a).localeCompare(
+      normalizeColourName(b),
+      undefined,
+      { numeric: true },
+    ),
   );
 };
 
-const findVariantByRouteId = (variants: ProductVariantOption[], routeId: any) => {
+const findVariantByRouteId = (
+  variants: ProductVariantOption[],
+  routeId: any,
+) => {
   const target = String(routeId || "").trim();
+
   if (!target) return null;
 
   return (
-    variants.find((variant) => String(variant.variant_id || "").trim() === target) ||
-    variants.find((variant) => String(variant.id || "").trim() === target) ||
-    variants.find((variant) => String(variant.barcode || "").trim() === target) ||
-    variants.find((variant) => String(variant.ean_code || "").trim() === target) ||
+    variants.find(
+      (variant) =>
+        String(variant.variant_id || "").trim() === target,
+    ) ||
+    variants.find(
+      (variant) =>
+        String(variant.id || "").trim() === target,
+    ) ||
+    variants.find(
+      (variant) =>
+        String(variant.barcode || "").trim() === target,
+    ) ||
+    variants.find(
+      (variant) =>
+        String(variant.ean_code || "").trim() === target,
+    ) ||
     null
   );
 };
@@ -613,22 +1116,50 @@ const findExactVariant = (
   if (!variants.length) return null;
 
   return (
-    variants.find((variant: ProductVariantOption) => {
-      const sizeOk = selectedSize ? sameValue(variant.size, selectedSize) : true;
-      const colorOk = selectedColor ? sameColour(getVariantColor(variant), selectedColor) : true;
-      return sizeOk && colorOk;
+    variants.find((variant) => {
+      const sizeMatches = selectedSize
+        ? sameValue(variant.size, selectedSize)
+        : true;
+
+      const colorMatches = selectedColor
+        ? sameColour(
+            getVariantColor(variant),
+            selectedColor,
+          )
+        : true;
+
+      return sizeMatches && colorMatches;
     }) || null
   );
 };
 
-const findVariantByColor = (variants: ProductVariantOption[], selectedColor: string) => {
+const findVariantByColor = (
+  variants: ProductVariantOption[],
+  selectedColor: string,
+) => {
   if (!selectedColor) return null;
-  return variants.find((variant: ProductVariantOption) => sameColour(getVariantColor(variant), selectedColor)) || null;
+
+  return (
+    variants.find((variant) =>
+      sameColour(
+        getVariantColor(variant),
+        selectedColor,
+      ),
+    ) || null
+  );
 };
 
-const findVariantBySize = (variants: ProductVariantOption[], selectedSize: string) => {
+const findVariantBySize = (
+  variants: ProductVariantOption[],
+  selectedSize: string,
+) => {
   if (!selectedSize) return null;
-  return variants.find((variant: ProductVariantOption) => sameValue(variant.size, selectedSize)) || null;
+
+  return (
+    variants.find((variant) =>
+      sameValue(variant.size, selectedSize),
+    ) || null
+  );
 };
 
 const findPriceVariant = (
@@ -637,12 +1168,29 @@ const findPriceVariant = (
   selectedColor: string,
 ) => {
   if (!variants.length) return null;
-  const exact = findExactVariant(variants, selectedSize, selectedColor);
+
+  const exact = findExactVariant(
+    variants,
+    selectedSize,
+    selectedColor,
+  );
+
   if (exact) return exact;
-  const bySize = findVariantBySize(variants, selectedSize);
+
+  const bySize = findVariantBySize(
+    variants,
+    selectedSize,
+  );
+
   if (bySize) return bySize;
-  const byColor = findVariantByColor(variants, selectedColor);
+
+  const byColor = findVariantByColor(
+    variants,
+    selectedColor,
+  );
+
   if (byColor) return byColor;
+
   return variants[0];
 };
 
@@ -652,43 +1200,122 @@ const findImageVariant = (
   selectedColor: string,
 ) => {
   if (!variants.length) return null;
-  const exact = findExactVariant(variants, selectedSize, selectedColor);
+
+  const exact = findExactVariant(
+    variants,
+    selectedSize,
+    selectedColor,
+  );
+
   if (exact) return exact;
-  const byColor = findVariantByColor(variants, selectedColor);
+
+  const byColor = findVariantByColor(
+    variants,
+    selectedColor,
+  );
+
   if (byColor) return byColor;
-  const bySize = findVariantBySize(variants, selectedSize);
+
+  const bySize = findVariantBySize(
+    variants,
+    selectedSize,
+  );
+
   if (bySize) return bySize;
+
   return variants[0];
 };
 
-const getVariantStockCount = (variant?: ProductVariantOption | null) => {
+const getVariantStockCount = (
+  variant?: ProductVariantOption | null,
+) => {
   if (!variant) return 0;
-  return getNumber(variant.available_qty, 0) || getNumber(variant.on_hand, 0) || 0;
+
+  return (
+    getNumber(variant.available_qty, 0) ||
+    getNumber(variant.on_hand, 0) ||
+    0
+  );
 };
 
 const productIdentityKeys = (product: any) => {
-  const productId = String(product?.productId || product?.product_id || "").trim();
+  const productId = String(
+    product?.productId ||
+      product?.product_id ||
+      "",
+  ).trim();
 
   if (productId) {
     return [`product:${productId}`];
   }
 
-  const patternCode = getString(product?.patternCode || product?.pattern_code);
+  const patternCode = getString(
+    product?.patternCode ||
+      product?.pattern_code,
+  );
 
   if (patternCode) {
     return [
-      `pattern:${String(product?.gender || product?.category || "").trim().toLowerCase()}|${String(product?.categoryId || product?.category_id || "").trim().toLowerCase()}|${String(product?.brand || product?.brand_name || "").trim().toLowerCase()}|${patternCode.toLowerCase()}`
+      `pattern:${String(
+        product?.gender ||
+          product?.category ||
+          "",
+      )
+        .trim()
+        .toLowerCase()}|${String(
+        product?.categoryId ||
+          product?.category_id ||
+          "",
+      )
+        .trim()
+        .toLowerCase()}|${String(
+        product?.brand ||
+          product?.brand_name ||
+          "",
+      )
+        .trim()
+        .toLowerCase()}|${patternCode.toLowerCase()}`,
     ];
   }
 
-  const titleKey = `${String(product?.gender || product?.category || "").trim().toLowerCase()}|${String(product?.categoryId || product?.category_id || "").trim().toLowerCase()}|${String(product?.brand || product?.brand_name || "").trim().toLowerCase()}|${String(product?.title || product?.name || product?.product_name || "").trim().toLowerCase()}`;
+  const titleKey = `${String(
+    product?.gender ||
+      product?.category ||
+      "",
+  )
+    .trim()
+    .toLowerCase()}|${String(
+    product?.categoryId ||
+      product?.category_id ||
+      "",
+  )
+    .trim()
+    .toLowerCase()}|${String(
+    product?.brand ||
+      product?.brand_name ||
+      "",
+  )
+    .trim()
+    .toLowerCase()}|${String(
+    product?.title ||
+      product?.name ||
+      product?.product_name ||
+      "",
+  )
+    .trim()
+    .toLowerCase()}`;
 
-  return titleKey === "|||" ? [] : [`details:${titleKey}`];
+  return titleKey === "|||"
+    ? []
+    : [`details:${titleKey}`];
 };
 
 const hasSameProductIdentity = (a: any, b: any) => {
-  const aKeys = new Set(productIdentityKeys(a));
-  return productIdentityKeys(b).some((key) => aKeys.has(key));
+  const firstKeys = new Set(productIdentityKeys(a));
+
+  return productIdentityKeys(b).some((key) =>
+    firstKeys.has(key),
+  );
 };
 
 const COLOR_MAP: Record<string, string> = {
@@ -751,6 +1378,9 @@ const COLOR_MAP: Record<string, string> = {
   "light blue": "#add8e6",
   navy: "#000080",
   "navy blue": "#000080",
+  "navy b": "#000080",
+  "horizon blue": "#4f6f8f",
+  "horizon blu": "#4f6f8f",
   "royal blue": "#4169e1",
   "sky blue": "#87ceeb",
   "sea blue": "#2e8b9e",
@@ -797,9 +1427,13 @@ const normalizeProvidedColour = (value: any) => {
   if (!provided) return "";
 
   if (
-    /^#([0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(provided) ||
+    /^#([0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(
+      provided,
+    ) ||
     /^(rgb|rgba|hsl|hsla)\(/i.test(provided) ||
-    /^(linear-gradient|radial-gradient|conic-gradient)\(/i.test(provided)
+    /^(linear-gradient|radial-gradient|conic-gradient)\(/i.test(
+      provided,
+    )
   ) {
     return provided;
   }
@@ -812,16 +1446,108 @@ const getNamedColour = (value: any) => {
 
   if (!normalized) return "";
 
-  return COLOR_MAP[normalized] || "";
+  if (COLOR_MAP[normalized]) {
+    return COLOR_MAP[normalized];
+  }
+
+  const compact = normalized.replace(/\s+/g, "");
+
+  const compactMatch = Object.entries(COLOR_MAP).find(
+    ([name]) => name.replace(/\s+/g, "") === compact,
+  );
+
+  if (compactMatch) {
+    return compactMatch[1];
+  }
+
+  if (normalized.includes("navy")) {
+    return COLOR_MAP["navy blue"];
+  }
+
+  if (normalized.includes("horizon")) {
+    return COLOR_MAP["horizon blue"];
+  }
+
+  if (normalized.includes("royal") && normalized.includes("blue")) {
+    return COLOR_MAP["royal blue"];
+  }
+
+  if (normalized.includes("sky") && normalized.includes("blue")) {
+    return COLOR_MAP["sky blue"];
+  }
+
+  if (normalized.includes("sea") && normalized.includes("blue")) {
+    return COLOR_MAP["sea blue"];
+  }
+
+  if (normalized.includes("ice") && normalized.includes("blue")) {
+    return COLOR_MAP["ice blue"];
+  }
+
+  if (normalized.includes("dark") && normalized.includes("blue")) {
+    return COLOR_MAP["dark blue"];
+  }
+
+  if (normalized.includes("light") && normalized.includes("blue")) {
+    return COLOR_MAP["light blue"];
+  }
+
+  if (normalized.includes("blue")) {
+    return COLOR_MAP.blue;
+  }
+
+  if (normalized.includes("black")) {
+    return COLOR_MAP.black;
+  }
+
+  if (normalized.includes("white")) {
+    return COLOR_MAP.white;
+  }
+
+  if (normalized.includes("green")) {
+    return COLOR_MAP.green;
+  }
+
+  if (normalized.includes("red")) {
+    return COLOR_MAP.red;
+  }
+
+  if (normalized.includes("yellow")) {
+    return COLOR_MAP.yellow;
+  }
+
+  if (normalized.includes("orange")) {
+    return COLOR_MAP.orange;
+  }
+
+  if (normalized.includes("purple")) {
+    return COLOR_MAP.purple;
+  }
+
+  if (normalized.includes("pink")) {
+    return COLOR_MAP.pink;
+  }
+
+  if (normalized.includes("brown")) {
+    return COLOR_MAP.brown;
+  }
+
+  if (
+    normalized.includes("grey") ||
+    normalized.includes("gray")
+  ) {
+    return COLOR_MAP.grey;
+  }
+
+  return "";
 };
 
-const getColourParts = (value: any) => {
-  return String(value || "")
+const getColourParts = (value: any) =>
+  String(value || "")
     .trim()
     .split(/\s*(?:\/|\+|&|,)\s*/)
     .map((part) => normalizeColourName(part))
     .filter(Boolean);
-};
 
 const COMBINATION_MAP: Record<string, string> = {
   "light rama green & onion":
@@ -867,14 +1593,21 @@ const getMultiColourBackground = (value: any) => {
     return COMBINATION_MAP[combinationKey];
   }
 
-  const colours = parts.map((part) => getNamedColour(part));
+  const colours = parts.map((part) =>
+    getNamedColour(part),
+  );
 
   if (colours.some((colour) => !colour)) return "";
 
   const stops = colours
     .map((colour, index) => {
-      const start = Math.round((index / colours.length) * 100);
-      const end = Math.round(((index + 1) / colours.length) * 100);
+      const start = Math.round(
+        (index / colours.length) * 100,
+      );
+
+      const end = Math.round(
+        ((index + 1) / colours.length) * 100,
+      );
 
       return `${colour} ${start}% ${end}%`;
     })
@@ -883,7 +1616,10 @@ const getMultiColourBackground = (value: any) => {
   return `linear-gradient(135deg,${stops})`;
 };
 
-const getColorBackground = (value: any, providedColour?: any) => {
+const getColorBackground = (
+  value: any,
+  providedColour?: any,
+) => {
   const provided = normalizeProvidedColour(providedColour);
 
   if (provided) return provided;
@@ -906,6 +1642,7 @@ const getColorBackground = (value: any, providedColour?: any) => {
 
 const CustomLeftArrow = ({ onClick }: any) => (
   <button
+    type="button"
     onClick={onClick}
     className="absolute opacity-0 group-hover:opacity-100 left-2 cursor-pointer top-1/2 -translate-y-1/2 bg-white rounded-full p-2 md:p-1 shadow-md border border-gray-100 text-gray-400 hover:text-black transition z-10"
   >
@@ -915,6 +1652,7 @@ const CustomLeftArrow = ({ onClick }: any) => (
 
 const CustomRightArrow = ({ onClick }: any) => (
   <button
+    type="button"
     onClick={onClick}
     className="absolute opacity-0 group-hover:opacity-100 right-2 cursor-pointer top-1/2 -translate-y-1/2 bg-white rounded-full p-2 md:p-1 shadow-md border border-gray-100 text-gray-400 hover:text-black transition z-10"
   >
@@ -925,91 +1663,152 @@ const CustomRightArrow = ({ onClick }: any) => (
 const ProductDetails: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
+
   const [product, setProduct] = useState<Product | null>(null);
-  const [recommendedProducts, setRecommendedProducts] = useState<Product[]>([]);
+  const [recommendedProducts, setRecommendedProducts] =
+    useState<Product[]>([]);
   const [loadingProduct, setLoadingProduct] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
-  const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
+  const [selectedOptions, setSelectedOptions] = useState<
+    Record<string, string>
+  >({});
   const [quantity, setQuantity] = useState(1);
   const [isAdding, setIsAdding] = useState(false);
   const [cartError, setCartError] = useState("");
   const [cartMessage, setCartMessage] = useState("");
   const [isWishlisted, setIsWishlisted] = useState(false);
-  const [isUpdatingWishlist, setIsUpdatingWishlist] = useState(false);
+  const [isUpdatingWishlist, setIsUpdatingWishlist] =
+    useState(false);
+
   const mainCarouselRef = useRef<any>(null);
   const lightboxCarouselRef = useRef<any>(null);
   const actionContainerRef = useRef<HTMLDivElement>(null);
   const desktopThumbContainerRef = useRef<HTMLDivElement>(null);
   const mobileThumbCarouselRef = useRef<any>(null);
 
-  const backendProductId = useMemo(() => getBackendProductId(product), [product]);
-  const allVariantOptions = useMemo(() => getProductVariants(product), [product]);
+  const backendProductId = useMemo(
+    () => getBackendProductId(product),
+    [product],
+  );
+
+  const allVariantOptions = useMemo(
+    () => getProductVariants(product),
+    [product],
+  );
+
   const availableVariantOptions = useMemo(
-    () => allVariantOptions.filter((variant: ProductVariantOption) => getVariantStockCount(variant) > 0),
+    () =>
+      allVariantOptions.filter(
+        (variant) =>
+          getVariantStockCount(variant) > 0,
+      ),
     [allVariantOptions],
   );
-  const variantOptions = availableVariantOptions.length ? availableVariantOptions : allVariantOptions;
-  const selectedSize = selectedOptions["Size"] || "";
-  const selectedColor = selectedOptions["Color"] || "";
+
+  const variantOptions = availableVariantOptions.length
+    ? availableVariantOptions
+    : allVariantOptions;
+
+  const selectedSize = selectedOptions.Size || "";
+  const selectedColor = selectedOptions.Color || "";
 
   const exactSelectedVariant = useMemo(
-    () => findExactVariant(variantOptions, selectedSize, selectedColor),
+    () =>
+      findExactVariant(
+        variantOptions,
+        selectedSize,
+        selectedColor,
+      ),
     [variantOptions, selectedSize, selectedColor],
   );
 
   const priceVariant = useMemo(
-    () => findPriceVariant(variantOptions, selectedSize, selectedColor),
+    () =>
+      findPriceVariant(
+        variantOptions,
+        selectedSize,
+        selectedColor,
+      ),
     [variantOptions, selectedSize, selectedColor],
   );
 
   const imageVariant = useMemo(
-    () => findImageVariant(variantOptions, selectedSize, selectedColor),
+    () =>
+      findImageVariant(
+        variantOptions,
+        selectedSize,
+        selectedColor,
+      ),
     [variantOptions, selectedSize, selectedColor],
   );
 
   const colorValues = useMemo(
-    () => sortColourValues(variantOptions.map((variant: ProductVariantOption) => getVariantColor(variant))),
+    () =>
+      sortColourValues(
+        variantOptions.map((variant) =>
+          getVariantColor(variant),
+        ),
+      ),
     [variantOptions],
   );
 
   const sizeValues = useMemo(() => {
     const filtered = selectedColor
-      ? variantOptions.filter((variant: ProductVariantOption) => sameColour(getVariantColor(variant), selectedColor))
+      ? variantOptions.filter((variant) =>
+          sameColour(
+            getVariantColor(variant),
+            selectedColor,
+          ),
+        )
       : variantOptions;
 
-    return sortSizeValues(filtered.map((variant: ProductVariantOption) => cleanSingleValue(variant.size)));
+    return sortSizeValues(
+      filtered.map((variant) =>
+        cleanSingleValue(variant.size),
+      ),
+    );
   }, [variantOptions, selectedColor]);
 
   useEffect(() => {
     if (desktopThumbContainerRef.current) {
-      const activeThumb = desktopThumbContainerRef.current.children[selectedIndex] as HTMLElement;
+      const activeThumb =
+        desktopThumbContainerRef.current.children[
+          selectedIndex
+        ] as HTMLElement;
+
       if (activeThumb) {
-        activeThumb.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        activeThumb.scrollIntoView({
+          behavior: "smooth",
+          block: "nearest",
+        });
       }
     }
 
     if (mobileThumbCarouselRef.current) {
-      mobileThumbCarouselRef.current.goToSlide(selectedIndex);
+      mobileThumbCarouselRef.current.goToSlide(
+        selectedIndex,
+      );
     }
   }, [selectedIndex]);
 
   useEffect(() => {
-    if (imageVariant?.variant_id) {
-      setSelectedIndex(0);
-      setLightboxIndex(0);
+    if (!imageVariant?.variant_id) return;
 
-      setTimeout(() => {
-        if (mainCarouselRef.current) {
-          mainCarouselRef.current.goToSlide(2);
-        }
-        if (mobileThumbCarouselRef.current) {
-          mobileThumbCarouselRef.current.goToSlide(0);
-        }
-      }, 0);
-    }
+    setSelectedIndex(0);
+    setLightboxIndex(0);
+
+    setTimeout(() => {
+      if (mainCarouselRef.current) {
+        mainCarouselRef.current.goToSlide(2);
+      }
+
+      if (mobileThumbCarouselRef.current) {
+        mobileThumbCarouselRef.current.goToSlide(0);
+      }
+    }, 0);
   }, [imageVariant?.variant_id]);
 
   useEffect(() => {
@@ -1037,10 +1836,19 @@ const ProductDetails: React.FC = () => {
         }
 
         const allVariants = getProductVariants(foundProduct);
-        const availableVariants = allVariants.filter((variant: ProductVariantOption) => getVariantStockCount(variant) > 0);
-        const variants = availableVariants.length ? availableVariants : allVariants;
 
-        const routeVariant = findVariantByRouteId(variants, id) || findVariantByRouteId(allVariants, id);
+        const availableVariants = allVariants.filter(
+          (variant) =>
+            getVariantStockCount(variant) > 0,
+        );
+
+        const variants = availableVariants.length
+          ? availableVariants
+          : allVariants;
+
+        const routeVariant =
+          findVariantByRouteId(variants, id) ||
+          findVariantByRouteId(allVariants, id);
 
         const productColor = cleanColourValue(
           (foundProduct as any).selectedColor ||
@@ -1060,22 +1868,40 @@ const ProductDetails: React.FC = () => {
         );
 
         const fieldVariant =
-          findExactVariant(variants, productSize, productColor) ||
+          findExactVariant(
+            variants,
+            productSize,
+            productColor,
+          ) ||
           findVariantByColor(variants, productColor) ||
           findVariantBySize(variants, productSize);
 
-        const firstVariant = routeVariant || fieldVariant || variants[0];
+        const firstVariant =
+          routeVariant ||
+          fieldVariant ||
+          variants[0];
+
         const initialOptions: Record<string, string> = {};
 
-        const initialColor = getVariantColor(firstVariant) || productColor || cleanColourValue((foundProduct as any).colors?.[0]);
-        const initialSize = cleanSingleValue(firstVariant?.size || productSize || (foundProduct as any).sizes?.[0]);
+        const initialColor =
+          getVariantColor(firstVariant) ||
+          productColor ||
+          cleanColourValue(
+            (foundProduct as any).colors?.[0],
+          );
+
+        const initialSize = cleanSingleValue(
+          firstVariant?.size ||
+            productSize ||
+            (foundProduct as any).sizes?.[0],
+        );
 
         if (initialColor) {
-          initialOptions["Color"] = initialColor;
+          initialOptions.Color = initialColor;
         }
 
         if (initialSize) {
-          initialOptions["Size"] = initialSize;
+          initialOptions.Size = initialSize;
         }
 
         setProduct(foundProduct);
@@ -1085,18 +1911,37 @@ const ProductDetails: React.FC = () => {
         setQuantity(1);
 
         try {
-          const stored: string[] = JSON.parse(localStorage.getItem("recentlyViewed") || "[]");
-          const currentId = String(firstVariant?.variant_id || firstVariant?.id || (foundProduct as any).variantId || (foundProduct as any).variant_id || (foundProduct as any).id);
+          const stored: string[] = JSON.parse(
+            localStorage.getItem("recentlyViewed") || "[]",
+          );
+
+          const currentId = String(
+            firstVariant?.variant_id ||
+              firstVariant?.id ||
+              (foundProduct as any).variantId ||
+              (foundProduct as any).variant_id ||
+              (foundProduct as any).id,
+          );
+
           const updated = [
             currentId,
-            ...stored.filter((item: string) => item !== currentId),
+            ...stored.filter(
+              (item) => item !== currentId,
+            ),
           ].slice(0, 20);
-          localStorage.setItem("recentlyViewed", JSON.stringify(updated));
+
+          localStorage.setItem(
+            "recentlyViewed",
+            JSON.stringify(updated),
+          );
         } catch {}
-      } catch (err: any) {
+      } catch (loadProductError: any) {
         if (alive) {
           setProduct(null);
-          setLoadError(err?.message || "Unable to load product");
+          setLoadError(
+            loadProductError?.message ||
+              "Unable to load product",
+          );
         }
       } finally {
         if (alive) setLoadingProduct(false);
@@ -1113,34 +1958,63 @@ const ProductDetails: React.FC = () => {
   useEffect(() => {
     if (!variantOptions.length) return;
 
-    setSelectedOptions((prev) => {
-      const currentColor = prev["Color"] || "";
-      const currentSize = prev["Size"] || "";
-      const exact = findExactVariant(variantOptions, currentSize, currentColor);
+    setSelectedOptions((previous) => {
+      const currentColor = previous.Color || "";
+      const currentSize = previous.Size || "";
 
-      if (exact) return prev;
+      const exact = findExactVariant(
+        variantOptions,
+        currentSize,
+        currentColor,
+      );
+
+      if (exact) return previous;
 
       const colorMatch = currentColor
-        ? variantOptions.find((variant: ProductVariantOption) => sameColour(getVariantColor(variant), currentColor))
+        ? variantOptions.find((variant) =>
+            sameColour(
+              getVariantColor(variant),
+              currentColor,
+            ),
+          )
         : null;
 
       const sizeMatch = currentSize
-        ? variantOptions.find((variant: ProductVariantOption) => sameValue(variant.size, currentSize))
+        ? variantOptions.find((variant) =>
+            sameValue(
+              variant.size,
+              currentSize,
+            ),
+          )
         : null;
 
-      const nextVariant = colorMatch || sizeMatch || variantOptions[0];
+      const nextVariant =
+        colorMatch ||
+        sizeMatch ||
+        variantOptions[0];
+
       const nextColor = getVariantColor(nextVariant);
-      const nextSize = cleanSingleValue(nextVariant?.size || "");
 
-      const next: Record<string, string> = { ...prev };
+      const nextSize = cleanSingleValue(
+        nextVariant?.size || "",
+      );
 
-      if (nextColor) next["Color"] = nextColor;
-      else delete next["Color"];
+      const next: Record<string, string> = {
+        ...previous,
+      };
 
-      if (nextSize) next["Size"] = nextSize;
-      else delete next["Size"];
+      if (nextColor) next.Color = nextColor;
+      else delete next.Color;
 
-      if (sameColour(currentColor, next["Color"]) && sameValue(currentSize, next["Size"])) return prev;
+      if (nextSize) next.Size = nextSize;
+      else delete next.Size;
+
+      if (
+        sameColour(currentColor, next.Color) &&
+        sameValue(currentSize, next.Size)
+      ) {
+        return previous;
+      }
 
       return next;
     });
@@ -1149,12 +2023,19 @@ const ProductDetails: React.FC = () => {
   useEffect(() => {
     if (!selectedColor || !sizeValues.length) return;
 
-    setSelectedOptions((prev) => {
-      const currentSize = prev["Size"] || "";
-      if (sizeValues.some((size) => sameValue(size, currentSize))) return prev;
+    setSelectedOptions((previous) => {
+      const currentSize = previous.Size || "";
+
+      if (
+        sizeValues.some((size) =>
+          sameValue(size, currentSize),
+        )
+      ) {
+        return previous;
+      }
 
       return {
-        ...prev,
+        ...previous,
         Size: sizeValues[0],
       };
     });
@@ -1174,49 +2055,85 @@ const ProductDetails: React.FC = () => {
       }
 
       try {
-        const allProducts = await fetchProductsByGender(product.gender, 3);
+        const allProducts = await fetchProductsByGender(
+          product.gender,
+          3,
+        );
+
         if (!alive) return;
 
-        const categories = categoriesData as Category[];
-        const productCategories = [
-          product.gender.toLowerCase(),
-          categories.find((c: Category) => c.id === product.categoryId)?.name?.toLowerCase() || "",
-        ];
+        const sourceCategoryId =
+          getProductCategoryIdValue(product);
 
-        const validGenders = categories
-          ?.filter((c: Category) => c.level === 0)
-          .map((c: Category) => c.name.toLowerCase());
+        const sourceGender = String(
+          (product as any).gender ||
+            (product as any).category ||
+            "",
+        )
+          .trim()
+          .toUpperCase();
 
-        const mainGender = productCategories.find((c) => validGenders.includes(c));
         const seen = new Set<string>();
 
         const recommended = allProducts
-          .filter((p) => !hasSameProductIdentity(product, p))
-          .map((p) => {
-            const targetCategories = [
-              p.gender.toLowerCase(),
-              categories.find((c: Category) => c.id === p.categoryId)?.name?.toLowerCase() || "",
-            ];
+          .filter(
+            (candidate) =>
+              !hasSameProductIdentity(
+                product,
+                candidate,
+              ),
+          )
+          .map((candidate) => {
+            const candidateCategoryId =
+              getProductCategoryIdValue(candidate);
 
-            const hasSameGender = mainGender ? targetCategories.includes(mainGender) : true;
-            const matchScore = targetCategories.filter((c) => productCategories.includes(c)).length;
+            const candidateGender = String(
+              (candidate as any).gender ||
+                (candidate as any).category ||
+                "",
+            )
+              .trim()
+              .toUpperCase();
 
-            return { product: p, matchScore, hasSameGender };
+            const categoryScore =
+              getCategoryAffinityScore(
+                sourceCategoryId,
+                candidateCategoryId,
+              );
+
+            const sameGender =
+              !sourceGender ||
+              !candidateGender ||
+              sourceGender === candidateGender;
+
+            return {
+              product: candidate,
+              score:
+                categoryScore +
+                (sameGender ? 500 : 0),
+              sameGender,
+            };
           })
-          .filter((item) => item.hasSameGender && item.matchScore > 0)
+          .filter((item) => item.sameGender)
           .filter((item) => {
-            const key = productIdentityKeys(item.product)[0] || String(item.product.id);
+            const key =
+              productIdentityKeys(item.product)[0] ||
+              String(item.product.id);
+
             if (seen.has(key)) return false;
+
             seen.add(key);
             return true;
           })
-          .sort((a, b) => b.matchScore - a.matchScore)
+          .sort((a, b) => b.score - a.score)
           .slice(0, 10)
           .map((item) => item.product);
 
         setRecommendedProducts(recommended);
       } catch {
-        if (alive) setRecommendedProducts([]);
+        if (alive) {
+          setRecommendedProducts([]);
+        }
       }
     };
 
@@ -1238,14 +2155,22 @@ const ProductDetails: React.FC = () => {
       }
 
       const ids = readWishlistIds(userId);
+
       setIsWishlisted(ids.includes(backendProductId));
     };
 
     syncWishlistState();
-    window.addEventListener("wishlist-updated", syncWishlistState);
+
+    window.addEventListener(
+      "wishlist-updated",
+      syncWishlistState,
+    );
 
     return () => {
-      window.removeEventListener("wishlist-updated", syncWishlistState);
+      window.removeEventListener(
+        "wishlist-updated",
+        syncWishlistState,
+      );
     };
   }, [backendProductId]);
 
@@ -1260,9 +2185,16 @@ const ProductDetails: React.FC = () => {
   if (!product) {
     return (
       <div className="min-h-screen flex flex-col gap-4 items-center justify-center text-center px-4">
-        <h1 className="text-2xl font-bold text-gray-900">Product not found</h1>
-        <p className="text-gray-500">{loadError || "Unable to load this product."}</p>
+        <h1 className="text-2xl font-bold text-gray-900">
+          Product not found
+        </h1>
+
+        <p className="text-gray-500">
+          {loadError || "Unable to load this product."}
+        </p>
+
         <button
+          type="button"
           onClick={() => navigate("/collections")}
           className="px-8 py-3 bg-primary text-black font-bold uppercase text-sm"
         >
@@ -1272,87 +2204,163 @@ const ProductDetails: React.FC = () => {
     );
   }
 
-  const availableStock = getVariantStockCount(exactSelectedVariant || priceVariant);
-  const currentPrice = getNumber(priceVariant?.final_price_b2c ?? priceVariant?.sale_price ?? product.price);
-  const currentCompareAtPrice = getNumber(priceVariant?.original_price_b2c ?? priceVariant?.mrp ?? product.originalPrice ?? product.price, currentPrice);
+  const availableStock = getVariantStockCount(
+    exactSelectedVariant ||
+      priceVariant,
+  );
+
+  const currentPrice = getNumber(
+    priceVariant?.final_price_b2c ??
+      priceVariant?.sale_price ??
+      product.price,
+  );
+
+  const currentCompareAtPrice = getNumber(
+    priceVariant?.original_price_b2c ??
+      priceVariant?.mrp ??
+      product.originalPrice ??
+      product.price,
+    currentPrice,
+  );
+
   const currentVariant = {
     available: availableStock > 0,
     price: currentPrice,
   };
 
-  const formatMoney = (val: number) =>
-    `₹${Number(val || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
+  const productCategoryPath =
+    getProductCategoryPathValue(product);
 
-  const selectedVariantImages = imageListFromVariant(imageVariant);
-  const fallbackImages = productFallbackImages(product);
+  const formatMoney = (value: number) =>
+    `₹${Number(value || 0).toLocaleString("en-IN", {
+      maximumFractionDigits: 2,
+    })}`;
+
+  const selectedVariantImages =
+    imageListFromVariant(imageVariant);
+
+  const fallbackImages =
+    productFallbackImages(product);
+
   const displayImages = uniqueImages([
     ...selectedVariantImages,
     ...(selectedVariantImages.length ? [] : fallbackImages),
   ]);
 
-  const finalDisplayImages = displayImages.length ? displayImages : ["/placeholder.svg"];
-  const hasMultipleImages = finalDisplayImages.length > 1;
+  const finalDisplayImages = displayImages.length
+    ? displayImages
+    : ["/placeholder.svg"];
 
-  const options_with_values: OptionGroup[] = [];
+  const hasMultipleImages =
+    finalDisplayImages.length > 1;
+
+  const optionsWithValues: OptionGroup[] = [];
 
   if (colorValues.length > 0) {
-    options_with_values.push({ name: "Color", values: colorValues });
+    optionsWithValues.push({
+      name: "Color",
+      values: colorValues,
+    });
   }
 
   if (sizeValues.length > 0) {
-    options_with_values.push({ name: "Size", values: sizeValues });
+    optionsWithValues.push({
+      name: "Size",
+      values: sizeValues,
+    });
   }
 
   const enhancedProduct = {
     ...product,
-    options_with_values,
+    options_with_values: optionsWithValues,
   };
 
-  const handleOptionChange = (name: string, val: string) => {
+  const handleOptionChange = (
+    name: string,
+    value: string,
+  ) => {
     setCartError("");
     setCartMessage("");
 
     const optionKey = name.toLowerCase();
-    const cleanVal = optionKey === "color" || optionKey === "colour" ? cleanColourValue(val) : cleanSingleValue(val);
 
-    if (!cleanVal) return;
+    const cleanValue =
+      optionKey === "color" ||
+      optionKey === "colour"
+        ? cleanColourValue(value)
+        : cleanSingleValue(value);
 
-    setSelectedOptions((prev) => {
+    if (!cleanValue) return;
+
+    setSelectedOptions((previous) => {
       const next: Record<string, string> = {
-        ...prev,
-        [name]: cleanVal,
+        ...previous,
+        [name]: cleanValue,
       };
 
-      const key = optionKey;
+      if (
+        optionKey === "color" ||
+        optionKey === "colour"
+      ) {
+        const matchingColorVariants =
+          variantOptions.filter((variant) =>
+            sameColour(
+              getVariantColor(variant),
+              cleanValue,
+            ),
+          );
 
-      if (key === "color" || key === "colour") {
-        const matchingColorVariants = variantOptions.filter((variant: ProductVariantOption) =>
-          sameColour(getVariantColor(variant), cleanVal),
+        const validSizes = sortSizeValues(
+          matchingColorVariants.map((variant) =>
+            cleanSingleValue(variant.size),
+          ),
         );
 
-        const validSizes = sortSizeValues(matchingColorVariants.map((variant: ProductVariantOption) => cleanSingleValue(variant.size)));
-        const currentSize = next["Size"] || "";
+        const currentSize = next.Size || "";
 
-        if (validSizes.length && !validSizes.some((size) => sameValue(size, currentSize))) {
-          next["Size"] = validSizes[0];
+        if (
+          validSizes.length &&
+          !validSizes.some((size) =>
+            sameValue(size, currentSize),
+          )
+        ) {
+          next.Size = validSizes[0];
         }
 
         if (!validSizes.length) {
-          delete next["Size"];
+          delete next.Size;
         }
       }
 
-      if (key === "size") {
-        const matchingSizeVariants = variantOptions.filter((variant: ProductVariantOption) =>
-          sameValue(variant.size, cleanVal),
-        );
+      if (optionKey === "size") {
+        const matchingSizeVariants =
+          variantOptions.filter((variant) =>
+            sameValue(
+              variant.size,
+              cleanValue,
+            ),
+          );
 
-        const currentColor = next["Color"] || "";
+        const currentColor = next.Color || "";
 
-        if (currentColor && !matchingSizeVariants.some((variant: ProductVariantOption) => sameColour(getVariantColor(variant), currentColor))) {
-          const nextColor = sortVariantValues(matchingSizeVariants.map((variant: ProductVariantOption) => getVariantColor(variant)))[0] || "";
-          if (nextColor) next["Color"] = nextColor;
-          else delete next["Color"];
+        if (
+          currentColor &&
+          !matchingSizeVariants.some((variant) =>
+            sameColour(
+              getVariantColor(variant),
+              currentColor,
+            ),
+          )
+        ) {
+          const nextColor =
+            sortVariantValues(
+              matchingSizeVariants.map((variant) =>
+                getVariantColor(variant),
+              ),
+            )[0] || "";
+
+          if (nextColor) next.Color = nextColor;
+          else delete next.Color;
         }
       }
 
@@ -1360,11 +2368,22 @@ const ProductDetails: React.FC = () => {
     });
   };
 
-  const handleQuantityChange = (type: "plus" | "minus") => {
-    setQuantity((q) => {
-      if (type === "minus") return Math.max(1, q - 1);
-      if (availableStock > 0) return Math.min(availableStock, q + 1);
-      return q + 1;
+  const handleQuantityChange = (
+    type: "plus" | "minus",
+  ) => {
+    setQuantity((currentQuantity) => {
+      if (type === "minus") {
+        return Math.max(1, currentQuantity - 1);
+      }
+
+      if (availableStock > 0) {
+        return Math.min(
+          availableStock,
+          currentQuantity + 1,
+        );
+      }
+
+      return currentQuantity + 1;
     });
   };
 
@@ -1390,19 +2409,33 @@ const ProductDetails: React.FC = () => {
     }
 
     if (!exactSelectedVariant) {
-      setCartError("Selected size and color combination is not available.");
+      setCartError(
+        "Selected size and color combination is not available.",
+      );
+
       setCartMessage("");
       return false;
     }
 
-    if (getVariantStockCount(exactSelectedVariant) <= 0) {
+    if (
+      getVariantStockCount(exactSelectedVariant) <= 0
+    ) {
       setCartError("Product is out of stock.");
       setCartMessage("");
       return false;
     }
 
-    const variantId = getVariantIdValue(exactSelectedVariant, product);
-    const realProductId = Number((product as any).productId || (product as any).product_id || 0) || variantId;
+    const variantId = getVariantIdValue(
+      exactSelectedVariant,
+      product,
+    );
+
+    const realProductId =
+      Number(
+        (product as any).productId ||
+          (product as any).product_id ||
+          0,
+      ) || variantId;
 
     if (!variantId) {
       setCartError("Product variant id not found.");
@@ -1421,6 +2454,7 @@ const ProductDetails: React.FC = () => {
 
     setCartError("");
     setCartMessage("Added to cart successfully.");
+
     return true;
   };
 
@@ -1431,8 +2465,11 @@ const ProductDetails: React.FC = () => {
 
     try {
       await addProductToCart();
-    } catch (err: any) {
-      setCartError(err?.message || "Unable to add to cart");
+    } catch (addError: any) {
+      setCartError(
+        addError?.message || "Unable to add to cart",
+      );
+
       setCartMessage("");
     } finally {
       setIsAdding(false);
@@ -1446,9 +2483,13 @@ const ProductDetails: React.FC = () => {
 
     try {
       const added = await addProductToCart();
+
       if (added) navigate("/cart");
-    } catch (err: any) {
-      setCartError(err?.message || "Unable to add to cart");
+    } catch (buyError: any) {
+      setCartError(
+        buyError?.message || "Unable to add to cart",
+      );
+
       setCartMessage("");
     } finally {
       setIsAdding(false);
@@ -1469,68 +2510,108 @@ const ProductDetails: React.FC = () => {
     setIsUpdatingWishlist(true);
 
     try {
-      const variantId = getVariantIdValue(exactSelectedVariant || imageVariant || priceVariant, product) || backendProductId;
+      const variantId =
+        getVariantIdValue(
+          exactSelectedVariant ||
+            imageVariant ||
+            priceVariant,
+          product,
+        ) || backendProductId;
 
       if (isWishlisted) {
-        const res = await fetch(`${API_BASE}/api/wishlist`, {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
+        const response = await fetch(
+          `${API_BASE}/api/wishlist`,
+          {
+            method: "DELETE",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              user_id: userId,
+              product_id: backendProductId,
+              variant_id: variantId,
+            }),
           },
-          body: JSON.stringify({
-            user_id: userId,
-            product_id: backendProductId,
-            variant_id: variantId,
-          }),
-        });
+        );
 
-        const data = await res.json().catch(() => ({}));
+        const data = await response
+          .json()
+          .catch(() => ({}));
 
-        if (!res.ok) {
-          throw new Error(data?.message || "Unable to remove from wishlist");
+        if (!response.ok) {
+          throw new Error(
+            data?.message ||
+              "Unable to remove from wishlist",
+          );
         }
 
-        const ids = readWishlistIds(userId).filter((item) => item !== backendProductId);
+        const ids = readWishlistIds(userId).filter(
+          (item) => item !== backendProductId,
+        );
+
         writeWishlistIds(userId, ids);
         setIsWishlisted(false);
       } else {
-        const res = await fetch(`${API_BASE}/api/wishlist`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
+        const response = await fetch(
+          `${API_BASE}/api/wishlist`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              user_id: userId,
+              product_id: backendProductId,
+              variant_id: variantId,
+              actual_product_id: backendProductId,
+            }),
           },
-          body: JSON.stringify({
-            user_id: userId,
-            product_id: backendProductId,
-            variant_id: variantId,
-            actual_product_id: backendProductId,
-          }),
-        });
+        );
 
-        const data = await res.json().catch(() => ({}));
+        const data = await response
+          .json()
+          .catch(() => ({}));
 
-        if (!res.ok) {
-          throw new Error(data?.message || "Unable to add to wishlist");
+        if (!response.ok) {
+          throw new Error(
+            data?.message ||
+              "Unable to add to wishlist",
+          );
         }
 
-        const ids = Array.from(new Set([...readWishlistIds(userId), backendProductId]));
+        const ids = Array.from(
+          new Set([
+            ...readWishlistIds(userId),
+            backendProductId,
+          ]),
+        );
+
         writeWishlistIds(userId, ids);
         setIsWishlisted(true);
       }
-    } catch (err) {
-      console.error(err);
+    } catch {
+      setIsWishlisted((currentValue) => currentValue);
     } finally {
       setIsUpdatingWishlist(false);
     }
   };
 
   const mainResponsive = {
-    desktop: { breakpoint: { max: 3000, min: 0 }, items: 1 },
+    desktop: {
+      breakpoint: {
+        max: 3000,
+        min: 0,
+      },
+      items: 1,
+    },
   };
 
   const thumbResponsiveMobile = {
     mobile: {
-      breakpoint: { max: 768, min: 0 },
+      breakpoint: {
+        max: 768,
+        min: 0,
+      },
       items: 4,
       slidesToSlide: 1,
       partialVisibilityGutter: 20,
@@ -1539,7 +2620,11 @@ const ProductDetails: React.FC = () => {
 
   const handleThumbClick = (index: number) => {
     setSelectedIndex(index);
-    if (mainCarouselRef.current && hasMultipleImages) {
+
+    if (
+      mainCarouselRef.current &&
+      hasMultipleImages
+    ) {
       mainCarouselRef.current.goToSlide(index + 2);
     }
   };
@@ -1550,32 +2635,42 @@ const ProductDetails: React.FC = () => {
       text: `Check out ${product.title}`,
       url: window.location.href,
     };
+
     try {
       if (navigator.share) {
         await navigator.share(shareData);
       } else {
-        await navigator.clipboard.writeText(window.location.href);
+        await navigator.clipboard.writeText(
+          window.location.href,
+        );
+
         alert("Link copied to clipboard!");
       }
-    } catch (err) {
-      console.log("Error sharing:", err);
-    }
+    } catch {}
   };
 
   const RatingStars = ({ rating }: { rating: number }) => {
     const fullStars = Math.floor(rating);
     const hasHalfStar = rating % 1 !== 0;
-    const emptyStars = 5 - fullStars - (hasHalfStar ? 1 : 0);
+
+    const emptyStars =
+      5 -
+      fullStars -
+      (hasHalfStar ? 1 : 0);
 
     return (
       <div className="flex items-center gap-1">
-        {[...Array(fullStars)].map((_, i) => (
-          <FaStar key={`full-${i}`} size={14} />
+        {Array.from({ length: fullStars }).map((_, index) => (
+          <FaStar key={`full-${index}`} size={14} />
         ))}
-        {hasHalfStar && <FaStarHalfAlt size={14} />}
-        {[...Array(emptyStars)].map((_, i) => (
-          <FaRegStar key={`empty-${i}`} size={14} />
-        ))}
+
+        {hasHalfStar ? <FaStarHalfAlt size={14} /> : null}
+
+        {Array.from({ length: emptyStars }).map(
+          (_, index) => (
+            <FaRegStar key={`empty-${index}`} size={14} />
+          ),
+        )}
       </div>
     );
   };
@@ -1585,13 +2680,16 @@ const ProductDetails: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 md:px-8 xl:px-12">
         <div className="flex flex-col lg:flex-row gap-8 lg:gap-14">
           <div className="flex-1 flex flex-col lg:flex-row gap-4 min-w-0">
-            {hasMultipleImages && (
+            {hasMultipleImages ? (
               <div
                 ref={desktopThumbContainerRef}
                 className="hidden lg:flex flex-col w-20 lg:w-22 shrink-0 -mt-2 overflow-y-auto h-[450px] xl:h-[600px] gap-3 py-2 scrollbar-none"
-                style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+                style={{
+                  scrollbarWidth: "none",
+                  msOverflowStyle: "none",
+                }}
               >
-                {finalDisplayImages.map((src: string, index: number) => (
+                {finalDisplayImages.map((src, index) => (
                   <div
                     key={`${src}-${index}`}
                     className={`w-full aspect-3/4 rounded-[9px] shrink-0 cursor-pointer overflow-hidden transition-all ${
@@ -1606,26 +2704,34 @@ const ProductDetails: React.FC = () => {
                       alt={`Thumb ${index + 1}`}
                       loading={index < 4 ? "eager" : "lazy"}
                       className="w-full h-full object-cover aspect-3/4 object-top bg-gray-50 rounded-[6px]"
-                      onError={(e) => {
-                        e.currentTarget.src = "/placeholder.svg";
+                      onError={(event) => {
+                        event.currentTarget.src =
+                          "/placeholder.svg";
                       }}
                     />
                   </div>
                 ))}
               </div>
-            )}
+            ) : null}
 
             <div className="group flex-1 relative bg-white aspect-3/4 xl:aspect-4/5 overflow-hidden min-w-0 z-0">
               {hasMultipleImages ? (
                 <Carousel
                   ref={mainCarouselRef}
                   responsive={mainResponsive}
-                  infinite={true}
+                  infinite
                   customLeftArrow={<CustomLeftArrow />}
                   customRightArrow={<CustomRightArrow />}
-                  afterChange={(_prev: number, state: any) => {
+                  afterChange={(
+                    _previous: number,
+                    state: any,
+                  ) => {
                     const realIndex =
-                      (state.currentSlide - 2 + finalDisplayImages.length) % finalDisplayImages.length;
+                      (state.currentSlide -
+                        2 +
+                        finalDisplayImages.length) %
+                      finalDisplayImages.length;
+
                     if (realIndex !== selectedIndex) {
                       setSelectedIndex(realIndex);
                     }
@@ -1634,25 +2740,31 @@ const ProductDetails: React.FC = () => {
                   containerClass="h-full w-full"
                   sliderClass="h-full"
                 >
-                  {finalDisplayImages.map((src: string, index: number) => (
+                  {finalDisplayImages.map((src, index) => (
                     <div
                       className="w-full h-full relative cursor-pointer"
                       key={`${src}-${index}`}
                       onClick={() => {
                         setLightboxIndex(index);
                         setIsLightboxOpen(true);
+
                         if (lightboxCarouselRef.current) {
-                          lightboxCarouselRef.current.goToSlide(index + 2);
+                          lightboxCarouselRef.current.goToSlide(
+                            index + 2,
+                          );
                         }
                       }}
                     >
                       <img
                         src={src}
-                        alt={`${product.title} - Image ${index + 1}`}
+                        alt={`${product.title} - Image ${
+                          index + 1
+                        }`}
                         loading={index === 0 ? "eager" : "lazy"}
                         className="absolute inset-0 w-full h-full object-cover object-top rounded-2xl"
-                        onError={(e) => {
-                          e.currentTarget.src = "/placeholder.svg";
+                        onError={(event) => {
+                          event.currentTarget.src =
+                            "/placeholder.svg";
                         }}
                       />
                     </div>
@@ -1671,8 +2783,9 @@ const ProductDetails: React.FC = () => {
                     alt={product.title}
                     loading="eager"
                     className="absolute inset-0 w-full h-full object-cover object-top rounded-2xl"
-                    onError={(e) => {
-                      e.currentTarget.src = "/placeholder.svg";
+                    onError={(event) => {
+                      event.currentTarget.src =
+                        "/placeholder.svg";
                     }}
                   />
                 </div>
@@ -1680,13 +2793,16 @@ const ProductDetails: React.FC = () => {
 
               <div className="absolute top-3 right-3 md:top-4 md:right-4 flex flex-col gap-3 z-10">
                 <button
+                  type="button"
                   onClick={handleShare}
                   aria-label="Share product"
                   className="w-10 h-10 md:w-11 md:h-11 bg-white/90 backdrop-blur-md rounded-full flex items-center justify-center shadow-md hover:scale-110 transition-transform cursor-pointer text-gray-700 hover:text-black"
                 >
                   <FiShare2 size={18} />
                 </button>
+
                 <button
+                  type="button"
                   onClick={handleWishlistToggle}
                   aria-label="Toggle wishlist"
                   disabled={isUpdatingWishlist}
@@ -1698,22 +2814,26 @@ const ProductDetails: React.FC = () => {
                 >
                   <FiHeart
                     size={18}
-                    className={isWishlisted ? "fill-red-500" : ""}
+                    className={
+                      isWishlisted
+                        ? "fill-red-500"
+                        : ""
+                    }
                   />
                 </button>
               </div>
             </div>
 
-            {hasMultipleImages && (
+            {hasMultipleImages ? (
               <div className="lg:hidden mt-4">
                 <Carousel
                   ref={mobileThumbCarouselRef}
                   responsive={thumbResponsiveMobile}
                   arrows={false}
-                  partialVisible={true}
+                  partialVisible
                   itemClass="pr-3"
                 >
-                  {finalDisplayImages.map((src: string, index: number) => (
+                  {finalDisplayImages.map((src, index) => (
                     <div
                       key={`${src}-${index}`}
                       className={`w-full aspect-3/4 cursor-pointer overflow-hidden transition-all snap-start ${
@@ -1727,15 +2847,16 @@ const ProductDetails: React.FC = () => {
                         src={src}
                         alt={`Thumb ${index + 1}`}
                         className="w-full h-full object-cover bg-gray-50"
-                        onError={(e) => {
-                          e.currentTarget.src = "/placeholder.svg";
+                        onError={(event) => {
+                          event.currentTarget.src =
+                            "/placeholder.svg";
                         }}
                       />
                     </div>
                   ))}
                 </Carousel>
               </div>
-            )}
+            ) : null}
           </div>
 
           <div className="flex-1 flex flex-col py-2 min-w-0">
@@ -1747,29 +2868,43 @@ const ProductDetails: React.FC = () => {
               {product.brand}
             </p>
 
+            {productCategoryPath ? (
+              <p className="text-xs md:text-sm text-gray-400 mb-3">
+                {productCategoryPath}
+              </p>
+            ) : null}
+
             <div className="flex items-center flex-wrap gap-4 mb-4">
               <span className="text-2xl font-bold text-gray-900">
                 {formatMoney(currentPrice)}
               </span>
 
-              {currentCompareAtPrice > currentPrice && (
+              {currentCompareAtPrice > currentPrice ? (
                 <>
                   <span className="text-lg text-gray-400 line-through">
                     {formatMoney(currentCompareAtPrice)}
                   </span>
+
                   <span className="text-base font-bold text-green-600 tracking-tight">
                     {Math.round(
-                      ((currentCompareAtPrice - currentPrice) / currentCompareAtPrice) * 100,
+                      ((currentCompareAtPrice - currentPrice) /
+                        currentCompareAtPrice) *
+                        100,
                     )}
                     % OFF
                   </span>
                 </>
-              )}
+              ) : null}
 
-              <span className="text-gray-300 hidden sm:inline">|</span>
+              <span className="text-gray-300 hidden sm:inline">
+                |
+              </span>
 
               <div className="flex items-center gap-1 text-[#f5b82e]">
-                <RatingStars rating={product.ratings?.average || 0} />
+                <RatingStars
+                  rating={product.ratings?.average || 0}
+                />
+
                 <span className="text-gray-500 text-sm ml-2 font-medium">
                   ({product.ratings?.count || 0} reviews)
                 </span>
@@ -1778,103 +2913,169 @@ const ProductDetails: React.FC = () => {
 
             <div
               className="prose prose-sm text-gray-500 leading-relaxed mb-4"
-              dangerouslySetInnerHTML={{ __html: product.description }}
-            ></div>
+              dangerouslySetInnerHTML={{
+                __html: product.description || "",
+              }}
+            />
 
             <div className="flex flex-col gap-6 mb-6">
-              {enhancedProduct.options_with_values?.map((option) => {
-                const isColor = ["color", "colour"].includes(option.name.toLowerCase());
+              {enhancedProduct.options_with_values.map(
+                (option) => {
+                  const isColor = [
+                    "color",
+                    "colour",
+                  ].includes(option.name.toLowerCase());
 
-                return (
-                  <div key={option.name} className="flex flex-col gap-3">
-                    <div className="flex justify-between items-center w-full">
-                      <span className="text-sm font-bold text-gray-900 uppercase tracking-widest">
-                        {option.name}
-                      </span>
-                    </div>
+                  return (
+                    <div
+                      key={option.name}
+                      className="flex flex-col gap-3"
+                    >
+                      <div className="flex justify-between items-center w-full">
+                        <span className="text-sm font-bold text-gray-900 uppercase tracking-widest">
+                          {option.name}
+                        </span>
+                      </div>
 
-                    <div className="flex flex-wrap gap-3">
-                      {option.values.map((val) => {
-                        const cleanVal = isColor ? cleanColourValue(val) : cleanSingleValue(val);
-                        if (!cleanVal) return null;
-                        const isSelected = isColor
-                          ? sameColour(selectedOptions[option.name], cleanVal)
-                          : selectedOptions[option.name] === cleanVal;
+                      <div className="flex flex-wrap gap-3">
+                        {option.values.map((value) => {
+                          const cleanValue = isColor
+                            ? cleanColourValue(value)
+                            : cleanSingleValue(value);
 
-                        if (isColor) {
-                          const matchingVariant = variantOptions.find((variant: ProductVariantOption) =>
-                            sameColour(getVariantColor(variant), cleanVal),
-                          );
-                          const swatchBackground = getColorBackground(
-                            cleanVal,
-                            getVariantColourValue(matchingVariant),
-                          );
+                          if (!cleanValue) return null;
+
+                          const isSelected = isColor
+                            ? sameColour(
+                                selectedOptions[option.name],
+                                cleanValue,
+                              )
+                            : selectedOptions[option.name] ===
+                              cleanValue;
+
+                          if (isColor) {
+                            const matchingVariant =
+                              variantOptions.find(
+                                (variant) =>
+                                  sameColour(
+                                    getVariantColor(variant),
+                                    cleanValue,
+                                  ),
+                              );
+
+                            const swatchBackground =
+                              getColorBackground(
+                                cleanValue,
+                                getVariantColourValue(
+                                  matchingVariant,
+                                ),
+                              );
+
+                            return (
+                              <button
+                                type="button"
+                                key={cleanValue}
+                                onClick={() =>
+                                  handleOptionChange(
+                                    option.name,
+                                    cleanValue,
+                                  )
+                                }
+                                title={cleanValue}
+                                className={`w-8 h-8 rounded-full border border-gray-300 transition-all ${
+                                  isSelected
+                                    ? "ring-2 ring-gray-500 ring-offset-2 scale-110"
+                                    : "hover:scale-110"
+                                }`}
+                                style={{
+                                  background: swatchBackground,
+                                  boxShadow:
+                                    "inset 0 0 0 1px rgba(0,0,0,0.08)",
+                                }}
+                                aria-label={`Select Color ${cleanValue}`}
+                              />
+                            );
+                          }
 
                           return (
                             <button
-                              key={cleanVal}
-                              onClick={() => handleOptionChange(option.name, cleanVal)}
-                              title={cleanVal}
-                              className={`w-8 h-8 rounded-full border border-gray-300 transition-all ${
+                              type="button"
+                              key={cleanValue}
+                              onClick={() =>
+                                handleOptionChange(
+                                  option.name,
+                                  cleanValue,
+                                )
+                              }
+                              className={`min-w-12 px-4 py-2.5 rounded-sm text-sm font-source-sans font-bold uppercase tracking-wider transition-all border ${
                                 isSelected
-                                  ? "ring-2 ring-gray-500 ring-offset-2 scale-110"
-                                  : "hover:scale-110"
+                                  ? "bg-gray-900 text-white border-gray-900"
+                                  : "bg-white text-gray-800 border-gray-300 hover:border-gray-900"
                               }`}
-                              style={{
-                                background: swatchBackground,
-                                boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.08)",
-                              }}
-                              aria-label={`Select Color ${cleanVal}`}
-                            />
+                            >
+                              {cleanValue}
+                            </button>
                           );
-                        }
-
-                        return (
-                          <button
-                            key={cleanVal}
-                            onClick={() => handleOptionChange(option.name, cleanVal)}
-                            className={`min-w-12 px-4 py-2.5 rounded-sm text-sm font-source-sans font-bold uppercase tracking-wider transition-all border ${
-                              isSelected
-                                ? "bg-gray-900 text-white border-gray-900"
-                                : "bg-white text-gray-800 border-gray-300 hover:border-gray-900"
-                            }`}
-                          >
-                            {cleanVal}
-                          </button>
-                        );
-                      })}
+                        })}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                },
+              )}
             </div>
+
+            {currentVariant.available &&
+            availableStock <= 10 ? (
+              <div className="mb-4 inline-flex w-fit items-center rounded-md border border-orange-200 bg-orange-50 px-3 py-2 text-sm font-bold text-orange-700">
+                Hurry up! Last {availableStock} stock left
+              </div>
+            ) : null}
 
             <div className="flex flex-col gap-4 mb-2">
               <div className="flex items-center">
                 <button
-                  onClick={() => handleQuantityChange("minus")}
+                  type="button"
+                  onClick={() =>
+                    handleQuantityChange("minus")
+                  }
                   className="w-12 h-12 cursor-pointer flex justify-center items-center text-gray-500 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-sm text-lg transition"
                 >
                   <FiMinus size={16} />
                 </button>
+
                 <input
                   type="text"
                   value={quantity}
                   readOnly
                   className="w-12 h-12 text-center text-gray-800 font-bold outline-none bg-white font-source-sans border-y border-gray-200"
                 />
+
                 <button
-                  onClick={() => handleQuantityChange("plus")}
-                  className="w-12 h-12 cursor-pointer flex justify-center items-center text-gray-500 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-sm text-lg transition"
+                  type="button"
+                  onClick={() =>
+                    handleQuantityChange("plus")
+                  }
+                  disabled={
+                    availableStock > 0 &&
+                    quantity >= availableStock
+                  }
+                  className="w-12 h-12 cursor-pointer flex justify-center items-center text-gray-500 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-sm text-lg transition disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   <FiPlus size={16} />
                 </button>
               </div>
 
-              <div ref={actionContainerRef} className="md:flex hidden flex-col sm:flex-row gap-3 w-full">
+              <div
+                ref={actionContainerRef}
+                className="md:flex hidden flex-col sm:flex-row gap-3 w-full"
+              >
                 <button
+                  type="button"
                   onClick={handleAddToCart}
-                  disabled={isAdding || !currentVariant.available}
+                  disabled={
+                    isAdding ||
+                    !currentVariant.available
+                  }
                   className={`flex-1 cursor-pointer py-3.5 flex items-center justify-center gap-2 rounded-sm font-bold uppercase tracking-wider text-sm font-source-sans transition-all shadow-sm border ${
                     !currentVariant.available
                       ? "bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed"
@@ -1882,17 +3083,28 @@ const ProductDetails: React.FC = () => {
                   }`}
                 >
                   {isAdding ? (
-                    <span className="animate-pulse">Adding...</span>
+                    <span className="animate-pulse">
+                      Adding...
+                    </span>
                   ) : (
                     <>
-                      <FiShoppingBag size={16} className="mb-0.5" />
+                      <FiShoppingBag
+                        size={16}
+                        className="mb-0.5"
+                      />
+
                       <span>Add to Cart</span>
                     </>
                   )}
                 </button>
+
                 <button
+                  type="button"
                   onClick={handleBuyNow}
-                  disabled={isAdding || !currentVariant.available}
+                  disabled={
+                    isAdding ||
+                    !currentVariant.available
+                  }
                   className={`flex-1 py-3.5 cursor-pointer flex items-center justify-center gap-2 rounded-sm font-bold uppercase tracking-wider text-sm font-source-sans transition-all shadow-sm border ${
                     !currentVariant.available
                       ? "bg-gray-200 text-gray-400 border-transparent cursor-not-allowed"
@@ -1904,23 +3116,40 @@ const ProductDetails: React.FC = () => {
               </div>
             </div>
 
-            {cartError && <p className="text-red-500 text-sm mt-2">{cartError}</p>}
-            {cartMessage && <p className="text-green-600 text-sm mt-2">{cartMessage}</p>}
+            {cartError ? (
+              <p className="text-red-500 text-sm mt-2">
+                {cartError}
+              </p>
+            ) : null}
+
+            {cartMessage ? (
+              <p className="text-green-600 text-sm mt-2">
+                {cartMessage}
+              </p>
+            ) : null}
 
             <div className="flex flex-col gap-3 mt-6 pt-6 border-t border-gray-100 text-gray-600 text-sm font-medium">
               <div className="flex items-center gap-3">
                 <FiTruck size={18} />
-                <span>Estimated Delivery: 4 TO 6 DAYS</span>
+
+                <span>
+                  Estimated Delivery: 4 TO 6 DAYS
+                </span>
               </div>
-              <button className="flex items-center gap-3 hover:text-black transition self-start cursor-pointer">
-                <FiHelpCircle size={18} /> Ask a Question
+
+              <button
+                type="button"
+                className="flex items-center gap-3 hover:text-black transition self-start cursor-pointer"
+              >
+                <FiHelpCircle size={18} />
+                Ask a Question
               </button>
             </div>
           </div>
         </div>
       </div>
 
-      {!!recommendedProducts.length && (
+      {recommendedProducts.length ? (
         <div className="mt-12 md:mt-20 border-t border-gray-100 pt-8 md:pt-16">
           <NamedSection
             title="You May Also Like"
@@ -1928,13 +3157,17 @@ const ProductDetails: React.FC = () => {
             autoplay={false}
           />
         </div>
-      )}
+      ) : null}
 
       <div className="fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 p-3 z-50 md:hidden transition-transform duration-300 translate-y-0">
         <div className="flex flex-row gap-3 w-full mx-auto">
           <button
+            type="button"
             onClick={handleAddToCart}
-            disabled={isAdding || !currentVariant.available}
+            disabled={
+              isAdding ||
+              !currentVariant.available
+            }
             className={`flex-1 py-2 flex items-center justify-center gap-2 rounded-sm font-bold uppercase tracking-wider text-sm font-source-sans transition-all border ${
               !currentVariant.available
                 ? "bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed"
@@ -1943,16 +3176,23 @@ const ProductDetails: React.FC = () => {
           >
             {isAdding ? "Adding..." : "Add to Cart"}
           </button>
+
           <button
+            type="button"
             onClick={handleBuyNow}
-            disabled={isAdding || !currentVariant.available}
+            disabled={
+              isAdding ||
+              !currentVariant.available
+            }
             className={`flex-[1.5] py-2 flex items-center justify-center gap-2 rounded-sm font-bold uppercase tracking-wider text-md font-source-sans transition-all border ${
               !currentVariant.available
                 ? "bg-gray-200 text-gray-400 border-transparent cursor-not-allowed"
                 : "bg-primary text-black border-primary hover:bg-red-600 hover:border-red-600"
             }`}
           >
-            {currentVariant?.price ? `Buy at ${formatMoney(currentPrice)}` : "Buy Now"}
+            {currentVariant.price
+              ? `Buy at ${formatMoney(currentPrice)}`
+              : "Buy Now"}
           </button>
         </div>
       </div>
@@ -1965,6 +3205,7 @@ const ProductDetails: React.FC = () => {
         }`}
       >
         <button
+          type="button"
           onClick={() => setIsLightboxOpen(false)}
           className="absolute top-4 right-4 md:top-6 md:right-6 p-2 bg-gray-400 hover:bg-gray-500 rounded-full text-white transition z-10 cursor-pointer shadow-sm"
         >
@@ -1976,12 +3217,19 @@ const ProductDetails: React.FC = () => {
             <Carousel
               ref={lightboxCarouselRef}
               responsive={mainResponsive}
-              infinite={true}
+              infinite
               customLeftArrow={<CustomLeftArrow />}
               customRightArrow={<CustomRightArrow />}
-              afterChange={(_prev: number, state: any) => {
+              afterChange={(
+                _previous: number,
+                state: any,
+              ) => {
                 const realIndex =
-                  (state.currentSlide - 2 + finalDisplayImages.length) % finalDisplayImages.length;
+                  (state.currentSlide -
+                    2 +
+                    finalDisplayImages.length) %
+                  finalDisplayImages.length;
+
                 if (realIndex !== lightboxIndex) {
                   setLightboxIndex(realIndex);
                 }
@@ -1990,7 +3238,7 @@ const ProductDetails: React.FC = () => {
               containerClass="h-full w-full"
               sliderClass="h-full"
             >
-              {finalDisplayImages.map((src: string, index: number) => (
+              {finalDisplayImages.map((src, index) => (
                 <div
                   className="w-full h-full relative flex items-center justify-center"
                   key={`${src}-${index}`}
@@ -2000,8 +3248,9 @@ const ProductDetails: React.FC = () => {
                     loading="lazy"
                     className="max-w-full max-h-full object-contain"
                     alt={`Enlarged product ${index + 1}`}
-                    onError={(e) => {
-                      e.currentTarget.src = "/placeholder.svg";
+                    onError={(event) => {
+                      event.currentTarget.src =
+                        "/placeholder.svg";
                     }}
                   />
                 </div>
@@ -2013,29 +3262,36 @@ const ProductDetails: React.FC = () => {
               loading="lazy"
               className="max-w-full max-h-full object-contain"
               alt={product.title}
-              onError={(e) => {
-                e.currentTarget.src = "/placeholder.svg";
+              onError={(event) => {
+                event.currentTarget.src =
+                  "/placeholder.svg";
               }}
             />
           )}
         </div>
 
-        {hasMultipleImages && (
+        {hasMultipleImages ? (
           <div
             className="h-20 md:h-24 max-w-2xl w-full flex justify-center gap-3 md:gap-4 overflow-x-auto pb-2 scrollbar-none"
-            style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+            style={{
+              scrollbarWidth: "none",
+              msOverflowStyle: "none",
+            }}
           >
-            {finalDisplayImages.map((src: string, idx: number) => (
+            {finalDisplayImages.map((src, index) => (
               <div
-                key={`${src}-${idx}`}
+                key={`${src}-${index}`}
                 onClick={() => {
-                  setLightboxIndex(idx);
+                  setLightboxIndex(index);
+
                   if (lightboxCarouselRef.current) {
-                    lightboxCarouselRef.current.goToSlide(idx + 2);
+                    lightboxCarouselRef.current.goToSlide(
+                      index + 2,
+                    );
                   }
                 }}
                 className={`h-full aspect-3/4 shrink-0 cursor-pointer border-2 transition-all ${
-                  idx === lightboxIndex
+                  index === lightboxIndex
                     ? "border-black"
                     : "border-transparent opacity-60 hover:opacity-100"
                 }`}
@@ -2043,15 +3299,16 @@ const ProductDetails: React.FC = () => {
                 <img
                   src={src}
                   className="w-full h-full object-cover bg-gray-50"
-                  alt={`Thumb ${idx + 1}`}
-                  onError={(e) => {
-                    e.currentTarget.src = "/placeholder.svg";
+                  alt={`Thumb ${index + 1}`}
+                  onError={(event) => {
+                    event.currentTarget.src =
+                      "/placeholder.svg";
                   }}
                 />
               </div>
             ))}
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );

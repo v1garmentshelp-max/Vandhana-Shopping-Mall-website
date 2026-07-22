@@ -2,7 +2,10 @@ import { Navigate } from "react-router";
 import ShopByCategory from "../components/ShopByCategory";
 
 const Home = () => {
-  const redirectUrl = localStorage.getItem("preferred_gender_url");
+  const redirectUrl =
+    typeof window !== "undefined"
+      ? localStorage.getItem("preferred_gender_url")
+      : null;
 
   if (redirectUrl) {
     return <Navigate to={redirectUrl} replace />;

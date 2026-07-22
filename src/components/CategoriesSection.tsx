@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import useEmblaCarousel from "embla-carousel-react";
 import Wrapper from "./Wrapper";
 import { ChevronRight } from "lucide-react";
@@ -6,9 +7,38 @@ import type { Category } from "../Models/Category";
 import type { Product } from "../Models/Product";
 import categoriesJson from "../Data/categories.json";
 
+type CategoryRecord = {
+  id: string | number;
+  name?: string;
+  slug?: string;
+  image?: string;
+  parentId?: string | number | null;
+  parent_id?: string | number | null;
+  level?: number;
+  gender?: string;
+  is_active?: boolean;
+};
+
+const categoryRecords = (categoriesJson as CategoryRecord[]).filter(
+  (category) => category?.is_active !== false,
+);
+
+const normalizeCategoryId = (value: unknown) =>
+  String(value ?? "").trim();
+
+const getCategoryParentId = (category: CategoryRecord) =>
+  normalizeCategoryId(
+    category?.parentId !== undefined
+      ? category.parentId
+      : category?.parent_id,
+  );
+
 const imageFromValue = (value: any) => {
   if (!value) return "";
-  if (typeof value === "string") return value.trim();
+
+  if (typeof value === "string") {
+    return value.trim();
+  }
 
   return String(
     value.image_url ||
@@ -91,20 +121,72 @@ const productImages = (product: any) => {
 };
 
 const categoryImageMap = new Map<string, string>(
-  (categoriesJson as any[]).map((category) => [
-    String(category.id),
+  categoryRecords.map((category) => [
+    normalizeCategoryId(category.id),
     String(category.image || ""),
   ]),
 );
 
+const categoryRecordMap = new Map<string, CategoryRecord>(
+  categoryRecords.map((category) => [
+    normalizeCategoryId(category.id),
+    category,
+  ]),
+);
+
+const categoryChildrenMap = new Map<string, string[]>();
+
+categoryRecords.forEach((category) => {
+  const id = normalizeCategoryId(category.id);
+  const parentId = getCategoryParentId(category);
+
+  if (!id || !parentId) return;
+
+  const children = categoryChildrenMap.get(parentId) || [];
+
+  children.push(id);
+  categoryChildrenMap.set(parentId, children);
+});
+
+const getDescendantCategoryIds = (categoryId: unknown) => {
+  const rootId = normalizeCategoryId(categoryId);
+  const categoryIds = new Set<string>();
+
+  if (!rootId) {
+    return categoryIds;
+  }
+
+  const pending = [rootId];
+
+  while (pending.length) {
+    const currentId = pending.shift();
+
+    if (!currentId || categoryIds.has(currentId)) {
+      continue;
+    }
+
+    categoryIds.add(currentId);
+
+    const children = categoryChildrenMap.get(currentId) || [];
+
+    children.forEach((childId) => {
+      if (!categoryIds.has(childId)) {
+        pending.push(childId);
+      }
+    });
+  }
+
+  return categoryIds;
+};
+
 const getProductCategoryId = (product: any) =>
-  String(product?.categoryId || product?.category_id || "").trim();
+  normalizeCategoryId(product?.categoryId || product?.category_id);
 
 const getExactCategoryProducts = (
   category: any,
   productData: Product[],
 ) => {
-  const categoryId = String(category?.id || "").trim();
+  const categoryId = normalizeCategoryId(category?.id);
 
   if (!categoryId) return [];
 
@@ -113,16 +195,39 @@ const getExactCategoryProducts = (
   );
 };
 
+const getCategoryAndDescendantProducts = (
+  category: any,
+  productData: Product[],
+) => {
+  const categoryIds = getDescendantCategoryIds(category?.id);
+
+  if (!categoryIds.size) return [];
+
+  return productData.filter((product: any) =>
+    categoryIds.has(getProductCategoryId(product)),
+  );
+};
+
 const getCategoryImage = (
   category: any,
   productData: Product[],
 ) => {
-  const matchingProducts = getExactCategoryProducts(
+  const exactProducts = getExactCategoryProducts(category, productData);
+
+  for (const product of exactProducts) {
+    const images = productImages(product);
+
+    if (images.length) {
+      return images[0];
+    }
+  }
+
+  const descendantProducts = getCategoryAndDescendantProducts(
     category,
     productData,
   );
 
-  for (const product of matchingProducts) {
+  for (const product of descendantProducts) {
     const images = productImages(product);
 
     if (images.length) {
@@ -131,7 +236,7 @@ const getCategoryImage = (
   }
 
   const mappedImage = categoryImageMap.get(
-    String(category?.id || ""),
+    normalizeCategoryId(category?.id),
   );
 
   if (isGoodImage(mappedImage)) {
@@ -155,13 +260,16 @@ const getGenderParam = (
   if (gender === "WOMEN") return "Women";
   if (gender === "KIDS") return "Kids";
 
-  const matchedProduct = productData.find(
-    (product: any) =>
-      getProductCategoryId(product) ===
-      String(category?.id || ""),
+  const matchingProducts = getCategoryAndDescendantProducts(
+    category,
+    productData,
   );
 
-  return String(matchedProduct?.gender || "");
+  const matchedProduct = matchingProducts[0] as any;
+
+  return String(
+    matchedProduct?.gender || matchedProduct?.category || "",
+  );
 };
 
 const getCategoryLink = (
@@ -170,17 +278,14 @@ const getCategoryLink = (
 ) => {
   const params = new URLSearchParams();
   const gender = getGenderParam(category, productData);
+  const categoryId = normalizeCategoryId(category?.id);
 
   if (gender) {
     params.set("gender", gender);
   }
 
-  if (category?.id) {
-    params.set("category_id", String(category.id));
-  }
-
-  if (category?.slug) {
-    params.set("category_slug", String(category.slug));
+  if (categoryId) {
+    params.set("category_id", categoryId);
   }
 
   return `/collections?${params.toString()}`;
@@ -205,6 +310,24 @@ const CategoriesSection = ({
     },
   });
 
+  const visibleCategories = useMemo(
+    () =>
+      (Array.isArray(categories) ? categories : []).filter(
+        (category: any) => {
+          if (!category?.id || category?.is_active === false) {
+            return false;
+          }
+
+          const configuredCategory = categoryRecordMap.get(
+            normalizeCategoryId(category.id),
+          );
+
+          return configuredCategory?.is_active !== false;
+        },
+      ),
+    [categories],
+  );
+
   return (
     <div className="w-full bg-white pt-6 md:pt-10 md:py-16 px-2 md:px-6">
       <Wrapper className="px-0!">
@@ -222,19 +345,16 @@ const CategoriesSection = ({
           ref={emblaRef}
         >
           <div className="flex flex-col flex-wrap h-[440px] lg:h-auto lg:flex-row lg:grid lg:grid-cols-5 gap-2 lg:gap-4">
-            {categories.map((category: any) => {
-              const image = getCategoryImage(
-                category,
-                productData,
-              );
+            {visibleCategories.map((category: any) => {
+              const categoryId = normalizeCategoryId(category.id);
+              const image = getCategoryImage(category, productData);
+              const fallbackImage =
+                categoryImageMap.get(categoryId) || "/placeholder.svg";
 
               return (
                 <Link
-                  key={String(category.id)}
-                  to={getCategoryLink(
-                    category,
-                    productData,
-                  )}
+                  key={categoryId}
+                  to={getCategoryLink(category, productData)}
                   className="flex-[0_0_48%] lg:flex-none relative group cursor-pointer overflow-hidden rounded-2xl md:rounded-3xl shadow-xl aspect-3/4 block"
                 >
                   <img
@@ -243,21 +363,24 @@ const CategoriesSection = ({
                     loading="lazy"
                     className="absolute inset-0 w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-110"
                     onError={(event) => {
-                      const fallbackImage =
-                        categoryImageMap.get(
-                          String(category.id),
-                        ) || "/placeholder.svg";
+                      const imageElement = event.currentTarget;
+
+                      if (imageElement.dataset.fallbackStage === "2") {
+                        imageElement.onerror = null;
+                        return;
+                      }
 
                       if (
-                        event.currentTarget.src !==
-                        fallbackImage
+                        imageElement.dataset.fallbackStage !== "1" &&
+                        isGoodImage(fallbackImage)
                       ) {
-                        event.currentTarget.src =
-                          fallbackImage;
-                      } else {
-                        event.currentTarget.src =
-                          "/placeholder.svg";
+                        imageElement.dataset.fallbackStage = "1";
+                        imageElement.src = fallbackImage;
+                        return;
                       }
+
+                      imageElement.dataset.fallbackStage = "2";
+                      imageElement.src = "/placeholder.svg";
                     }}
                   />
 

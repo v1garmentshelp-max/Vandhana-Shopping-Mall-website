@@ -10,38 +10,173 @@
   },
   {
     "id": "4",
-    "name": "T-Shirts & Polo",
-    "slug": "t-shirts-polo",
+    "name": "T-Shirts",
+    "slug": "t-shirts",
     "image": "https://images.bewakoof.com/t640/men-s-navy-blue-polo-t-shirt-685320-1764312952-1.jpg",
     "parentId": "2",
     "level": 1,
     "gender": "MEN"
   },
   {
-    "id": "98",
-    "name": "Half Sleeve",
-    "slug": "half-sleeve",
+    "id": "111",
+    "name": "Oversized",
+    "slug": "oversized",
     "image": "https://images.bewakoof.com/t640/men-s-grey-oversized-t-shirt-539791-1747030188-1.jpg",
     "parentId": "4",
     "level": 2,
     "gender": "MEN"
   },
   {
-    "id": "99",
+    "id": "112",
+    "name": "Half Sleeve",
+    "slug": "half-sleeve",
+    "image": "https://images.bewakoof.com/t640/men-s-grey-oversized-t-shirt-539791-1747030188-1.jpg",
+    "parentId": "111",
+    "level": 3,
+    "gender": "MEN"
+  },
+  {
+    "id": "113",
+    "name": "Round Neck",
+    "slug": "round-neck",
+    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1782591204/products/11882654__front__1782591192923_vrmz7v.jpg",
+    "parentId": "4",
+    "level": 2,
+    "gender": "MEN"
+  },
+  {
+    "id": "114",
+    "name": "Half Sleeve",
+    "slug": "half-sleeve",
+    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1782591204/products/11882654__front__1782591192923_vrmz7v.jpg",
+    "parentId": "113",
+    "level": 3,
+    "gender": "MEN"
+  },
+  {
+    "id": "115",
     "name": "Full Sleeve",
     "slug": "full-sleeve",
     "image": "https://images.bewakoof.com/t640/1500978_2026-02-24t07-35-12_1.jpg",
+    "parentId": "113",
+    "level": 3,
+    "gender": "MEN"
+  },
+  {
+    "id": "116",
+    "name": "Polo",
+    "slug": "polo",
+    "image": "https://images.bewakoof.com/t640/men-s-navy-blue-polo-t-shirt-685320-1764312952-1.jpg",
     "parentId": "4",
     "level": 2,
+    "gender": "MEN"
+  },
+  {
+    "id": "117",
+    "name": "Half Sleeve",
+    "slug": "half-sleeve",
+    "image": "https://images.bewakoof.com/t640/men-s-navy-blue-polo-t-shirt-685320-1764312952-1.jpg",
+    "parentId": "116",
+    "level": 3,
+    "gender": "MEN"
+  },
+  {
+    "id": "118",
+    "name": "Full Sleeve",
+    "slug": "full-sleeve",
+    "image": "https://images.bewakoof.com/t640/1500978_2026-02-24t07-35-12_1.jpg",
+    "parentId": "116",
+    "level": 3,
     "gender": "MEN"
   },
   {
     "id": "5",
     "name": "Shirts",
     "slug": "shirts",
-    "image": "https://images.bewakoof.com/t640/1500978_2026-02-24t07-35-12_1.jpg",
+    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1784443794/products/11872215__front__1784443794663_qxdhdy.jpg",
     "parentId": "2",
     "level": 1,
+    "gender": "MEN"
+  },
+  {
+    "id": "119",
+    "name": "Check Shirts",
+    "slug": "check-shirts",
+    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1784443794/products/11872215__front__1784443794663_qxdhdy.jpg",
+    "parentId": "5",
+    "level": 2,
+    "gender": "MEN"
+  },
+  {
+    "id": "120",
+    "name": "Half Sleeve",
+    "slug": "half-sleeve",
+    "image": "https://images.bewakoof.com/t640/men-s-grey-checked-shirt-647440-1741601151-1.jpg",
+    "parentId": "119",
+    "level": 3,
+    "gender": "MEN"
+  },
+  {
+    "id": "121",
+    "name": "Full Sleeve",
+    "slug": "full-sleeve",
+    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1784443794/products/11872215__front__1784443794663_qxdhdy.jpg",
+    "parentId": "119",
+    "level": 3,
+    "gender": "MEN"
+  },
+  {
+    "id": "122",
+    "name": "Printed Shirts",
+    "slug": "printed-shirts",
+    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1784443793/products/11872105__front__1784443793357_kt86pk.jpg",
+    "parentId": "5",
+    "level": 2,
+    "gender": "MEN"
+  },
+  {
+    "id": "123",
+    "name": "Half Sleeve",
+    "slug": "half-sleeve",
+    "image": "https://images.bewakoof.com/t640/men-s-black-printed-shirt-646092-1741600975-1.jpg",
+    "parentId": "122",
+    "level": 3,
+    "gender": "MEN"
+  },
+  {
+    "id": "124",
+    "name": "Full Sleeve",
+    "slug": "full-sleeve",
+    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1784443793/products/11872105__front__1784443793357_kt86pk.jpg",
+    "parentId": "122",
+    "level": 3,
+    "gender": "MEN"
+  },
+  {
+    "id": "125",
+    "name": "Plain Shirts",
+    "slug": "plain-shirts",
+    "image": "https://images.bewakoof.com/t640/men-s-black-shirt-646083-1741600929-1.jpg",
+    "parentId": "5",
+    "level": 2,
+    "gender": "MEN"
+  },
+  {
+    "id": "126",
+    "name": "Half Sleeve",
+    "slug": "half-sleeve",
+    "image": "https://images.bewakoof.com/t640/men-s-black-shirt-646083-1741600929-1.jpg",
+    "parentId": "125",
+    "level": 3,
+    "gender": "MEN"
+  },
+  {
+    "id": "127",
+    "name": "Full Sleeve",
+    "slug": "full-sleeve",
+    "image": "https://images.bewakoof.com/t640/1500978_2026-02-24t07-35-12_1.jpg",
+    "parentId": "125",
+    "level": 3,
     "gender": "MEN"
   },
   {
@@ -78,6 +213,51 @@
     "image": "https://images.bewakoof.com/t640/women-s-pink-white-camo-printed-oversized-t-shirt-580371-1765193986-1.jpg",
     "parentId": "3",
     "level": 1,
+    "gender": "WOMEN"
+  },
+  {
+    "id": "128",
+    "name": "Oversized",
+    "slug": "oversized",
+    "image": "https://images.bewakoof.com/t640/women-s-pink-white-camo-printed-oversized-t-shirt-580371-1765193986-1.jpg",
+    "parentId": "12",
+    "level": 2,
+    "gender": "WOMEN"
+  },
+  {
+    "id": "129",
+    "name": "Half Sleeve",
+    "slug": "half-sleeve",
+    "image": "https://images.bewakoof.com/t640/women-s-pink-white-camo-printed-oversized-t-shirt-580371-1765193986-1.jpg",
+    "parentId": "128",
+    "level": 3,
+    "gender": "WOMEN"
+  },
+  {
+    "id": "130",
+    "name": "Round Neck",
+    "slug": "round-neck",
+    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1782590959/products/11882868__front__1782590947683_kimyi5.jpg",
+    "parentId": "12",
+    "level": 2,
+    "gender": "WOMEN"
+  },
+  {
+    "id": "131",
+    "name": "Half Sleeve",
+    "slug": "half-sleeve",
+    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1782590959/products/11882868__front__1782590947683_kimyi5.jpg",
+    "parentId": "130",
+    "level": 3,
+    "gender": "WOMEN"
+  },
+  {
+    "id": "132",
+    "name": "Full Sleeve",
+    "slug": "full-sleeve",
+    "image": "https://images.bewakoof.com/t640/women-s-black-solid-full-sleeve-t-shirt-321130-1655748137-1.jpg",
+    "parentId": "130",
+    "level": 3,
     "gender": "WOMEN"
   },
   {
@@ -162,6 +342,177 @@
     "gender": "KIDS"
   },
   {
+    "id": "31",
+    "name": "T-Shirts",
+    "slug": "t-shirts",
+    "image": "https://images.bewakoof.com/t640/kids-t-shirts.jpg",
+    "parentId": "21",
+    "level": 2,
+    "gender": "KIDS"
+  },
+  {
+    "id": "134",
+    "name": "Oversized",
+    "slug": "oversized",
+    "image": "https://images.bewakoof.com/t640/kids-t-shirts.jpg",
+    "parentId": "31",
+    "level": 3,
+    "gender": "KIDS"
+  },
+  {
+    "id": "135",
+    "name": "Half Sleeve",
+    "slug": "half-sleeve",
+    "image": "https://images.bewakoof.com/t640/kids-t-shirts.jpg",
+    "parentId": "134",
+    "level": 4,
+    "gender": "KIDS"
+  },
+  {
+    "id": "136",
+    "name": "Round Neck",
+    "slug": "round-neck",
+    "image": "https://images.bewakoof.com/t640/kids-t-shirts.jpg",
+    "parentId": "31",
+    "level": 3,
+    "gender": "KIDS"
+  },
+  {
+    "id": "137",
+    "name": "Half Sleeve",
+    "slug": "half-sleeve",
+    "image": "https://images.bewakoof.com/t640/kids-t-shirts.jpg",
+    "parentId": "136",
+    "level": 4,
+    "gender": "KIDS"
+  },
+  {
+    "id": "138",
+    "name": "Full Sleeve",
+    "slug": "full-sleeve",
+    "image": "https://images.unsplash.com/photo-1519238263530-99bdd11df2ea?auto=format&fit=crop&w=900&q=80",
+    "parentId": "136",
+    "level": 4,
+    "gender": "KIDS"
+  },
+  {
+    "id": "139",
+    "name": "Polo",
+    "slug": "polo",
+    "image": "https://images.bewakoof.com/t640/kids-t-shirts.jpg",
+    "parentId": "31",
+    "level": 3,
+    "gender": "KIDS"
+  },
+  {
+    "id": "140",
+    "name": "Half Sleeve",
+    "slug": "half-sleeve",
+    "image": "https://images.bewakoof.com/t640/kids-t-shirts.jpg",
+    "parentId": "139",
+    "level": 4,
+    "gender": "KIDS"
+  },
+  {
+    "id": "141",
+    "name": "Full Sleeve",
+    "slug": "full-sleeve",
+    "image": "https://images.unsplash.com/photo-1519238263530-99bdd11df2ea?auto=format&fit=crop&w=900&q=80",
+    "parentId": "139",
+    "level": 4,
+    "gender": "KIDS"
+  },
+  {
+    "id": "133",
+    "name": "Shirts",
+    "slug": "shirts",
+    "image": "https://images.unsplash.com/photo-1519238263530-99bdd11df2ea?auto=format&fit=crop&w=900&q=80",
+    "parentId": "21",
+    "level": 2,
+    "gender": "KIDS"
+  },
+  {
+    "id": "142",
+    "name": "Check Shirts",
+    "slug": "check-shirts",
+    "image": "https://images.unsplash.com/photo-1519238263530-99bdd11df2ea?auto=format&fit=crop&w=900&q=80",
+    "parentId": "133",
+    "level": 3,
+    "gender": "KIDS"
+  },
+  {
+    "id": "143",
+    "name": "Half Sleeve",
+    "slug": "half-sleeve",
+    "image": "https://images.unsplash.com/photo-1519238263530-99bdd11df2ea?auto=format&fit=crop&w=900&q=80",
+    "parentId": "142",
+    "level": 4,
+    "gender": "KIDS"
+  },
+  {
+    "id": "144",
+    "name": "Full Sleeve",
+    "slug": "full-sleeve",
+    "image": "https://images.unsplash.com/photo-1519238263530-99bdd11df2ea?auto=format&fit=crop&w=900&q=80",
+    "parentId": "142",
+    "level": 4,
+    "gender": "KIDS"
+  },
+  {
+    "id": "146",
+    "name": "Printed Shirts",
+    "slug": "printed-shirts",
+    "image": "https://images.bewakoof.com/t640/kids-t-shirts.jpg",
+    "parentId": "133",
+    "level": 3,
+    "gender": "KIDS"
+  },
+  {
+    "id": "147",
+    "name": "Half Sleeve",
+    "slug": "half-sleeve",
+    "image": "https://images.bewakoof.com/t640/kids-t-shirts.jpg",
+    "parentId": "146",
+    "level": 4,
+    "gender": "KIDS"
+  },
+  {
+    "id": "149",
+    "name": "Full Sleeve",
+    "slug": "full-sleeve",
+    "image": "https://images.unsplash.com/photo-1519238263530-99bdd11df2ea?auto=format&fit=crop&w=900&q=80",
+    "parentId": "146",
+    "level": 4,
+    "gender": "KIDS"
+  },
+  {
+    "id": "150",
+    "name": "Plain Shirts",
+    "slug": "plain-shirts",
+    "image": "https://images.unsplash.com/photo-1519238263530-99bdd11df2ea?auto=format&fit=crop&w=900&q=80",
+    "parentId": "133",
+    "level": 3,
+    "gender": "KIDS"
+  },
+  {
+    "id": "151",
+    "name": "Half Sleeve",
+    "slug": "half-sleeve",
+    "image": "https://images.bewakoof.com/t640/kids-t-shirts.jpg",
+    "parentId": "150",
+    "level": 4,
+    "gender": "KIDS"
+  },
+  {
+    "id": "152",
+    "name": "Full Sleeve",
+    "slug": "full-sleeve",
+    "image": "https://images.unsplash.com/photo-1519238263530-99bdd11df2ea?auto=format&fit=crop&w=900&q=80",
+    "parentId": "150",
+    "level": 4,
+    "gender": "KIDS"
+  },
+  {
     "id": "23",
     "name": "Baba Suits",
     "slug": "baba-suits",
@@ -198,33 +549,6 @@
     "gender": "KIDS"
   },
   {
-    "id": "31",
-    "name": "T-Shirts & Polo",
-    "slug": "t-shirts-polo",
-    "image": "https://images.bewakoof.com/t640/kids-t-shirts.jpg",
-    "parentId": "21",
-    "level": 2,
-    "gender": "KIDS"
-  },
-  {
-    "id": "104",
-    "name": "Half Sleeve",
-    "slug": "half-sleeve",
-    "image": "https://images.bewakoof.com/t640/kids-t-shirts.jpg",
-    "parentId": "31",
-    "level": 3,
-    "gender": "KIDS"
-  },
-  {
-    "id": "105",
-    "name": "Full Sleeve",
-    "slug": "full-sleeve",
-    "image": "https://images.unsplash.com/photo-1519238263530-99bdd11df2ea?auto=format&fit=crop&w=900&q=80",
-    "parentId": "31",
-    "level": 3,
-    "gender": "KIDS"
-  },
-  {
     "id": "22",
     "name": "Girls",
     "slug": "girls",
@@ -234,18 +558,63 @@
     "gender": "KIDS"
   },
   {
-    "id": "33",
-    "name": "Tops",
-    "slug": "tops",
-    "image": "https://images.bewakoof.com/t640/kids-t-shirts.jpg",
+    "id": "34",
+    "name": "T-Shirts",
+    "slug": "t-shirts",
+    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1784359771/products/11894819__front__1784359769621_wp1a4p.jpg",
     "parentId": "22",
     "level": 2,
     "gender": "KIDS"
   },
   {
-    "id": "34",
-    "name": "T-Shirts",
-    "slug": "t-shirts",
+    "id": "153",
+    "name": "Oversized",
+    "slug": "oversized",
+    "image": "https://images.bewakoof.com/t640/kids-t-shirts.jpg",
+    "parentId": "34",
+    "level": 3,
+    "gender": "KIDS"
+  },
+  {
+    "id": "154",
+    "name": "Half Sleeve",
+    "slug": "half-sleeve",
+    "image": "https://images.bewakoof.com/t640/kids-t-shirts.jpg",
+    "parentId": "153",
+    "level": 4,
+    "gender": "KIDS"
+  },
+  {
+    "id": "155",
+    "name": "Round Neck",
+    "slug": "round-neck",
+    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1784359771/products/11894819__front__1784359769621_wp1a4p.jpg",
+    "parentId": "34",
+    "level": 3,
+    "gender": "KIDS"
+  },
+  {
+    "id": "156",
+    "name": "Half Sleeve",
+    "slug": "half-sleeve",
+    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1784359771/products/11894819__front__1784359769621_wp1a4p.jpg",
+    "parentId": "155",
+    "level": 4,
+    "gender": "KIDS"
+  },
+  {
+    "id": "157",
+    "name": "Full Sleeve",
+    "slug": "full-sleeve",
+    "image": "https://images.unsplash.com/photo-1518831959646-742c3a14ebf7?auto=format&fit=crop&w=900&q=80",
+    "parentId": "155",
+    "level": 4,
+    "gender": "KIDS"
+  },
+  {
+    "id": "33",
+    "name": "Tops",
+    "slug": "tops",
     "image": "https://images.bewakoof.com/t640/kids-t-shirts.jpg",
     "parentId": "22",
     "level": 2,
