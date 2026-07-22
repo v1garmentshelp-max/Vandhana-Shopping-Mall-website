@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
+import CarouselModule from "react-multi-carousel";
+import "react-multi-carousel/lib/styles.css";
 import categoriesData from "../../Data/categories.json";
 import type { Category } from "../../Models/Category";
 import type { Product } from "../../Models/Product";
-import CarouselModule from "react-multi-carousel";
-import "react-multi-carousel/lib/styles.css";
 import NamedSection from "../../components/NamedSection";
 import {
   fetchProductById,
@@ -23,9 +23,15 @@ import {
   FiHeart,
   FiShare2,
 } from "react-icons/fi";
-import { FaRegStar, FaStar, FaStarHalfAlt } from "react-icons/fa";
+import {
+  FaRegStar,
+  FaStar,
+  FaStarHalfAlt,
+} from "react-icons/fa";
 
-const Carousel = (CarouselModule as any).default || CarouselModule;
+const Carousel =
+  (CarouselModule as any).default || CarouselModule;
+
 const API_BASE =
   "https://vandhana-shopping-mall-backend.vercel.app";
 
@@ -37,54 +43,31 @@ type StoredUser = {
   type?: string;
 };
 
-type OptionGroup = {
-  name: string;
-  values: string[];
+type StockSource = {
+  variantId: number;
+  available: number;
 };
 
-type ProductVariantOption = {
+type Variant = {
   id: string | number;
-  variant_id: string | number;
-  product_id?: string | number;
+  variantId: string | number;
+  variantIds: Array<string | number>;
+  productId: string | number;
   size: string;
-  colour: string;
   color: string;
-  colour_hex?: string;
-  color_hex?: string;
-  colourHex?: string;
-  colorHex?: string;
-  swatch_color?: string;
-  swatchColor?: string;
-  barcode?: string;
-  ean_code?: string;
+  colorValue: string;
+  barcode: string;
+  barcodes: string[];
   mrp: number;
-  base_sale_price?: number;
-  original_sale_price?: number;
-  sale_price: number;
-  price: number;
-  selling_price?: number;
-  discounted_price?: number;
-  mahaveer_price?: number;
-  cost_price?: number;
-  b2c_discount_pct?: number;
-  b2b_discount_pct?: number;
-  original_price_b2c: number;
-  final_price_b2c: number;
-  original_price_b2b?: number;
-  final_price_b2b?: number;
-  on_hand?: number;
-  reserved?: number;
-  available_qty?: number;
-  in_stock?: boolean;
-  image_url?: string;
-  imageUrl?: string;
-  front_image_url?: string;
-  frontImageUrl?: string;
-  back_image_url?: string;
-  backImageUrl?: string;
-  main_image_url?: string;
-  mainImageUrl?: string;
-  images?: any[];
+  salePrice: number;
+  b2cDiscount: number;
+  b2bDiscount: number;
+  onHand: number;
+  reserved: number;
+  available: number;
+  stockSources: StockSource[];
+  images: string[];
+  raw: any;
 };
 
 type CategoryRecord = Category & {
@@ -95,282 +78,313 @@ type CategoryRecord = Category & {
   is_active?: boolean;
 };
 
-const categoryRecords = (categoriesData as CategoryRecord[]).filter(
-  (category) => category?.is_active !== false,
-);
+const categoryRecords = (
+  categoriesData as CategoryRecord[]
+).filter((item) => item?.is_active !== false);
 
-const normalizeCategoryId = (value: any) =>
-  String(value ?? "").trim();
-
-const getCategoryParentId = (category?: CategoryRecord | null) =>
-  normalizeCategoryId(
-    category?.parentId !== undefined
-      ? category.parentId
-      : category?.parent_id,
-  );
-
-const categoryRecordMap = new Map<string, CategoryRecord>(
-  categoryRecords.map((category) => [
-    normalizeCategoryId(category.id),
-    category,
+const categoryMap = new Map(
+  categoryRecords.map((item) => [
+    String(item.id),
+    item,
   ]),
 );
 
-const getCategoryAncestorIds = (categoryId: any) => {
-  const ids: string[] = [];
-  const visited = new Set<string>();
-  let currentId = normalizeCategoryId(categoryId);
+const text = (value: any) =>
+  String(value ?? "").trim();
 
-  while (currentId && !visited.has(currentId)) {
-    visited.add(currentId);
-    ids.push(currentId);
-
-    const category = categoryRecordMap.get(currentId);
-    currentId = getCategoryParentId(category);
-  }
-
-  return ids;
-};
-
-const getCategoryPathById = (categoryId: any) => {
-  const names: string[] = [];
-  const visited = new Set<string>();
-  let currentId = normalizeCategoryId(categoryId);
-
-  while (currentId && !visited.has(currentId)) {
-    visited.add(currentId);
-
-    const category = categoryRecordMap.get(currentId);
-
-    if (!category) break;
-
-    if (category.name) {
-      names.unshift(String(category.name));
-    }
-
-    currentId = getCategoryParentId(category);
-  }
-
-  return names.join(" > ");
-};
-
-const getProductCategoryIdValue = (product: any) =>
-  normalizeCategoryId(
-    product?.categoryId ||
-      product?.category_id ||
-      "",
-  );
-
-const getProductCategoryPathValue = (product: any) => {
-  const directPath = String(
-    product?.categoryPath ||
-      product?.category_path ||
-      "",
-  ).trim();
-
-  if (directPath) return directPath;
-
-  return getCategoryPathById(
-    getProductCategoryIdValue(product),
-  );
-};
-
-const getCategoryAffinityScore = (
-  sourceCategoryId: any,
-  targetCategoryId: any,
+const numberValue = (
+  value: any,
+  fallback = 0,
 ) => {
-  const sourceId = normalizeCategoryId(sourceCategoryId);
-  const targetId = normalizeCategoryId(targetCategoryId);
+  const parsed = Number(value);
 
-  if (!sourceId || !targetId) return 0;
-
-  const sourceAncestors = getCategoryAncestorIds(sourceId);
-  const targetAncestors = new Set(
-    getCategoryAncestorIds(targetId),
-  );
-
-  let score = sourceId === targetId ? 1000 : 0;
-
-  sourceAncestors.forEach((ancestorId, index) => {
-    if (targetAncestors.has(ancestorId)) {
-      score += Math.max(1, 100 - index * 15);
-    }
-  });
-
-  const sourceParent = getCategoryParentId(
-    categoryRecordMap.get(sourceId),
-  );
-
-  const targetParent = getCategoryParentId(
-    categoryRecordMap.get(targetId),
-  );
-
-  if (
-    sourceParent &&
-    targetParent &&
-    sourceParent === targetParent
-  ) {
-    score += 250;
-  }
-
-  return score;
+  return Number.isFinite(parsed)
+    ? parsed
+    : fallback;
 };
 
-const getStoredUser = (): StoredUser | null => {
-  const raw =
-    localStorage.getItem("user") ||
-    sessionStorage.getItem("user") ||
-    null;
+const positiveId = (value: any) => {
+  const parsed = Number(text(value));
 
-  if (!raw) return null;
-
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return null;
-  }
-};
-
-const getWishlistKey = (userId: number) =>
-  `wishlist_product_ids_${userId}`;
-
-const readWishlistIds = (userId: number): number[] => {
-  try {
-    const raw = localStorage.getItem(getWishlistKey(userId));
-
-    if (!raw) return [];
-
-    const parsed = JSON.parse(raw);
-
-    return Array.isArray(parsed)
-      ? parsed.map(Number).filter(Boolean)
-      : [];
-  } catch {
-    return [];
-  }
-};
-
-const writeWishlistIds = (userId: number, ids: number[]) => {
-  localStorage.setItem(
-    getWishlistKey(userId),
-    JSON.stringify(ids),
-  );
-
-  window.dispatchEvent(new Event("wishlist-updated"));
-};
-
-const getNumber = (value: any, fallback = 0) => {
-  const number = Number(value);
-  return Number.isFinite(number) ? number : fallback;
-};
-
-const getPositiveId = (value: any) => {
-  const number = Number(String(value || "").trim());
-
-  return Number.isInteger(number) && number > 0
-    ? number
+  return Number.isInteger(parsed) && parsed > 0
+    ? parsed
     : null;
 };
 
-const clampDiscount = (value: any) => {
-  const number = getNumber(value, 0);
+const uniqueStrings = (values: any[]) => {
+  const seen = new Set<string>();
+  const output: string[] = [];
 
-  if (number < 0) return 0;
-  if (number > 100) return 100;
+  values.forEach((value) => {
+    const clean = text(value);
 
-  return number;
+    if (!clean) return;
+
+    const key = clean.toLowerCase();
+
+    if (seen.has(key)) return;
+
+    seen.add(key);
+    output.push(clean);
+  });
+
+  return output;
 };
 
-const firstPositiveDiscount = (...values: any[]) => {
-  for (const value of values) {
-    const number = clampDiscount(value);
+const uniqueIds = (values: any[]) => {
+  const seen = new Set<string>();
+  const output: Array<string | number> = [];
 
-    if (number > 0) return number;
+  values.forEach((value) => {
+    const clean = text(value);
+
+    if (!clean || seen.has(clean)) return;
+
+    seen.add(clean);
+    output.push(value);
+  });
+
+  return output;
+};
+
+const parseArray = (value: any) => {
+  if (Array.isArray(value)) {
+    return value;
   }
 
-  return 0;
+  if (
+    typeof value !== "string" ||
+    !value.trim()
+  ) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(value);
+
+    return Array.isArray(parsed)
+      ? parsed
+      : [value];
+  } catch {
+    return [value];
+  }
 };
 
-const calculateDiscountedPrice = (
-  price: any,
-  discount: any,
-  fallback = 0,
-) => {
-  const base = getNumber(price, fallback);
-  const percentage = clampDiscount(discount);
+const imageValue = (value: any) => {
+  if (!value) return "";
 
-  if (!base) return getNumber(fallback, 0);
-  if (!percentage) return base;
+  if (typeof value === "string") {
+    return value.trim();
+  }
 
-  return (
-    Math.round(
-      (base - (base * percentage) / 100 + Number.EPSILON) *
-        100,
-    ) / 100
+  return text(
+    value.image_url ||
+      value.imageUrl ||
+      value.secure_url ||
+      value.url,
   );
 };
 
-const getString = (value: any) =>
-  String(value || "").trim();
+const validImage = (value: any) => {
+  const normalized = text(value).toLowerCase();
 
-const isGroupedValue = (value: any) => {
-  const text = getString(value);
-
-  if (!text) return false;
-  if (text.includes(",")) return true;
-  if (text.split(/\s+/).length > 4) return true;
-
-  return false;
+  return Boolean(
+    normalized &&
+      normalized !== "[object object]" &&
+      !normalized.includes("undefined") &&
+      !normalized.includes("null") &&
+      !normalized.includes("placeholder.svg"),
+  );
 };
 
-const cleanSingleValue = (value: any) => {
-  const text = getString(value);
+const uniqueImages = (values: any[]) => {
+  const seen = new Set<string>();
+  const output: string[] = [];
 
-  if (!text) return "";
-  if (isGroupedValue(text)) return "";
+  values.forEach((value) => {
+    const image = imageValue(value);
 
-  return text;
+    if (!validImage(image)) return;
+
+    const key = image.toLowerCase();
+
+    if (seen.has(key)) return;
+
+    seen.add(key);
+    output.push(image);
+  });
+
+  return output;
 };
 
-const cleanColourValue = (value: any) => {
-  const colour = getString(value).replace(/\s+/g, " ");
+const normalizeImageType = (value: any) =>
+  text(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
 
-  if (
-    !colour ||
-    colour === "[object Object]" ||
-    colour.length > 100
-  ) {
-    return "";
+const imageByType = (
+  images: any[],
+  names: string[],
+) => {
+  const targets = names.map(
+    normalizeImageType,
+  );
+
+  const found = images.find((item) => {
+    const type = normalizeImageType(
+      item?.image_type ||
+        item?.imageType ||
+        item?.type ||
+        item?.label ||
+        item?.name ||
+        item?.view ||
+        item?.position,
+    );
+
+    return targets.some(
+      (target) =>
+        type === target ||
+        type.includes(target),
+    );
+  });
+
+  return imageValue(found);
+};
+
+const sourceImagePair = (source: any) => {
+  const raw = parseArray(source?.images);
+
+  const typedFront = imageByType(raw, [
+    "front",
+    "primary",
+    "main",
+    "default",
+  ]);
+
+  const typedBack = imageByType(raw, [
+    "back",
+    "rear",
+  ]);
+
+  const directFront = imageValue(
+    source?.front_image_url ||
+      source?.frontImageUrl ||
+      source?.main_image_url ||
+      source?.mainImageUrl ||
+      source?.image_url ||
+      source?.imageUrl,
+  );
+
+  const directBack = imageValue(
+    source?.back_image_url ||
+      source?.backImageUrl ||
+      source?.rear_image_url ||
+      source?.rearImageUrl,
+  );
+
+  let front =
+    directFront ||
+    typedFront;
+
+  let back =
+    directBack ||
+    typedBack;
+
+  if (!front && !back && raw.length) {
+    front = imageValue(raw[0]);
   }
 
-  return colour;
+  if (
+    front &&
+    back &&
+    front.toLowerCase() === back.toLowerCase()
+  ) {
+    back = "";
+  }
+
+  return {
+    front: validImage(front) ? front : "",
+    back: validImage(back) ? back : "",
+  };
 };
 
-const sameValue = (a: any, b: any) =>
-  String(a || "").trim().toLowerCase() ===
-  String(b || "").trim().toLowerCase();
+const sourceImages = (source: any) => {
+  const pair = sourceImagePair(source);
 
-const normalizeColourName = (value: any) => {
-  const colour = String(value || "")
-    .trim()
+  return uniqueImages([
+    pair.front,
+    pair.back,
+  ]).slice(0, 2);
+};
+
+const getSelectedVariantImages = (
+  variants: Variant[],
+  fallbackProduct: any,
+) => {
+  let front = "";
+  let back = "";
+
+  for (const variant of variants) {
+    const pair = sourceImagePair(variant.raw);
+
+    if (!front && pair.front) {
+      front = pair.front;
+    }
+
+    if (!back && pair.back) {
+      back = pair.back;
+    }
+
+    if (front && back) {
+      break;
+    }
+  }
+
+  const variantImages = uniqueImages([
+    front,
+    back,
+  ]).slice(0, 2);
+
+  if (variantImages.length) {
+    return variantImages;
+  }
+
+  const fallbackImages =
+    sourceImages(fallbackProduct).slice(0, 2);
+
+  return fallbackImages.length
+    ? fallbackImages
+    : ["/placeholder.svg"];
+};
+
+const normalizeSize = (value: any) =>
+  text(value)
+    .toUpperCase()
+    .replace(/\s+/g, "");
+
+const sameSize = (a: any, b: any) =>
+  normalizeSize(a) === normalizeSize(b);
+
+const normalizeColor = (value: any) => {
+  const normalized = text(value)
     .toLowerCase()
     .replace(/[_-]+/g, " ")
-    .replace(/\s+/g, " ");
+    .replace(/\s+/g, " ")
+    .trim();
 
   const aliases: Record<string, string> = {
-    "dark bblue": "dark blue",
     darkblue: "dark blue",
+    "dark bblue": "dark blue",
     "dark blu": "dark blue",
-    "dark bluee": "dark blue",
-    "sea blu": "sea blue",
     seablue: "sea blue",
-    "see blue": "sea blue",
+    "sea blu": "sea blue",
     iceblue: "ice blue",
     "ice blu": "ice blue",
-    "navy b": "navy blue",
     navyb: "navy blue",
-    "navy blu": "navy blue",
+    "navy b": "navy blue",
     navyblue: "navy blue",
+    "navy blu": "navy blue",
     horizonblue: "horizon blue",
     "horizon blu": "horizon blue",
     offwhite: "off white",
@@ -385,616 +399,571 @@ const normalizeColourName = (value: any) => {
     "mehandi green": "mehendi green",
     ston: "stone",
     "p olive": "olive",
-    "deep skin": "skin",
     "skin colour": "skin",
     "skin color": "skin",
     "aqua marine": "aquamarine",
-    aquamarine: "aquamarine",
     violate: "violet",
     onionpink: "onion",
     "onion pink": "onion",
     frenchwine: "french wine",
     peacockgreen: "peacock green",
-    "light rama": "light rama green",
-    "light rama green": "light rama green",
     cherrybrown: "cherry brown",
     "multi colour": "multicolor",
     "multi color": "multicolor",
-    "multi colored": "multicolor",
-    "multi coloured": "multicolor",
   };
 
-  return aliases[colour] || colour;
+  return aliases[normalized] || normalized;
 };
 
-const sameColour = (a: any, b: any) =>
-  normalizeColourName(a) === normalizeColourName(b);
+const sameColor = (a: any, b: any) =>
+  normalizeColor(a) === normalizeColor(b);
 
-const getVariantColor = (
-  variant?: ProductVariantOption | null,
-) =>
-  cleanColourValue(
-    variant?.colour ||
-      variant?.color ||
-      "",
+const clampDiscount = (value: any) =>
+  Math.min(
+    100,
+    Math.max(0, numberValue(value, 0)),
   );
 
-const getVariantColourValue = (
-  variant?: ProductVariantOption | null,
-) =>
-  getString(
-    variant?.colour_hex ||
-      variant?.color_hex ||
-      variant?.colourHex ||
-      variant?.colorHex ||
-      variant?.swatch_color ||
-      variant?.swatchColor ||
-      "",
-  );
+const firstDiscount = (...values: any[]) => {
+  for (const value of values) {
+    const discount = clampDiscount(value);
 
-const getBackendProductId = (product: Product | null) => {
-  const currentProduct: any = product || {};
-  const value =
-    currentProduct.productId ||
-    currentProduct.product_id ||
-    "";
-
-  const parsed = Number(String(value).trim());
-
-  return Number.isInteger(parsed) && parsed > 0
-    ? parsed
-    : getPositiveId(currentProduct.id);
-};
-
-const getVariantIdValue = (
-  variant?: ProductVariantOption | null,
-  product?: Product | null,
-) => {
-  const currentProduct: any = product || {};
-
-  const value =
-    variant?.variant_id ||
-    variant?.id ||
-    currentProduct.variantId ||
-    currentProduct.variant_id ||
-    currentProduct.primaryVariantId ||
-    currentProduct.primary_variant_id ||
-    currentProduct.id ||
-    "";
-
-  const parsed = Number(String(value).trim());
-
-  return Number.isInteger(parsed) && parsed > 0
-    ? parsed
-    : null;
-};
-
-const getImageString = (value: any) => {
-  if (!value) return "";
-  if (typeof value === "string") return value.trim();
-
-  return String(
-    value.image_url ||
-      value.secure_url ||
-      value.url ||
-      "",
-  ).trim();
-};
-
-const isBadImage = (value: any) => {
-  const image = String(value || "").trim().toLowerCase();
-
-  return (
-    !image ||
-    image === "[object object]" ||
-    image.includes("undefined") ||
-    image.includes("null")
-  );
-};
-
-const uniqueImages = (values: any[]) => {
-  const seen = new Set<string>();
-  const output: string[] = [];
-
-  values.forEach((value) => {
-    const image = getImageString(value);
-
-    if (isBadImage(image)) return;
-
-    const key = image.toLowerCase();
-
-    if (seen.has(key)) return;
-
-    seen.add(key);
-    output.push(image);
-  });
-
-  return output;
-};
-
-const parseImages = (value: any) => {
-  if (Array.isArray(value)) {
-    return value.filter(Boolean);
-  }
-
-  if (typeof value === "string") {
-    try {
-      const parsed = JSON.parse(value);
-
-      if (Array.isArray(parsed)) {
-        return parsed.filter(Boolean);
-      }
-    } catch {
-      return value ? [value] : [];
+    if (discount > 0) {
+      return discount;
     }
   }
 
-  return [];
+  return 0;
 };
 
-const normalizeImageType = (value: any) =>
-  String(value || "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
+const discountedPrice = (
+  price: number,
+  discount: number,
+) =>
+  Math.round(
+    (price -
+      (price * discount) / 100 +
+      Number.EPSILON) *
+      100,
+  ) / 100;
 
-const imageByType = (
-  images: any[],
-  ...types: string[]
+const categoryPathById = (
+  categoryId: any,
 ) => {
-  const targets = types
-    .map(normalizeImageType)
-    .filter(Boolean);
+  const names: string[] = [];
+  const visited = new Set<string>();
+  let current = text(categoryId);
 
-  const found = images.find((item: any) => {
-    const imageType = normalizeImageType(
-      item?.image_type ||
-        item?.type ||
-        item?.label ||
-        item?.name ||
-        item?.view ||
-        item?.position,
+  while (
+    current &&
+    !visited.has(current)
+  ) {
+    visited.add(current);
+
+    const category = categoryMap.get(current);
+
+    if (!category) break;
+
+    if (category.name) {
+      names.unshift(text(category.name));
+    }
+
+    current = text(
+      category.parentId !== undefined
+        ? category.parentId
+        : category.parent_id,
+    );
+  }
+
+  return names.join(" > ");
+};
+
+const productCategoryId = (product: any) =>
+  text(
+    product?.categoryId ||
+      product?.category_id,
+  );
+
+const productCategoryPath = (
+  product: any,
+) =>
+  text(
+    product?.categoryPath ||
+      product?.category_path,
+  ) ||
+  categoryPathById(
+    productCategoryId(product),
+  );
+
+const productBackendId = (product: any) =>
+  positiveId(
+    product?.productId ||
+      product?.product_id ||
+      product?.id,
+  );
+
+const getStoredUser =
+  (): StoredUser | null => {
+    const raw =
+      localStorage.getItem("user") ||
+      sessionStorage.getItem("user");
+
+    if (!raw) return null;
+
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  };
+
+const wishlistKey = (userId: number) =>
+  `wishlist_product_ids_${userId}`;
+
+const readWishlist = (userId: number) => {
+  try {
+    const parsed = JSON.parse(
+      localStorage.getItem(
+        wishlistKey(userId),
+      ) || "[]",
     );
 
-    return targets.some((target) =>
-      imageType.includes(target),
+    return Array.isArray(parsed)
+      ? parsed
+          .map(Number)
+          .filter(Boolean)
+      : [];
+  } catch {
+    return [];
+  }
+};
+
+const writeWishlist = (
+  userId: number,
+  ids: number[],
+) => {
+  localStorage.setItem(
+    wishlistKey(userId),
+    JSON.stringify(ids),
+  );
+
+  window.dispatchEvent(
+    new Event("wishlist-updated"),
+  );
+};
+
+const normalizeStockSources = (
+  raw: any,
+  fallbackVariantId: any,
+  fallbackAvailable: number,
+) => {
+  const items = Array.isArray(
+    raw?.stock_sources,
+  )
+    ? raw.stock_sources
+    : Array.isArray(raw?.stockSources)
+      ? raw.stockSources
+      : [];
+
+  const sources = items.length
+    ? items
+    : fallbackVariantId
+      ? [
+          {
+            variant_id:
+              fallbackVariantId,
+            available_qty:
+              fallbackAvailable,
+          },
+        ]
+      : [];
+
+  const grouped = new Map<
+    number,
+    number
+  >();
+
+  sources.forEach((source: any) => {
+    const variantId = positiveId(
+      source?.variant_id ||
+        source?.variantId,
+    );
+
+    if (!variantId) return;
+
+    const available = Math.max(
+      0,
+      numberValue(
+        source?.available_qty ??
+          source?.availableQty ??
+          Math.max(
+            0,
+            numberValue(
+              source?.on_hand ??
+                source?.onHand,
+              0,
+            ) -
+              numberValue(
+                source?.reserved,
+                0,
+              ),
+          ),
+        0,
+      ),
+    );
+
+    grouped.set(
+      variantId,
+      Math.max(
+        grouped.get(variantId) || 0,
+        available,
+      ),
     );
   });
 
-  return getImageString(found);
-};
-
-const imagePairFromSource = (source: any) => {
-  const rawImages = parseImages(source?.images);
-
-  const front = getImageString(
-    source?.front_image_url ||
-      source?.frontImageUrl ||
-      source?.front_url ||
-      source?.frontUrl ||
-      source?.front_image ||
-      source?.frontImage ||
-      imageByType(rawImages, "front", "primary") ||
-      source?.image_url ||
-      source?.imageUrl ||
-      source?.main_image_url ||
-      source?.mainImageUrl ||
-      imageByType(rawImages, "main", "default") ||
-      rawImages[0],
-  );
-
-  const back = getImageString(
-    source?.back_image_url ||
-      source?.backImageUrl ||
-      source?.back_url ||
-      source?.backUrl ||
-      source?.back_image ||
-      source?.backImage ||
-      source?.rear_image_url ||
-      source?.rearImageUrl ||
-      imageByType(rawImages, "back", "rear"),
-  );
-
-  return uniqueImages([front, back]).slice(0, 2);
-};
-
-const imageListFromVariant = (
-  variant?: ProductVariantOption | null,
-) => {
-  if (!variant) return [];
-
-  return imagePairFromSource(variant);
-};
-
-const productFallbackImages = (product: Product | null) => {
-  const currentProduct: any = product || {};
-
-  return imagePairFromSource(currentProduct);
+  return Array.from(grouped.entries())
+    .map(([variantId, available]) => ({
+      variantId,
+      available,
+    }))
+    .sort(
+      (a, b) =>
+        b.available - a.available,
+    );
 };
 
 const normalizeVariant = (
-  item: any,
+  raw: any,
   product: any,
-): ProductVariantOption => {
-  const originalB2c = getNumber(
-    item?.original_price_b2c ??
-      item?.b2c_original_price ??
-      item?.mrp ??
-      item?.original_price ??
+): Variant => {
+  const variantId =
+    raw?.variant_id ||
+    raw?.variantId ||
+    raw?.id ||
+    "";
+
+  const productId =
+    raw?.product_id ||
+    raw?.productId ||
+    product?.product_id ||
+    product?.productId ||
+    "";
+
+  const color = text(
+    raw?.colour ||
+      raw?.color ||
+      raw?.selected_colour ||
+      raw?.selectedColor,
+  );
+
+  const size = text(
+    raw?.size ||
+      raw?.selected_size,
+  );
+
+  const mrp = numberValue(
+    raw?.original_price_b2c ??
+      raw?.mrp ??
+      raw?.original_price ??
       product?.original_price_b2c ??
       product?.originalPrice ??
       product?.mrp ??
-      product?.original_price ??
       product?.price,
     0,
   );
 
-  const directFinalB2c = getNumber(
-    item?.final_price_b2c ??
-      item?.b2c_final_price ??
-      item?.sale_price ??
-      item?.price ??
-      item?.selling_price ??
-      item?.discounted_price ??
-      item?.mahaveer_price ??
-      product?.final_price_b2c ??
-      product?.salePrice ??
-      product?.sale_price ??
-      product?.price,
-    originalB2c,
-  );
-
-  const b2cDiscount = firstPositiveDiscount(
-    item?.b2c_discount_pct,
-    item?.discount_b2c,
-    item?.b2c_discount,
-    item?.discount_percentage,
-    item?.discount_percent,
-    item?.discount,
+  const b2cDiscount = firstDiscount(
+    raw?.b2c_discount_pct,
+    raw?.discount_b2c,
+    raw?.discount_percentage,
+    raw?.discount_percent,
+    raw?.discount,
     product?.b2c_discount_pct,
     product?.discount_b2c,
-    product?.b2c_discount,
     product?.discount_percentage,
     product?.discount_percent,
     product?.discount,
   );
 
-  const b2bDiscount = firstPositiveDiscount(
-    item?.b2b_discount_pct,
-    item?.discount_b2b,
-    item?.b2b_discount,
-    item?.discount_percentage_b2b,
+  const b2bDiscount = firstDiscount(
+    raw?.b2b_discount_pct,
+    raw?.discount_b2b,
     product?.b2b_discount_pct,
     product?.discount_b2b,
-    product?.b2b_discount,
-    product?.discount_percentage_b2b,
   );
 
-  const mrp = originalB2c;
+  const directPrice = numberValue(
+    raw?.final_price_b2c ??
+      raw?.b2c_final_price ??
+      raw?.sale_price ??
+      raw?.price ??
+      raw?.selling_price ??
+      raw?.discounted_price ??
+      raw?.mahaveer_price ??
+      product?.final_price_b2c ??
+      product?.salePrice ??
+      product?.sale_price ??
+      product?.price,
+    mrp,
+  );
 
-  const finalB2c =
+  const salePrice =
     b2cDiscount > 0 && mrp > 0
-      ? calculateDiscountedPrice(
+      ? discountedPrice(
           mrp,
           b2cDiscount,
-          directFinalB2c,
         )
-      : directFinalB2c;
+      : directPrice;
 
-  const originalB2b = getNumber(
-    item?.original_price_b2b ??
-      item?.b2b_original_price ??
-      item?.cost_price ??
-      product?.original_price_b2b ??
-      product?.cost_price,
-    originalB2c,
+  const onHand = numberValue(
+    raw?.on_hand ??
+      raw?.onHand,
+    0,
   );
 
-  const finalB2b =
-    b2bDiscount > 0 && originalB2b > 0
-      ? calculateDiscountedPrice(
-          originalB2b,
-          b2bDiscount,
-          originalB2b,
-        )
-      : getNumber(
-          item?.final_price_b2b ??
-            item?.b2b_final_price ??
-            item?.cost_price ??
-            product?.final_price_b2b,
-          finalB2c,
-        );
-
-  const size = cleanSingleValue(
-    item?.size ||
-      item?.selected_size ||
-      "",
+  const reserved = numberValue(
+    raw?.reserved ??
+      raw?.reserved_qty ??
+      raw?.reservedQty,
+    0,
   );
 
-  const colour = cleanColourValue(
-    item?.colour ||
-      item?.color ||
-      item?.selected_colour ||
-      item?.selectedColor ||
-      "",
+  const available = Math.max(
+    0,
+    numberValue(
+      raw?.available_qty ??
+        raw?.availableQty ??
+        Math.max(
+          0,
+          onHand - reserved,
+        ),
+      Math.max(
+        0,
+        onHand - reserved,
+      ),
+    ),
   );
 
-  const itemImages = imagePairFromSource(item);
-  const productImages = imagePairFromSource(product);
+  const barcode = text(
+    raw?.barcode ||
+      raw?.ean_code,
+  );
 
-  const variantImages = uniqueImages([
-    itemImages[0] || productImages[0],
-    itemImages[1] || productImages[1],
-  ]).slice(0, 2);
+  const variantIds = uniqueIds([
+    ...(Array.isArray(
+      raw?.variant_ids,
+    )
+      ? raw.variant_ids
+      : []),
+    ...(Array.isArray(
+      raw?.variantIds,
+    )
+      ? raw.variantIds
+      : []),
+    variantId,
+  ]);
 
-  const colourValue = getString(
-    item?.colour_hex ||
-      item?.color_hex ||
-      item?.colourHex ||
-      item?.colorHex ||
-      item?.swatch_color ||
-      item?.swatchColor ||
+  const barcodes = uniqueStrings([
+    ...(Array.isArray(
+      raw?.barcodes,
+    )
+      ? raw.barcodes
+      : []),
+    ...(Array.isArray(
+      raw?.ean_codes,
+    )
+      ? raw.ean_codes
+      : []),
+    ...(Array.isArray(
+      raw?.eanCodes,
+    )
+      ? raw.eanCodes
+      : []),
+    barcode,
+  ]);
+
+  const colorValue = text(
+    raw?.colour_hex ||
+      raw?.color_hex ||
+      raw?.colourHex ||
+      raw?.colorHex ||
+      raw?.swatch_color ||
+      raw?.swatchColor ||
       product?.colour_hex ||
       product?.color_hex ||
       product?.colourHex ||
       product?.colorHex ||
       product?.swatch_color ||
-      product?.swatchColor ||
-      "",
+      product?.swatchColor,
   );
 
-  return {
-    id:
-      item?.id ||
-      item?.variant_id ||
-      item?.variantId ||
-      "",
-    variant_id:
-      item?.variant_id ||
-      item?.variantId ||
-      item?.id ||
-      "",
-    product_id:
-      item?.product_id ||
-      item?.productId ||
-      product?.productId ||
-      product?.product_id ||
-      "",
-    size,
-    colour,
-    color: colour,
-    colour_hex: colourValue,
-    color_hex: colourValue,
-    colourHex: colourValue,
-    colorHex: colourValue,
-    swatch_color: colourValue,
-    swatchColor: colourValue,
-    barcode: getString(
-      item?.barcode ||
-        item?.ean_code ||
-        "",
-    ),
-    ean_code: getString(
-      item?.ean_code ||
-        item?.barcode ||
-        "",
-    ),
-    mrp,
-    base_sale_price: getNumber(
-      item?.base_sale_price ??
-        item?.original_sale_price ??
-        item?.sale_price,
-      finalB2c,
-    ),
-    original_sale_price: getNumber(
-      item?.original_sale_price ??
-        item?.base_sale_price ??
-        item?.sale_price,
-      finalB2c,
-    ),
-    sale_price: finalB2c,
-    price: getNumber(
-      item?.price ??
-        item?.sale_price ??
-        item?.final_price_b2c,
-      finalB2c,
-    ),
-    selling_price: getNumber(
-      item?.selling_price ??
-        item?.sale_price ??
-        item?.final_price_b2c,
-      finalB2c,
-    ),
-    discounted_price: getNumber(
-      item?.discounted_price ??
-        item?.sale_price ??
-        item?.final_price_b2c,
-      finalB2c,
-    ),
-    mahaveer_price: getNumber(
-      item?.mahaveer_price ??
-        item?.sale_price ??
-        item?.final_price_b2c,
-      finalB2c,
-    ),
-    cost_price: getNumber(
-      item?.cost_price ??
-        product?.cost_price,
-      0,
-    ),
-    b2c_discount_pct: b2cDiscount,
-    b2b_discount_pct: b2bDiscount,
-    original_price_b2c: originalB2c,
-    final_price_b2c: finalB2c,
-    original_price_b2b: originalB2b,
-    final_price_b2b: finalB2b,
-    on_hand: getNumber(
-      item?.on_hand ??
-        item?.onHand ??
-        0,
-    ),
-    reserved: getNumber(
-      item?.reserved ??
-        0,
-    ),
-    available_qty: getNumber(
-      item?.available_qty ??
-        item?.availableQty ??
-        item?.on_hand ??
-        item?.onHand ??
-        0,
-    ),
-    in_stock: Boolean(
-      item?.in_stock ??
-        item?.inStock ??
-        true,
-    ),
-    image_url:
-      variantImages[0] ||
-      item?.image_url ||
-      item?.imageUrl ||
-      "",
-    imageUrl:
-      variantImages[0] ||
-      item?.imageUrl ||
-      item?.image_url ||
-      "",
-    front_image_url:
-      variantImages[0] ||
-      item?.front_image_url ||
-      item?.frontImageUrl ||
-      "",
-    frontImageUrl:
-      variantImages[0] ||
-      item?.frontImageUrl ||
-      item?.front_image_url ||
-      "",
-    back_image_url:
-      variantImages[1] ||
-      item?.back_image_url ||
-      item?.backImageUrl ||
-      "",
-    backImageUrl:
-      variantImages[1] ||
-      item?.backImageUrl ||
-      item?.back_image_url ||
-      "",
-    main_image_url:
-      variantImages[0] ||
-      item?.main_image_url ||
-      item?.mainImageUrl ||
-      "",
-    mainImageUrl:
-      variantImages[0] ||
-      item?.mainImageUrl ||
-      item?.main_image_url ||
-      "",
-    images: variantImages.length
+  const variantImages = sourceImages(raw);
+
+  const fallbackImages = sourceImages(product);
+
+  const images = (
+    variantImages.length
       ? variantImages
-      : parseImages(item?.images),
+      : fallbackImages
+  ).slice(0, 2);
+
+  return {
+    id: variantId,
+    variantId,
+    variantIds,
+    productId,
+    size,
+    color,
+    colorValue,
+    barcode,
+    barcodes,
+    mrp,
+    salePrice,
+    b2cDiscount,
+    b2bDiscount,
+    onHand,
+    reserved,
+    available,
+    stockSources:
+      normalizeStockSources(
+        raw,
+        variantId,
+        available,
+      ),
+    images,
+    raw,
   };
 };
 
-const isValidVariantOption = (
-  variant: ProductVariantOption,
-) => {
-  const hasSize = Boolean(cleanSingleValue(variant.size));
-
-  const hasColor = Boolean(
-    cleanColourValue(
-      variant.colour ||
-        variant.color,
-    ),
-  );
-
-  const hasId = Boolean(
-    getString(
-      variant.variant_id ||
-        variant.id ||
-        variant.barcode ||
-        variant.ean_code,
-    ),
-  );
-
-  return hasId && (hasSize || hasColor);
-};
-
-const getProductVariants = (
-  product: Product | null,
-): ProductVariantOption[] => {
+const getVariants = (product: any) => {
   if (!product) return [];
 
-  const currentProduct: any = product;
+  const rawVariants =
+    Array.isArray(product.variants) &&
+    product.variants.length
+      ? product.variants
+      : [product];
 
-  const rawVariants = Array.isArray(currentProduct.variants)
-    ? currentProduct.variants
-    : [];
+  return rawVariants
+    .map((item: any) =>
+      normalizeVariant(item, product),
+    )
+    .filter(
+      (variant: Variant) =>
+        text(variant.variantId) &&
+        (variant.size ||
+          variant.color),
+    );
+};
 
-  const normalized: ProductVariantOption[] =
-    rawVariants.length
-      ? rawVariants.map((item: any) =>
-          normalizeVariant(item, currentProduct),
-        )
-      : [normalizeVariant(currentProduct, currentProduct)];
+const routeVariant = (
+  variants: Variant[],
+  routeId: any,
+) => {
+  const target = text(routeId);
 
-  const cleanVariants = normalized.filter(
-    isValidVariantOption,
+  if (!target) return null;
+
+  return (
+    variants.find(
+      (variant) =>
+        text(variant.variantId) ===
+          target ||
+        text(variant.id) === target ||
+        variant.variantIds.some(
+          (value) =>
+            text(value) === target,
+        ) ||
+        variant.barcode === target ||
+        variant.barcodes.some(
+          (value) => value === target,
+        ),
+    ) || null
+  );
+};
+
+const matchingVariants = (
+  variants: Variant[],
+  size: string,
+  color: string,
+) =>
+  variants.filter(
+    (variant) =>
+      (!size ||
+        sameSize(
+          variant.size,
+          size,
+        )) &&
+      (!color ||
+        sameColor(
+          variant.color,
+          color,
+        )),
   );
 
-  return cleanVariants.length
-    ? cleanVariants
-    : normalized.filter((variant) =>
-        getString(
-          variant.variant_id ||
-            variant.id,
+const aggregateSources = (
+  variants: Variant[],
+) => {
+  const grouped = new Map<
+    number,
+    number
+  >();
+
+  variants.forEach((variant) => {
+    const fallbackId = positiveId(
+      variant.variantId,
+    );
+
+    const sources =
+      variant.stockSources.length
+        ? variant.stockSources
+        : fallbackId
+          ? [
+              {
+                variantId:
+                  fallbackId,
+                available:
+                  variant.available,
+              },
+            ]
+          : [];
+
+    sources.forEach((source) => {
+      grouped.set(
+        source.variantId,
+        Math.max(
+          grouped.get(
+            source.variantId,
+          ) || 0,
+          source.available,
         ),
       );
-};
-
-const uniqueValues = (values: string[]) => {
-  const seen = new Set<string>();
-  const output: string[] = [];
-
-  values.forEach((value) => {
-    const clean = cleanSingleValue(value);
-
-    if (!clean) return;
-
-    const key = clean.toLowerCase();
-
-    if (!seen.has(key)) {
-      seen.add(key);
-      output.push(clean);
-    }
+    });
   });
 
-  return output;
+  return Array.from(grouped.entries())
+    .map(([variantId, available]) => ({
+      variantId,
+      available,
+    }))
+    .filter(
+      (source) =>
+        source.available > 0,
+    )
+    .sort(
+      (a, b) =>
+        b.available - a.available,
+    );
 };
 
-const sortVariantValues = (values: string[]) =>
-  uniqueValues(values).sort((a, b) => {
-    const firstNumber = parseFloat(
-      String(a).replace(/[^\d.]/g, ""),
-    );
-
-    const secondNumber = parseFloat(
-      String(b).replace(/[^\d.]/g, ""),
-    );
-
-    if (
-      Number.isFinite(firstNumber) &&
-      Number.isFinite(secondNumber) &&
-      firstNumber !== secondNumber
-    ) {
-      return firstNumber - secondNumber;
-    }
-
-    return String(a).localeCompare(
-      String(b),
-      undefined,
-      { numeric: true },
-    );
-  });
+const aggregateStock = (
+  variants: Variant[],
+) =>
+  aggregateSources(variants).reduce(
+    (sum, source) =>
+      sum + source.available,
+    0,
+  );
 
 const SIZE_ORDER = [
   "XXS",
@@ -1010,350 +979,121 @@ const SIZE_ORDER = [
   "6XL",
 ];
 
-const normalizeSizeLabel = (value: any) => {
-  const size = String(value || "")
-    .trim()
-    .toUpperCase()
-    .replace(/\s+/g, "");
+const sortSizes = (values: string[]) =>
+  uniqueStrings(values).sort(
+    (a, b) => {
+      const first =
+        normalizeSize(a);
 
-  const aliases: Record<string, string> = {
-    "2XL": "XXL",
-    "3XL": "XXXL",
-    XXXXL: "4XL",
-    XXXXXL: "5XL",
-    XXXXXXL: "6XL",
-  };
+      const second =
+        normalizeSize(b);
 
-  return aliases[size] || size;
-};
+      const firstIndex =
+        SIZE_ORDER.indexOf(first);
 
-const sortSizeValues = (values: string[]) =>
-  uniqueValues(values).sort((a, b) => {
-    const normalizedA = normalizeSizeLabel(a);
-    const normalizedB = normalizeSizeLabel(b);
-    const orderA = SIZE_ORDER.indexOf(normalizedA);
-    const orderB = SIZE_ORDER.indexOf(normalizedB);
+      const secondIndex =
+        SIZE_ORDER.indexOf(second);
 
-    if (orderA !== -1 && orderB !== -1) {
-      return orderA - orderB;
-    }
+      if (
+        firstIndex !== -1 &&
+        secondIndex !== -1
+      ) {
+        return (
+          firstIndex -
+          secondIndex
+        );
+      }
 
-    if (orderA !== -1) return -1;
-    if (orderB !== -1) return 1;
+      if (firstIndex !== -1) {
+        return -1;
+      }
 
-    const numberA = Number(normalizedA);
-    const numberB = Number(normalizedB);
+      if (secondIndex !== -1) {
+        return 1;
+      }
 
-    if (
-      Number.isFinite(numberA) &&
-      Number.isFinite(numberB)
-    ) {
-      return numberA - numberB;
-    }
+      const firstNumber =
+        Number(first);
 
-    return normalizedA.localeCompare(
-      normalizedB,
-      undefined,
-      { numeric: true },
-    );
-  });
+      const secondNumber =
+        Number(second);
 
-const sortColourValues = (values: string[]) => {
-  const unique = new Map<string, string>();
+      if (
+        Number.isFinite(
+          firstNumber,
+        ) &&
+        Number.isFinite(
+          secondNumber,
+        )
+      ) {
+        return (
+          firstNumber -
+          secondNumber
+        );
+      }
+
+      return first.localeCompare(
+        second,
+        undefined,
+        {
+          numeric: true,
+        },
+      );
+    },
+  );
+
+const sortColors = (values: string[]) => {
+  const map = new Map<
+    string,
+    string
+  >();
 
   values.forEach((value) => {
-    const clean = cleanColourValue(value);
-    const key = normalizeColourName(clean);
+    const clean = text(value);
+    const key =
+      normalizeColor(clean);
 
-    if (!clean || !key || unique.has(key)) return;
-
-    unique.set(key, clean);
+    if (
+      clean &&
+      key &&
+      !map.has(key)
+    ) {
+      map.set(key, clean);
+    }
   });
 
-  return Array.from(unique.values()).sort((a, b) =>
-    normalizeColourName(a).localeCompare(
-      normalizeColourName(b),
-      undefined,
-      { numeric: true },
+  return Array.from(
+    map.values(),
+  ).sort((a, b) =>
+    normalizeColor(a).localeCompare(
+      normalizeColor(b),
     ),
   );
 };
 
-const findVariantByRouteId = (
-  variants: ProductVariantOption[],
-  routeId: any,
-) => {
-  const target = String(routeId || "").trim();
-
-  if (!target) return null;
-
-  return (
-    variants.find(
-      (variant) =>
-        String(variant.variant_id || "").trim() === target,
-    ) ||
-    variants.find(
-      (variant) =>
-        String(variant.id || "").trim() === target,
-    ) ||
-    variants.find(
-      (variant) =>
-        String(variant.barcode || "").trim() === target,
-    ) ||
-    variants.find(
-      (variant) =>
-        String(variant.ean_code || "").trim() === target,
-    ) ||
-    null
-  );
-};
-
-const findExactVariant = (
-  variants: ProductVariantOption[],
-  selectedSize: string,
-  selectedColor: string,
-) => {
-  if (!variants.length) return null;
-
-  return (
-    variants.find((variant) => {
-      const sizeMatches = selectedSize
-        ? sameValue(variant.size, selectedSize)
-        : true;
-
-      const colorMatches = selectedColor
-        ? sameColour(
-            getVariantColor(variant),
-            selectedColor,
-          )
-        : true;
-
-      return sizeMatches && colorMatches;
-    }) || null
-  );
-};
-
-const findVariantByColor = (
-  variants: ProductVariantOption[],
-  selectedColor: string,
-) => {
-  if (!selectedColor) return null;
-
-  return (
-    variants.find((variant) =>
-      sameColour(
-        getVariantColor(variant),
-        selectedColor,
-      ),
-    ) || null
-  );
-};
-
-const findVariantBySize = (
-  variants: ProductVariantOption[],
-  selectedSize: string,
-) => {
-  if (!selectedSize) return null;
-
-  return (
-    variants.find((variant) =>
-      sameValue(variant.size, selectedSize),
-    ) || null
-  );
-};
-
-const findPriceVariant = (
-  variants: ProductVariantOption[],
-  selectedSize: string,
-  selectedColor: string,
-) => {
-  if (!variants.length) return null;
-
-  const exact = findExactVariant(
-    variants,
-    selectedSize,
-    selectedColor,
-  );
-
-  if (exact) return exact;
-
-  const bySize = findVariantBySize(
-    variants,
-    selectedSize,
-  );
-
-  if (bySize) return bySize;
-
-  const byColor = findVariantByColor(
-    variants,
-    selectedColor,
-  );
-
-  if (byColor) return byColor;
-
-  return variants[0];
-};
-
-const findImageVariant = (
-  variants: ProductVariantOption[],
-  selectedSize: string,
-  selectedColor: string,
-) => {
-  if (!variants.length) return null;
-
-  const exact = findExactVariant(
-    variants,
-    selectedSize,
-    selectedColor,
-  );
-
-  if (exact) return exact;
-
-  const byColor = findVariantByColor(
-    variants,
-    selectedColor,
-  );
-
-  if (byColor) return byColor;
-
-  const bySize = findVariantBySize(
-    variants,
-    selectedSize,
-  );
-
-  if (bySize) return bySize;
-
-  return variants[0];
-};
-
-const getVariantStockCount = (
-  variant?: ProductVariantOption | null,
-) => {
-  if (!variant) return 0;
-
-  return (
-    getNumber(variant.available_qty, 0) ||
-    getNumber(variant.on_hand, 0) ||
-    0
-  );
-};
-
-const productIdentityKeys = (product: any) => {
-  const productId = String(
-    product?.productId ||
-      product?.product_id ||
-      "",
-  ).trim();
-
-  if (productId) {
-    return [`product:${productId}`];
-  }
-
-  const patternCode = getString(
-    product?.patternCode ||
-      product?.pattern_code,
-  );
-
-  if (patternCode) {
-    return [
-      `pattern:${String(
-        product?.gender ||
-          product?.category ||
-          "",
-      )
-        .trim()
-        .toLowerCase()}|${String(
-        product?.categoryId ||
-          product?.category_id ||
-          "",
-      )
-        .trim()
-        .toLowerCase()}|${String(
-        product?.brand ||
-          product?.brand_name ||
-          "",
-      )
-        .trim()
-        .toLowerCase()}|${patternCode.toLowerCase()}`,
-    ];
-  }
-
-  const titleKey = `${String(
-    product?.gender ||
-      product?.category ||
-      "",
-  )
-    .trim()
-    .toLowerCase()}|${String(
-    product?.categoryId ||
-      product?.category_id ||
-      "",
-  )
-    .trim()
-    .toLowerCase()}|${String(
-    product?.brand ||
-      product?.brand_name ||
-      "",
-  )
-    .trim()
-    .toLowerCase()}|${String(
-    product?.title ||
-      product?.name ||
-      product?.product_name ||
-      "",
-  )
-    .trim()
-    .toLowerCase()}`;
-
-  return titleKey === "|||"
-    ? []
-    : [`details:${titleKey}`];
-};
-
-const hasSameProductIdentity = (a: any, b: any) => {
-  const firstKeys = new Set(productIdentityKeys(a));
-
-  return productIdentityKeys(b).some((key) =>
-    firstKeys.has(key),
-  );
-};
-
-const COLOR_MAP: Record<string, string> = {
+const COLOR_MAP: Record<
+  string,
+  string
+> = {
   black: "#000000",
   white: "#ffffff",
   red: "#dc2626",
-  crimson: "#dc143c",
-  scarlet: "#ff2400",
   maroon: "#800000",
   burgundy: "#800020",
   wine: "#722f37",
   "french wine": "#781f3d",
-  cherry: "#de3163",
-  "cherry red": "#de3163",
-  "cherry brown": "#7c2935",
   pink: "#ec4899",
   "light pink": "#f9a8d4",
   "baby pink": "#f4c2c2",
-  "hot pink": "#ff69b4",
-  "rose pink": "#ff66cc",
-  "dusty pink": "#d8a7b1",
-  "strawberry pink": "#fc5a8d",
   onion: "#c7789f",
   peach: "#ffcba4",
-  coral: "#ff7f50",
-  salmon: "#fa8072",
   orange: "#f97316",
-  mango: "#f4a300",
-  spice: "#b85c38",
   rust: "#b7410e",
-  copper: "#b87333",
   brown: "#78350f",
   chocolate: "#7b3f00",
-  "coffee brown": "#4b2e1f",
   coffee: "#6f4e37",
   tan: "#d2b48c",
   beige: "#d8c3a5",
-  biscuit: "#d2b48c",
   camel: "#c19a6b",
   khaki: "#bdb76b",
   cream: "#fffdd0",
@@ -1361,7 +1101,6 @@ const COLOR_MAP: Record<string, string> = {
   "off white": "#faf9f6",
   skin: "#d2a679",
   gold: "#d4af37",
-  golden: "#d4af37",
   mustard: "#c99700",
   silver: "#c0c0c0",
   grey: "#6b7280",
@@ -1369,23 +1108,18 @@ const COLOR_MAP: Record<string, string> = {
   "light grey": "#d1d5db",
   "dark grey": "#374151",
   "ash grey": "#b2beb5",
-  "elephant grey": "#8b8c89",
   charcoal: "#36454f",
   stone: "#8f8f8f",
-  limestone: "#d8d6cf",
   blue: "#2563eb",
   "dark blue": "#1e3a8a",
   "light blue": "#add8e6",
   navy: "#000080",
   "navy blue": "#000080",
-  "navy b": "#000080",
   "horizon blue": "#4f6f8f",
-  "horizon blu": "#4f6f8f",
   "royal blue": "#4169e1",
   "sky blue": "#87ceeb",
   "sea blue": "#2e8b9e",
   "ice blue": "#d9f2ff",
-  "aqua blue": "#00ffff",
   aqua: "#00ffff",
   aquamarine: "#7fffd4",
   cyan: "#00bcd4",
@@ -1397,19 +1131,13 @@ const COLOR_MAP: Record<string, string> = {
   "light green": "#90ee90",
   "bottle green": "#006a4e",
   "forest green": "#228b22",
-  "sea green": "#2e8b57",
   "peacock green": "#007f72",
   "olive green": "#556b2f",
   olive: "#808000",
   "mehendi green": "#556b2f",
   "rama green": "#008f83",
   "light rama green": "#78d7c4",
-  "ice green": "#d7f7e8",
-  fern: "#4f7942",
-  pista: "#93c572",
-  pistachio: "#93c572",
   mint: "#98ff98",
-  lime: "#84cc16",
   yellow: "#eab308",
   lemon: "#fff44f",
   purple: "#7e22ce",
@@ -1421,114 +1149,132 @@ const COLOR_MAP: Record<string, string> = {
   magenta: "#d946ef",
 };
 
-const normalizeProvidedColour = (value: any) => {
-  const provided = getString(value);
-
-  if (!provided) return "";
+const colorBackground = (
+  name: string,
+  provided?: string,
+) => {
+  const supplied = text(provided);
 
   if (
-    /^#([0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(
-      provided,
+    /^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(
+      supplied,
     ) ||
-    /^(rgb|rgba|hsl|hsla)\(/i.test(provided) ||
-    /^(linear-gradient|radial-gradient|conic-gradient)\(/i.test(
-      provided,
+    /^(rgb|rgba|hsl|hsla|linear-gradient|radial-gradient|conic-gradient)\(/i.test(
+      supplied,
     )
   ) {
-    return provided;
+    return supplied;
   }
 
-  return "";
-};
+  const normalized =
+    normalizeColor(name);
 
-const getNamedColour = (value: any) => {
-  const normalized = normalizeColourName(value);
+  if (
+    normalized === "multicolor" ||
+    normalized.includes(
+      "rainbow",
+    ) ||
+    normalized.includes(
+      "assorted",
+    )
+  ) {
+    return "conic-gradient(#ef4444,#f59e0b,#eab308,#22c55e,#06b6d4,#3b82f6,#8b5cf6,#ec4899,#ef4444)";
+  }
 
-  if (!normalized) return "";
+  const parts = text(name)
+    .split(
+      /\s*(?:\/|\+|&|,)\s*/,
+    )
+    .map(normalizeColor)
+    .filter(Boolean);
+
+  if (
+    parts.length > 1 &&
+    parts.every(
+      (part) =>
+        COLOR_MAP[part],
+    )
+  ) {
+    const stops = parts
+      .map((part, index) => {
+        const start = Math.round(
+          (index /
+            parts.length) *
+            100,
+        );
+
+        const end = Math.round(
+          ((index + 1) /
+            parts.length) *
+            100,
+        );
+
+        return `${COLOR_MAP[part]} ${start}% ${end}%`;
+      })
+      .join(",");
+
+    return `linear-gradient(135deg,${stops})`;
+  }
 
   if (COLOR_MAP[normalized]) {
     return COLOR_MAP[normalized];
   }
 
-  const compact = normalized.replace(/\s+/g, "");
-
-  const compactMatch = Object.entries(COLOR_MAP).find(
-    ([name]) => name.replace(/\s+/g, "") === compact,
-  );
-
-  if (compactMatch) {
-    return compactMatch[1];
-  }
-
-  if (normalized.includes("navy")) {
+  if (
+    normalized.includes("navy")
+  ) {
     return COLOR_MAP["navy blue"];
   }
 
-  if (normalized.includes("horizon")) {
-    return COLOR_MAP["horizon blue"];
+  if (
+    normalized.includes(
+      "horizon",
+    )
+  ) {
+    return COLOR_MAP[
+      "horizon blue"
+    ];
   }
 
-  if (normalized.includes("royal") && normalized.includes("blue")) {
-    return COLOR_MAP["royal blue"];
-  }
-
-  if (normalized.includes("sky") && normalized.includes("blue")) {
-    return COLOR_MAP["sky blue"];
-  }
-
-  if (normalized.includes("sea") && normalized.includes("blue")) {
-    return COLOR_MAP["sea blue"];
-  }
-
-  if (normalized.includes("ice") && normalized.includes("blue")) {
-    return COLOR_MAP["ice blue"];
-  }
-
-  if (normalized.includes("dark") && normalized.includes("blue")) {
-    return COLOR_MAP["dark blue"];
-  }
-
-  if (normalized.includes("light") && normalized.includes("blue")) {
-    return COLOR_MAP["light blue"];
-  }
-
-  if (normalized.includes("blue")) {
+  if (
+    normalized.includes("blue")
+  ) {
     return COLOR_MAP.blue;
   }
 
-  if (normalized.includes("black")) {
-    return COLOR_MAP.black;
-  }
-
-  if (normalized.includes("white")) {
-    return COLOR_MAP.white;
-  }
-
-  if (normalized.includes("green")) {
+  if (
+    normalized.includes("green")
+  ) {
     return COLOR_MAP.green;
   }
 
-  if (normalized.includes("red")) {
+  if (
+    normalized.includes("black")
+  ) {
+    return COLOR_MAP.black;
+  }
+
+  if (
+    normalized.includes("white")
+  ) {
+    return COLOR_MAP.white;
+  }
+
+  if (
+    normalized.includes("red")
+  ) {
     return COLOR_MAP.red;
   }
 
-  if (normalized.includes("yellow")) {
-    return COLOR_MAP.yellow;
-  }
-
-  if (normalized.includes("orange")) {
-    return COLOR_MAP.orange;
-  }
-
-  if (normalized.includes("purple")) {
-    return COLOR_MAP.purple;
-  }
-
-  if (normalized.includes("pink")) {
+  if (
+    normalized.includes("pink")
+  ) {
     return COLOR_MAP.pink;
   }
 
-  if (normalized.includes("brown")) {
+  if (
+    normalized.includes("brown")
+  ) {
     return COLOR_MAP.brown;
   }
 
@@ -1539,416 +1285,535 @@ const getNamedColour = (value: any) => {
     return COLOR_MAP.grey;
   }
 
-  return "";
-};
-
-const getColourParts = (value: any) =>
-  String(value || "")
-    .trim()
-    .split(/\s*(?:\/|\+|&|,)\s*/)
-    .map((part) => normalizeColourName(part))
-    .filter(Boolean);
-
-const COMBINATION_MAP: Record<string, string> = {
-  "light rama green & onion":
-    "linear-gradient(135deg,#78d7c4 0%,#78d7c4 50%,#c7789f 50%,#c7789f 100%)",
-  "mustard & mango":
-    "linear-gradient(135deg,#c99700 0%,#c99700 50%,#f4a300 50%,#f4a300 100%)",
-  "peacock green & onion":
-    "linear-gradient(135deg,#007f72 0%,#007f72 50%,#c7789f 50%,#c7789f 100%)",
-  "mauve & aquamarine":
-    "linear-gradient(135deg,#b784a7 0%,#b784a7 50%,#7fffd4 50%,#7fffd4 100%)",
-  "cherry brown & ice green":
-    "linear-gradient(135deg,#7c2935 0%,#7c2935 50%,#d7f7e8 50%,#d7f7e8 100%)",
-  "indigo & violet":
-    "linear-gradient(135deg,#4b0082 0%,#4b0082 50%,#7f00ff 50%,#7f00ff 100%)",
-  "spice & mango":
-    "linear-gradient(135deg,#b85c38 0%,#b85c38 50%,#f4a300 50%,#f4a300 100%)",
-  "plum & fern":
-    "linear-gradient(135deg,#8e4585 0%,#8e4585 50%,#4f7942 50%,#4f7942 100%)",
-  "french wine & lavender":
-    "linear-gradient(135deg,#781f3d 0%,#781f3d 50%,#c4a7e7 50%,#c4a7e7 100%)",
-  "plum & peacock green":
-    "linear-gradient(135deg,#8e4585 0%,#8e4585 50%,#007f72 50%,#007f72 100%)",
-};
-
-const getMultiColourBackground = (value: any) => {
-  const normalized = normalizeColourName(value);
-
-  if (
-    normalized === "multicolor" ||
-    normalized.includes("rainbow") ||
-    normalized.includes("assorted")
-  ) {
-    return "conic-gradient(#ef4444,#f59e0b,#eab308,#22c55e,#06b6d4,#3b82f6,#8b5cf6,#ec4899,#ef4444)";
-  }
-
-  const parts = getColourParts(value);
-
-  if (parts.length < 2) return "";
-
-  const combinationKey = parts.join(" & ");
-
-  if (COMBINATION_MAP[combinationKey]) {
-    return COMBINATION_MAP[combinationKey];
-  }
-
-  const colours = parts.map((part) =>
-    getNamedColour(part),
-  );
-
-  if (colours.some((colour) => !colour)) return "";
-
-  const stops = colours
-    .map((colour, index) => {
-      const start = Math.round(
-        (index / colours.length) * 100,
-      );
-
-      const end = Math.round(
-        ((index + 1) / colours.length) * 100,
-      );
-
-      return `${colour} ${start}% ${end}%`;
-    })
-    .join(",");
-
-  return `linear-gradient(135deg,${stops})`;
-};
-
-const getColorBackground = (
-  value: any,
-  providedColour?: any,
-) => {
-  const provided = normalizeProvidedColour(providedColour);
-
-  if (provided) return provided;
-
-  const rawValue = getString(value);
-  const direct = normalizeProvidedColour(rawValue);
-
-  if (direct) return direct;
-
-  const multiColour = getMultiColourBackground(rawValue);
-
-  if (multiColour) return multiColour;
-
-  const namedColour = getNamedColour(rawValue);
-
-  if (namedColour) return namedColour;
-
   return "#d1d5db";
 };
 
-const CustomLeftArrow = ({ onClick }: any) => (
+const sameProduct = (
+  first: any,
+  second: any,
+) => {
+  const firstId =
+    productBackendId(first);
+
+  const secondId =
+    productBackendId(second);
+
+  if (firstId && secondId) {
+    return firstId === secondId;
+  }
+
+  const firstKey = [
+    text(
+      first?.gender ||
+        first?.category,
+    ).toLowerCase(),
+    productCategoryId(first),
+    text(
+      first?.brand ||
+        first?.brand_name,
+    ).toLowerCase(),
+    text(
+      first?.title ||
+        first?.name ||
+        first?.product_name,
+    ).toLowerCase(),
+  ].join("|");
+
+  const secondKey = [
+    text(
+      second?.gender ||
+        second?.category,
+    ).toLowerCase(),
+    productCategoryId(second),
+    text(
+      second?.brand ||
+        second?.brand_name,
+    ).toLowerCase(),
+    text(
+      second?.title ||
+        second?.name ||
+        second?.product_name,
+    ).toLowerCase(),
+  ].join("|");
+
+  return firstKey === secondKey;
+};
+
+const CustomLeftArrow = ({
+  onClick,
+}: any) => (
   <button
     type="button"
     onClick={onClick}
-    className="absolute opacity-0 group-hover:opacity-100 left-2 cursor-pointer top-1/2 -translate-y-1/2 bg-white rounded-full p-2 md:p-1 shadow-md border border-gray-100 text-gray-400 hover:text-black transition z-10"
+    className="absolute opacity-0 group-hover:opacity-100 left-2 cursor-pointer top-1/2 -translate-y-1/2 bg-white rounded-full p-2 shadow-md border border-gray-100 text-gray-400 hover:text-black transition z-10"
   >
     <FiChevronLeft size={20} />
   </button>
 );
 
-const CustomRightArrow = ({ onClick }: any) => (
+const CustomRightArrow = ({
+  onClick,
+}: any) => (
   <button
     type="button"
     onClick={onClick}
-    className="absolute opacity-0 group-hover:opacity-100 right-2 cursor-pointer top-1/2 -translate-y-1/2 bg-white rounded-full p-2 md:p-1 shadow-md border border-gray-100 text-gray-400 hover:text-black transition z-10"
+    className="absolute opacity-0 group-hover:opacity-100 right-2 cursor-pointer top-1/2 -translate-y-1/2 bg-white rounded-full p-2 shadow-md border border-gray-100 text-gray-400 hover:text-black transition z-10"
   >
     <FiChevronRight size={20} />
   </button>
 );
 
+const RatingStars = ({
+  rating,
+}: {
+  rating: number;
+}) => {
+  const full = Math.floor(rating);
+  const half = rating % 1 !== 0;
+
+  const empty =
+    5 - full - (half ? 1 : 0);
+
+  return (
+    <div className="flex items-center gap-1">
+      {Array.from({
+        length: full,
+      }).map((_, index) => (
+        <FaStar
+          key={`full-${index}`}
+          size={14}
+        />
+      ))}
+
+      {half ? (
+        <FaStarHalfAlt size={14} />
+      ) : null}
+
+      {Array.from({
+        length: empty,
+      }).map((_, index) => (
+        <FaRegStar
+          key={`empty-${index}`}
+          size={14}
+        />
+      ))}
+    </div>
+  );
+};
+
 const ProductDetails: React.FC = () => {
   const navigate = useNavigate();
-  const { id } = useParams<{ id: string }>();
 
-  const [product, setProduct] = useState<Product | null>(null);
-  const [recommendedProducts, setRecommendedProducts] =
-    useState<Product[]>([]);
-  const [loadingProduct, setLoadingProduct] = useState(true);
-  const [loadError, setLoadError] = useState("");
-  const [selectedIndex, setSelectedIndex] = useState(0);
-  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
-  const [lightboxIndex, setLightboxIndex] = useState(0);
-  const [selectedOptions, setSelectedOptions] = useState<
-    Record<string, string>
-  >({});
-  const [quantity, setQuantity] = useState(1);
-  const [isAdding, setIsAdding] = useState(false);
-  const [cartError, setCartError] = useState("");
-  const [cartMessage, setCartMessage] = useState("");
-  const [isWishlisted, setIsWishlisted] = useState(false);
-  const [isUpdatingWishlist, setIsUpdatingWishlist] =
+  const { id } = useParams<{
+    id: string;
+  }>();
+
+  const [product, setProduct] =
+    useState<Product | null>(null);
+
+  const [
+    recommended,
+    setRecommended,
+  ] = useState<Product[]>([]);
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [
+    loadError,
+    setLoadError,
+  ] = useState("");
+
+  const [
+    selectedColor,
+    setSelectedColor,
+  ] = useState("");
+
+  const [
+    selectedSize,
+    setSelectedSize,
+  ] = useState("");
+
+  const [quantity, setQuantity] =
+    useState(1);
+
+  const [
+    selectedImage,
+    setSelectedImage,
+  ] = useState(0);
+
+  const [
+    lightboxImage,
+    setLightboxImage,
+  ] = useState(0);
+
+  const [
+    lightboxOpen,
+    setLightboxOpen,
+  ] = useState(false);
+
+  const [adding, setAdding] =
     useState(false);
 
-  const mainCarouselRef = useRef<any>(null);
-  const lightboxCarouselRef = useRef<any>(null);
-  const actionContainerRef = useRef<HTMLDivElement>(null);
-  const desktopThumbContainerRef = useRef<HTMLDivElement>(null);
-  const mobileThumbCarouselRef = useRef<any>(null);
+  const [
+    cartError,
+    setCartError,
+  ] = useState("");
 
-  const backendProductId = useMemo(
-    () => getBackendProductId(product),
+  const [
+    cartMessage,
+    setCartMessage,
+  ] = useState("");
+
+  const [
+    wishlisted,
+    setWishlisted,
+  ] = useState(false);
+
+  const [
+    updatingWishlist,
+    setUpdatingWishlist,
+  ] = useState(false);
+
+  const mainCarouselRef =
+    useRef<any>(null);
+
+  const lightboxCarouselRef =
+    useRef<any>(null);
+
+  const thumbRef =
+    useRef<HTMLDivElement>(null);
+
+  const backendProductId =
+    useMemo(
+      () =>
+        productBackendId(product),
+      [product],
+    );
+
+  const allVariants = useMemo(
+    () => getVariants(product),
     [product],
   );
 
-  const allVariantOptions = useMemo(
-    () => getProductVariants(product),
-    [product],
+  const activeVariants = useMemo(
+    () => {
+      const stocked =
+        allVariants.filter(
+          (variant) =>
+            variant.available > 0,
+        );
+
+      return stocked.length
+        ? stocked
+        : allVariants;
+    },
+    [allVariants],
   );
 
-  const availableVariantOptions = useMemo(
+  const colors = useMemo(
     () =>
-      allVariantOptions.filter(
-        (variant) =>
-          getVariantStockCount(variant) > 0,
-      ),
-    [allVariantOptions],
-  );
-
-  const variantOptions = availableVariantOptions.length
-    ? availableVariantOptions
-    : allVariantOptions;
-
-  const selectedSize = selectedOptions.Size || "";
-  const selectedColor = selectedOptions.Color || "";
-
-  const exactSelectedVariant = useMemo(
-    () =>
-      findExactVariant(
-        variantOptions,
-        selectedSize,
-        selectedColor,
-      ),
-    [variantOptions, selectedSize, selectedColor],
-  );
-
-  const priceVariant = useMemo(
-    () =>
-      findPriceVariant(
-        variantOptions,
-        selectedSize,
-        selectedColor,
-      ),
-    [variantOptions, selectedSize, selectedColor],
-  );
-
-  const imageVariant = useMemo(
-    () =>
-      findImageVariant(
-        variantOptions,
-        selectedSize,
-        selectedColor,
-      ),
-    [variantOptions, selectedSize, selectedColor],
-  );
-
-  const colorValues = useMemo(
-    () =>
-      sortColourValues(
-        variantOptions.map((variant) =>
-          getVariantColor(variant),
+      sortColors(
+        activeVariants.map(
+          (variant) =>
+            variant.color,
         ),
       ),
-    [variantOptions],
+    [activeVariants],
   );
 
-  const sizeValues = useMemo(() => {
+  const sizes = useMemo(() => {
     const filtered = selectedColor
-      ? variantOptions.filter((variant) =>
-          sameColour(
-            getVariantColor(variant),
-            selectedColor,
-          ),
+      ? activeVariants.filter(
+          (variant) =>
+            sameColor(
+              variant.color,
+              selectedColor,
+            ),
         )
-      : variantOptions;
+      : activeVariants;
 
-    return sortSizeValues(
-      filtered.map((variant) =>
-        cleanSingleValue(variant.size),
+    return sortSizes(
+      filtered.map(
+        (variant) =>
+          variant.size,
       ),
     );
-  }, [variantOptions, selectedColor]);
+  }, [
+    activeVariants,
+    selectedColor,
+  ]);
 
-  useEffect(() => {
-    if (desktopThumbContainerRef.current) {
-      const activeThumb =
-        desktopThumbContainerRef.current.children[
-          selectedIndex
-        ] as HTMLElement;
+  const selectedVariants =
+    useMemo(
+      () =>
+        matchingVariants(
+          activeVariants,
+          selectedSize,
+          selectedColor,
+        ),
+      [
+        activeVariants,
+        selectedSize,
+        selectedColor,
+      ],
+    );
 
-      if (activeThumb) {
-        activeThumb.scrollIntoView({
-          behavior: "smooth",
-          block: "nearest",
-        });
-      }
-    }
+  const selectedVariant =
+    selectedVariants[0] ||
+    activeVariants.find(
+      (variant) =>
+        (!selectedColor ||
+          sameColor(
+            variant.color,
+            selectedColor,
+          )) &&
+        (!selectedSize ||
+          sameSize(
+            variant.size,
+            selectedSize,
+          )),
+    ) ||
+    activeVariants[0] ||
+    null;
 
-    if (mobileThumbCarouselRef.current) {
-      mobileThumbCarouselRef.current.goToSlide(
-        selectedIndex,
-      );
-    }
-  }, [selectedIndex]);
+  const stockSources = useMemo(
+    () =>
+      aggregateSources(
+        selectedVariants.length
+          ? selectedVariants
+          : selectedVariant
+            ? [selectedVariant]
+            : [],
+      ),
+    [
+      selectedVariants,
+      selectedVariant,
+    ],
+  );
 
-  useEffect(() => {
-    if (!imageVariant?.variant_id) return;
+  const availableStock =
+    useMemo(
+      () =>
+        aggregateStock(
+          selectedVariants.length
+            ? selectedVariants
+            : selectedVariant
+              ? [selectedVariant]
+              : [],
+        ),
+      [
+        selectedVariants,
+        selectedVariant,
+      ],
+    );
 
-    setSelectedIndex(0);
-    setLightboxIndex(0);
+  const currentPrice =
+    selectedVariant?.salePrice ||
+    numberValue(
+      (product as any)?.price,
+      0,
+    );
 
-    setTimeout(() => {
-      if (mainCarouselRef.current) {
-        mainCarouselRef.current.goToSlide(2);
-      }
+  const comparePrice =
+    selectedVariant?.mrp ||
+    numberValue(
+      (product as any)
+        ?.originalPrice ||
+        (product as any)?.mrp ||
+        (product as any)?.price,
+      currentPrice,
+    );
 
-      if (mobileThumbCarouselRef.current) {
-        mobileThumbCarouselRef.current.goToSlide(0);
-      }
-    }, 0);
-  }, [imageVariant?.variant_id]);
+  const images = useMemo(() => {
+    const variantsForImages =
+      selectedVariants.length
+        ? selectedVariants
+        : selectedVariant
+          ? [selectedVariant]
+          : [];
+
+    return getSelectedVariantImages(
+      variantsForImages,
+      product,
+    ).slice(0, 2);
+  }, [
+    selectedVariants,
+    selectedVariant,
+    product,
+  ]);
+
+  const path =
+    productCategoryPath(product);
 
   useEffect(() => {
     let alive = true;
 
-    const loadProduct = async () => {
+    const load = async () => {
       if (!id) {
-        setLoadingProduct(false);
+        setLoading(false);
         setProduct(null);
         return;
       }
 
-      setLoadingProduct(true);
+      setLoading(true);
       setLoadError("");
 
       try {
-        const foundProduct = await fetchProductById(id, 3);
+        const found =
+          await fetchProductById(
+            id,
+            3,
+          );
 
         if (!alive) return;
 
-        if (!foundProduct) {
+        if (!found) {
           setProduct(null);
-          setLoadError("Product not found");
+          setLoadError(
+            "Product not found",
+          );
           return;
         }
 
-        const allVariants = getProductVariants(foundProduct);
+        const variants =
+          getVariants(found);
 
-        const availableVariants = allVariants.filter(
-          (variant) =>
-            getVariantStockCount(variant) > 0,
-        );
+        const available =
+          variants.filter(
+            (variant) =>
+              variant.available > 0,
+          );
 
-        const variants = availableVariants.length
-          ? availableVariants
-          : allVariants;
+        const usable =
+          available.length
+            ? available
+            : variants;
 
-        const routeVariant =
-          findVariantByRouteId(variants, id) ||
-          findVariantByRouteId(allVariants, id);
-
-        const productColor = cleanColourValue(
-          (foundProduct as any).selectedColor ||
-            (foundProduct as any).selected_colour ||
-            (foundProduct as any).displayColor ||
-            (foundProduct as any).display_color ||
-            (foundProduct as any).color ||
-            (foundProduct as any).colour,
-        );
-
-        const productSize = cleanSingleValue(
-          (foundProduct as any).selectedSize ||
-            (foundProduct as any).selected_size ||
-            (foundProduct as any).displaySize ||
-            (foundProduct as any).display_size ||
-            (foundProduct as any).size,
-        );
-
-        const fieldVariant =
-          findExactVariant(
-            variants,
-            productSize,
-            productColor,
+        const routed =
+          routeVariant(
+            usable,
+            id,
           ) ||
-          findVariantByColor(variants, productColor) ||
-          findVariantBySize(variants, productSize);
+          routeVariant(
+            variants,
+            id,
+          );
 
-        const firstVariant =
-          routeVariant ||
-          fieldVariant ||
+        const productColor = text(
+          (found as any)
+            .selectedColor ||
+            (found as any)
+              .selected_colour ||
+            (found as any)
+              .displayColor ||
+            (found as any)
+              .display_color ||
+            (found as any).color ||
+            (found as any).colour,
+        );
+
+        const productSize = text(
+          (found as any)
+            .selectedSize ||
+            (found as any)
+              .selected_size ||
+            (found as any)
+              .displaySize ||
+            (found as any)
+              .display_size ||
+            (found as any).size,
+        );
+
+        const first =
+          routed ||
+          usable.find(
+            (variant) =>
+              (!productColor ||
+                sameColor(
+                  variant.color,
+                  productColor,
+                )) &&
+              (!productSize ||
+                sameSize(
+                  variant.size,
+                  productSize,
+                )),
+          ) ||
+          usable[0] ||
           variants[0];
 
-        const initialOptions: Record<string, string> = {};
+        setProduct(found);
 
-        const initialColor =
-          getVariantColor(firstVariant) ||
-          productColor ||
-          cleanColourValue(
-            (foundProduct as any).colors?.[0],
-          );
-
-        const initialSize = cleanSingleValue(
-          firstVariant?.size ||
-            productSize ||
-            (foundProduct as any).sizes?.[0],
+        setSelectedColor(
+          first?.color ||
+            productColor ||
+            text(
+              (found as any)
+                .colors?.[0],
+            ),
         );
 
-        if (initialColor) {
-          initialOptions.Color = initialColor;
-        }
+        setSelectedSize(
+          first?.size ||
+            productSize ||
+            text(
+              (found as any)
+                .sizes?.[0],
+            ),
+        );
 
-        if (initialSize) {
-          initialOptions.Size = initialSize;
-        }
-
-        setProduct(foundProduct);
-        setSelectedOptions(initialOptions);
-        setSelectedIndex(0);
-        setLightboxIndex(0);
         setQuantity(1);
+        setSelectedImage(0);
+        setLightboxImage(0);
 
         try {
-          const stored: string[] = JSON.parse(
-            localStorage.getItem("recentlyViewed") || "[]",
-          );
+          const stored: string[] =
+            JSON.parse(
+              localStorage.getItem(
+                "recentlyViewed",
+              ) || "[]",
+            );
 
-          const currentId = String(
-            firstVariant?.variant_id ||
-              firstVariant?.id ||
-              (foundProduct as any).variantId ||
-              (foundProduct as any).variant_id ||
-              (foundProduct as any).id,
+          const current = text(
+            first?.variantId ||
+              (found as any)
+                .variantId ||
+              (found as any)
+                .variant_id ||
+              (found as any).id,
           );
-
-          const updated = [
-            currentId,
-            ...stored.filter(
-              (item) => item !== currentId,
-            ),
-          ].slice(0, 20);
 
           localStorage.setItem(
             "recentlyViewed",
-            JSON.stringify(updated),
+            JSON.stringify(
+              [
+                current,
+                ...stored.filter(
+                  (item) =>
+                    item !== current,
+                ),
+              ].slice(0, 20),
+            ),
           );
         } catch {}
-      } catch (loadProductError: any) {
+      } catch (error: any) {
         if (alive) {
           setProduct(null);
+
           setLoadError(
-            loadProductError?.message ||
+            error?.message ||
               "Unable to load product",
           );
         }
       } finally {
-        if (alive) setLoadingProduct(false);
+        if (alive) {
+          setLoading(false);
+        }
       }
     };
 
-    void loadProduct();
+    void load();
 
     return () => {
       alive = false;
@@ -1956,186 +1821,211 @@ const ProductDetails: React.FC = () => {
   }, [id]);
 
   useEffect(() => {
-    if (!variantOptions.length) return;
+    if (!activeVariants.length) {
+      return;
+    }
 
-    setSelectedOptions((previous) => {
-      const currentColor = previous.Color || "";
-      const currentSize = previous.Size || "";
-
-      const exact = findExactVariant(
-        variantOptions,
-        currentSize,
-        currentColor,
+    const exact =
+      matchingVariants(
+        activeVariants,
+        selectedSize,
+        selectedColor,
       );
 
-      if (exact) return previous;
+    if (exact.length) return;
 
-      const colorMatch = currentColor
-        ? variantOptions.find((variant) =>
-            sameColour(
-              getVariantColor(variant),
-              currentColor,
-            ),
+    const byColor =
+      selectedColor
+        ? activeVariants.filter(
+            (variant) =>
+              sameColor(
+                variant.color,
+                selectedColor,
+              ),
           )
-        : null;
+        : [];
 
-      const sizeMatch = currentSize
-        ? variantOptions.find((variant) =>
-            sameValue(
-              variant.size,
-              currentSize,
-            ),
+    const bySize =
+      selectedSize
+        ? activeVariants.filter(
+            (variant) =>
+              sameSize(
+                variant.size,
+                selectedSize,
+              ),
           )
-        : null;
+        : [];
 
-      const nextVariant =
-        colorMatch ||
-        sizeMatch ||
-        variantOptions[0];
+    const next =
+      byColor[0] ||
+      bySize[0] ||
+      activeVariants[0];
 
-      const nextColor = getVariantColor(nextVariant);
-
-      const nextSize = cleanSingleValue(
-        nextVariant?.size || "",
+    if (next) {
+      setSelectedColor(
+        next.color,
       );
 
-      const next: Record<string, string> = {
-        ...previous,
-      };
-
-      if (nextColor) next.Color = nextColor;
-      else delete next.Color;
-
-      if (nextSize) next.Size = nextSize;
-      else delete next.Size;
-
-      if (
-        sameColour(currentColor, next.Color) &&
-        sameValue(currentSize, next.Size)
-      ) {
-        return previous;
-      }
-
-      return next;
-    });
-  }, [variantOptions]);
+      setSelectedSize(
+        next.size,
+      );
+    }
+  }, [
+    activeVariants,
+    selectedColor,
+    selectedSize,
+  ]);
 
   useEffect(() => {
-    if (!selectedColor || !sizeValues.length) return;
+    if (
+      !selectedColor ||
+      !sizes.length
+    ) {
+      return;
+    }
 
-    setSelectedOptions((previous) => {
-      const currentSize = previous.Size || "";
-
-      if (
-        sizeValues.some((size) =>
-          sameValue(size, currentSize),
-        )
-      ) {
-        return previous;
-      }
-
-      return {
-        ...previous,
-        Size: sizeValues[0],
-      };
-    });
-  }, [selectedColor, sizeValues]);
+    if (
+      !sizes.some((size) =>
+        sameSize(
+          size,
+          selectedSize,
+        ),
+      )
+    ) {
+      setSelectedSize(sizes[0]);
+    }
+  }, [
+    selectedColor,
+    selectedSize,
+    sizes,
+  ]);
 
   useEffect(() => {
     setQuantity(1);
-  }, [priceVariant?.variant_id]);
+    setSelectedImage(0);
+    setLightboxImage(0);
+
+    setTimeout(() => {
+      mainCarouselRef.current?.goToSlide?.(
+        2,
+      );
+    }, 0);
+  }, [
+    selectedColor,
+    selectedSize,
+  ]);
+
+  useEffect(() => {
+    const active =
+      thumbRef.current?.children[
+        selectedImage
+      ] as
+        | HTMLElement
+        | undefined;
+
+    active?.scrollIntoView({
+      behavior: "smooth",
+      block: "nearest",
+    });
+  }, [selectedImage]);
 
   useEffect(() => {
     let alive = true;
 
-    const loadRecommended = async () => {
-      if (!product) {
-        setRecommendedProducts([]);
-        return;
-      }
+    const loadRecommended =
+      async () => {
+        if (!product) {
+          setRecommended([]);
+          return;
+        }
 
-      try {
-        const allProducts = await fetchProductsByGender(
-          product.gender,
-          3,
-        );
+        try {
+          const products =
+            await fetchProductsByGender(
+              (product as any)
+                .gender,
+              3,
+            );
 
-        if (!alive) return;
+          if (!alive) return;
 
-        const sourceCategoryId =
-          getProductCategoryIdValue(product);
+          const sourceCategory =
+            productCategoryId(
+              product,
+            );
 
-        const sourceGender = String(
-          (product as any).gender ||
-            (product as any).category ||
-            "",
-        )
-          .trim()
-          .toUpperCase();
+          const sourceGender =
+            text(
+              (product as any)
+                .gender ||
+                (product as any)
+                  .category,
+            ).toUpperCase();
 
-        const seen = new Set<string>();
+          const seen =
+            new Set<string>();
 
-        const recommended = allProducts
-          .filter(
-            (candidate) =>
-              !hasSameProductIdentity(
-                product,
-                candidate,
-              ),
-          )
-          .map((candidate) => {
-            const candidateCategoryId =
-              getProductCategoryIdValue(candidate);
-
-            const candidateGender = String(
-              (candidate as any).gender ||
-                (candidate as any).category ||
-                "",
+          const output = products
+            .filter(
+              (item) =>
+                !sameProduct(
+                  product,
+                  item,
+                ),
             )
-              .trim()
-              .toUpperCase();
+            .filter((item: any) => {
+              const gender = text(
+                item?.gender ||
+                  item?.category,
+              ).toUpperCase();
 
-            const categoryScore =
-              getCategoryAffinityScore(
-                sourceCategoryId,
-                candidateCategoryId,
+              return (
+                !sourceGender ||
+                !gender ||
+                sourceGender ===
+                  gender
+              );
+            })
+            .sort(
+              (
+                first: any,
+                second: any,
+              ) =>
+                Number(
+                  productCategoryId(
+                    second,
+                  ) === sourceCategory,
+                ) -
+                Number(
+                  productCategoryId(
+                    first,
+                  ) === sourceCategory,
+                ),
+            )
+            .filter((item: any) => {
+              const key = text(
+                productBackendId(
+                  item,
+                ) ||
+                  `${item?.brand}|${item?.title}|${productCategoryId(item)}`,
               );
 
-            const sameGender =
-              !sourceGender ||
-              !candidateGender ||
-              sourceGender === candidateGender;
+              if (seen.has(key)) {
+                return false;
+              }
 
-            return {
-              product: candidate,
-              score:
-                categoryScore +
-                (sameGender ? 500 : 0),
-              sameGender,
-            };
-          })
-          .filter((item) => item.sameGender)
-          .filter((item) => {
-            const key =
-              productIdentityKeys(item.product)[0] ||
-              String(item.product.id);
+              seen.add(key);
+              return true;
+            })
+            .slice(0, 10);
 
-            if (seen.has(key)) return false;
-
-            seen.add(key);
-            return true;
-          })
-          .sort((a, b) => b.score - a.score)
-          .slice(0, 10)
-          .map((item) => item.product);
-
-        setRecommendedProducts(recommended);
-      } catch {
-        if (alive) {
-          setRecommendedProducts([]);
+          setRecommended(output);
+        } catch {
+          if (alive) {
+            setRecommended([]);
+          }
         }
-      }
-    };
+      };
 
     void loadRecommended();
 
@@ -2145,36 +2035,46 @@ const ProductDetails: React.FC = () => {
   }, [product]);
 
   useEffect(() => {
-    const syncWishlistState = () => {
-      const user = getStoredUser();
-      const userId = Number(user?.id || 0);
+    const sync = () => {
+      const user =
+        getStoredUser();
 
-      if (!userId || !backendProductId) {
-        setIsWishlisted(false);
+      const userId = Number(
+        user?.id || 0,
+      );
+
+      if (
+        !userId ||
+        !backendProductId
+      ) {
+        setWishlisted(false);
         return;
       }
 
-      const ids = readWishlistIds(userId);
-
-      setIsWishlisted(ids.includes(backendProductId));
+      setWishlisted(
+        readWishlist(
+          userId,
+        ).includes(
+          backendProductId,
+        ),
+      );
     };
 
-    syncWishlistState();
+    sync();
 
     window.addEventListener(
       "wishlist-updated",
-      syncWishlistState,
+      sync,
     );
 
-    return () => {
+    return () =>
       window.removeEventListener(
         "wishlist-updated",
-        syncWishlistState,
+        sync,
       );
-    };
   }, [backendProductId]);
 
-  if (loadingProduct) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         Loading...
@@ -2190,12 +2090,17 @@ const ProductDetails: React.FC = () => {
         </h1>
 
         <p className="text-gray-500">
-          {loadError || "Unable to load this product."}
+          {loadError ||
+            "Unable to load this product."}
         </p>
 
         <button
           type="button"
-          onClick={() => navigate("/collections")}
+          onClick={() =>
+            navigate(
+              "/collections",
+            )
+          }
           className="px-8 py-3 bg-primary text-black font-bold uppercase text-sm"
         >
           Back to collections
@@ -2204,396 +2109,402 @@ const ProductDetails: React.FC = () => {
     );
   }
 
-  const availableStock = getVariantStockCount(
-    exactSelectedVariant ||
-      priceVariant,
-  );
-
-  const currentPrice = getNumber(
-    priceVariant?.final_price_b2c ??
-      priceVariant?.sale_price ??
-      product.price,
-  );
-
-  const currentCompareAtPrice = getNumber(
-    priceVariant?.original_price_b2c ??
-      priceVariant?.mrp ??
-      product.originalPrice ??
-      product.price,
-    currentPrice,
-  );
-
-  const currentVariant = {
-    available: availableStock > 0,
-    price: currentPrice,
-  };
-
-  const productCategoryPath =
-    getProductCategoryPathValue(product);
-
-  const formatMoney = (value: number) =>
-    `₹${Number(value || 0).toLocaleString("en-IN", {
+  const formatMoney = (
+    value: number,
+  ) =>
+    `₹${Number(
+      value || 0,
+    ).toLocaleString("en-IN", {
       maximumFractionDigits: 2,
     })}`;
 
-  const selectedVariantImages =
-    imageListFromVariant(imageVariant);
-
-  const fallbackImages =
-    productFallbackImages(product);
-
-  const displayImages = uniqueImages([
-    ...selectedVariantImages,
-    ...(selectedVariantImages.length ? [] : fallbackImages),
-  ]);
-
-  const finalDisplayImages = displayImages.length
-    ? displayImages
-    : ["/placeholder.svg"];
-
-  const hasMultipleImages =
-    finalDisplayImages.length > 1;
-
-  const optionsWithValues: OptionGroup[] = [];
-
-  if (colorValues.length > 0) {
-    optionsWithValues.push({
-      name: "Color",
-      values: colorValues,
-    });
-  }
-
-  if (sizeValues.length > 0) {
-    optionsWithValues.push({
-      name: "Size",
-      values: sizeValues,
-    });
-  }
-
-  const enhancedProduct = {
-    ...product,
-    options_with_values: optionsWithValues,
-  };
-
-  const handleOptionChange = (
-    name: string,
-    value: string,
+  const changeColor = (
+    color: string,
   ) => {
     setCartError("");
     setCartMessage("");
+    setSelectedColor(color);
 
-    const optionKey = name.toLowerCase();
-
-    const cleanValue =
-      optionKey === "color" ||
-      optionKey === "colour"
-        ? cleanColourValue(value)
-        : cleanSingleValue(value);
-
-    if (!cleanValue) return;
-
-    setSelectedOptions((previous) => {
-      const next: Record<string, string> = {
-        ...previous,
-        [name]: cleanValue,
-      };
-
-      if (
-        optionKey === "color" ||
-        optionKey === "colour"
-      ) {
-        const matchingColorVariants =
-          variantOptions.filter((variant) =>
-            sameColour(
-              getVariantColor(variant),
-              cleanValue,
-            ),
-          );
-
-        const validSizes = sortSizeValues(
-          matchingColorVariants.map((variant) =>
-            cleanSingleValue(variant.size),
+    const validSizes = sortSizes(
+      activeVariants
+        .filter((variant) =>
+          sameColor(
+            variant.color,
+            color,
           ),
-        );
-
-        const currentSize = next.Size || "";
-
-        if (
-          validSizes.length &&
-          !validSizes.some((size) =>
-            sameValue(size, currentSize),
-          )
-        ) {
-          next.Size = validSizes[0];
-        }
-
-        if (!validSizes.length) {
-          delete next.Size;
-        }
-      }
-
-      if (optionKey === "size") {
-        const matchingSizeVariants =
-          variantOptions.filter((variant) =>
-            sameValue(
-              variant.size,
-              cleanValue,
-            ),
-          );
-
-        const currentColor = next.Color || "";
-
-        if (
-          currentColor &&
-          !matchingSizeVariants.some((variant) =>
-            sameColour(
-              getVariantColor(variant),
-              currentColor,
-            ),
-          )
-        ) {
-          const nextColor =
-            sortVariantValues(
-              matchingSizeVariants.map((variant) =>
-                getVariantColor(variant),
-              ),
-            )[0] || "";
-
-          if (nextColor) next.Color = nextColor;
-          else delete next.Color;
-        }
-      }
-
-      return next;
-    });
-  };
-
-  const handleQuantityChange = (
-    type: "plus" | "minus",
-  ) => {
-    setQuantity((currentQuantity) => {
-      if (type === "minus") {
-        return Math.max(1, currentQuantity - 1);
-      }
-
-      if (availableStock > 0) {
-        return Math.min(
-          availableStock,
-          currentQuantity + 1,
-        );
-      }
-
-      return currentQuantity + 1;
-    });
-  };
-
-  const addProductToCart = async () => {
-    const user = getStoredUser();
-    const userId = Number(user?.id || 0);
-
-    if (!userId) {
-      navigate("/auth");
-      return false;
-    }
-
-    if (sizeValues.length > 0 && !selectedSize) {
-      setCartError("Please select size.");
-      setCartMessage("");
-      return false;
-    }
-
-    if (colorValues.length > 0 && !selectedColor) {
-      setCartError("Please select color.");
-      setCartMessage("");
-      return false;
-    }
-
-    if (!exactSelectedVariant) {
-      setCartError(
-        "Selected size and color combination is not available.",
-      );
-
-      setCartMessage("");
-      return false;
-    }
-
-    if (
-      getVariantStockCount(exactSelectedVariant) <= 0
-    ) {
-      setCartError("Product is out of stock.");
-      setCartMessage("");
-      return false;
-    }
-
-    const variantId = getVariantIdValue(
-      exactSelectedVariant,
-      product,
+        )
+        .map(
+          (variant) =>
+            variant.size,
+        ),
     );
 
-    const realProductId =
-      Number(
-        (product as any).productId ||
-          (product as any).product_id ||
-          0,
-      ) || variantId;
-
-    if (!variantId) {
-      setCartError("Product variant id not found.");
-      setCartMessage("");
-      return false;
+    if (
+      validSizes.length &&
+      !validSizes.some((size) =>
+        sameSize(
+          size,
+          selectedSize,
+        ),
+      )
+    ) {
+      setSelectedSize(
+        validSizes[0],
+      );
     }
+  };
 
-    await addToCart({
-      user_id: userId,
-      product_id: realProductId,
-      variant_id: variantId,
-      selected_size: selectedSize,
-      selected_color: selectedColor,
-      quantity,
-    });
-
+  const changeSize = (
+    size: string,
+  ) => {
     setCartError("");
-    setCartMessage("Added to cart successfully.");
+    setCartMessage("");
+    setSelectedSize(size);
 
-    return true;
-  };
-
-  const handleAddToCart = async () => {
-    if (isAdding) return;
-
-    setIsAdding(true);
-
-    try {
-      await addProductToCart();
-    } catch (addError: any) {
-      setCartError(
-        addError?.message || "Unable to add to cart",
+    const validColors =
+      sortColors(
+        activeVariants
+          .filter((variant) =>
+            sameSize(
+              variant.size,
+              size,
+            ),
+          )
+          .map(
+            (variant) =>
+              variant.color,
+          ),
       );
 
-      setCartMessage("");
-    } finally {
-      setIsAdding(false);
+    if (
+      selectedColor &&
+      !validColors.some((color) =>
+        sameColor(
+          color,
+          selectedColor,
+        ),
+      )
+    ) {
+      setSelectedColor(
+        validColors[0] || "",
+      );
     }
   };
 
-  const handleBuyNow = async () => {
-    if (isAdding) return;
+  const changeQuantity = (
+    type: "plus" | "minus",
+  ) =>
+    setQuantity((current) =>
+      type === "minus"
+        ? Math.max(
+            1,
+            current - 1,
+          )
+        : availableStock > 0
+          ? Math.min(
+              availableStock,
+              current + 1,
+            )
+          : current + 1,
+    );
 
-    setIsAdding(true);
+  const addProductToCart =
+    async () => {
+      const user =
+        getStoredUser();
 
-    try {
-      const added = await addProductToCart();
-
-      if (added) navigate("/cart");
-    } catch (buyError: any) {
-      setCartError(
-        buyError?.message || "Unable to add to cart",
+      const userId = Number(
+        user?.id || 0,
       );
 
-      setCartMessage("");
-    } finally {
-      setIsAdding(false);
-    }
-  };
-
-  const handleWishlistToggle = async () => {
-    const user = getStoredUser();
-    const userId = Number(user?.id || 0);
-
-    if (!userId) {
-      navigate("/auth");
-      return;
-    }
-
-    if (!backendProductId || isUpdatingWishlist) return;
-
-    setIsUpdatingWishlist(true);
-
-    try {
-      const variantId =
-        getVariantIdValue(
-          exactSelectedVariant ||
-            imageVariant ||
-            priceVariant,
-          product,
-        ) || backendProductId;
-
-      if (isWishlisted) {
-        const response = await fetch(
-          `${API_BASE}/api/wishlist`,
-          {
-            method: "DELETE",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              user_id: userId,
-              product_id: backendProductId,
-              variant_id: variantId,
-            }),
-          },
-        );
-
-        const data = await response
-          .json()
-          .catch(() => ({}));
-
-        if (!response.ok) {
-          throw new Error(
-            data?.message ||
-              "Unable to remove from wishlist",
-          );
-        }
-
-        const ids = readWishlistIds(userId).filter(
-          (item) => item !== backendProductId,
-        );
-
-        writeWishlistIds(userId, ids);
-        setIsWishlisted(false);
-      } else {
-        const response = await fetch(
-          `${API_BASE}/api/wishlist`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              user_id: userId,
-              product_id: backendProductId,
-              variant_id: variantId,
-              actual_product_id: backendProductId,
-            }),
-          },
-        );
-
-        const data = await response
-          .json()
-          .catch(() => ({}));
-
-        if (!response.ok) {
-          throw new Error(
-            data?.message ||
-              "Unable to add to wishlist",
-          );
-        }
-
-        const ids = Array.from(
-          new Set([
-            ...readWishlistIds(userId),
-            backendProductId,
-          ]),
-        );
-
-        writeWishlistIds(userId, ids);
-        setIsWishlisted(true);
+      if (!userId) {
+        navigate("/auth");
+        return false;
       }
-    } catch {
-      setIsWishlisted((currentValue) => currentValue);
-    } finally {
-      setIsUpdatingWishlist(false);
-    }
+
+      if (
+        sizes.length &&
+        !selectedSize
+      ) {
+        setCartError(
+          "Please select size.",
+        );
+
+        setCartMessage("");
+        return false;
+      }
+
+      if (
+        colors.length &&
+        !selectedColor
+      ) {
+        setCartError(
+          "Please select color.",
+        );
+
+        setCartMessage("");
+        return false;
+      }
+
+      if (
+        !selectedVariants.length ||
+        !stockSources.length
+      ) {
+        setCartError(
+          "Selected size and color combination is not available.",
+        );
+
+        setCartMessage("");
+        return false;
+      }
+
+      if (
+        quantity > availableStock
+      ) {
+        setCartError(
+          `Only ${availableStock} stock available.`,
+        );
+
+        setCartMessage("");
+        return false;
+      }
+
+      const realProductId =
+        backendProductId ||
+        positiveId(
+          selectedVariant?.productId,
+        ) ||
+        stockSources[0]
+          ?.variantId;
+
+      if (!realProductId) {
+        setCartError(
+          "Product id not found.",
+        );
+
+        setCartMessage("");
+        return false;
+      }
+
+      let remaining = quantity;
+
+      for (const source of stockSources) {
+        if (remaining <= 0) {
+          break;
+        }
+
+        const sourceQuantity =
+          Math.min(
+            remaining,
+            source.available,
+          );
+
+        if (
+          sourceQuantity <= 0
+        ) {
+          continue;
+        }
+
+        await addToCart({
+          user_id: userId,
+          product_id:
+            realProductId,
+          variant_id:
+            source.variantId,
+          selected_size:
+            selectedSize,
+          selected_color:
+            selectedColor,
+          quantity:
+            sourceQuantity,
+        });
+
+        remaining -=
+          sourceQuantity;
+      }
+
+      if (remaining > 0) {
+        throw new Error(
+          "Unable to reserve the requested quantity.",
+        );
+      }
+
+      setCartError("");
+
+      setCartMessage(
+        "Added to cart successfully.",
+      );
+
+      return true;
+    };
+
+  const handleAddToCart =
+    async () => {
+      if (adding) return;
+
+      setAdding(true);
+
+      try {
+        await addProductToCart();
+      } catch (error: any) {
+        setCartError(
+          error?.message ||
+            "Unable to add to cart",
+        );
+
+        setCartMessage("");
+      } finally {
+        setAdding(false);
+      }
+    };
+
+  const handleBuyNow =
+    async () => {
+      if (adding) return;
+
+      setAdding(true);
+
+      try {
+        const added =
+          await addProductToCart();
+
+        if (added) {
+          navigate("/cart");
+        }
+      } catch (error: any) {
+        setCartError(
+          error?.message ||
+            "Unable to add to cart",
+        );
+
+        setCartMessage("");
+      } finally {
+        setAdding(false);
+      }
+    };
+
+  const toggleWishlist =
+    async () => {
+      const user =
+        getStoredUser();
+
+      const userId = Number(
+        user?.id || 0,
+      );
+
+      if (!userId) {
+        navigate("/auth");
+        return;
+      }
+
+      if (
+        !backendProductId ||
+        updatingWishlist
+      ) {
+        return;
+      }
+
+      setUpdatingWishlist(true);
+
+      try {
+        const variantId =
+          positiveId(
+            selectedVariant?.variantId,
+          ) ||
+          backendProductId;
+
+        const response =
+          await fetch(
+            `${API_BASE}/api/wishlist`,
+            {
+              method: wishlisted
+                ? "DELETE"
+                : "POST",
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
+              body: JSON.stringify(
+                {
+                  user_id: userId,
+                  product_id:
+                    backendProductId,
+                  variant_id:
+                    variantId,
+                  actual_product_id:
+                    backendProductId,
+                },
+              ),
+            },
+          );
+
+        const data =
+          await response
+            .json()
+            .catch(() => ({}));
+
+        if (!response.ok) {
+          throw new Error(
+            data?.message ||
+              "Unable to update wishlist",
+          );
+        }
+
+        const ids = wishlisted
+          ? readWishlist(
+              userId,
+            ).filter(
+              (item) =>
+                item !==
+                backendProductId,
+            )
+          : Array.from(
+              new Set([
+                ...readWishlist(
+                  userId,
+                ),
+                backendProductId,
+              ]),
+            );
+
+        writeWishlist(
+          userId,
+          ids,
+        );
+
+        setWishlisted(
+          !wishlisted,
+        );
+      } finally {
+        setUpdatingWishlist(
+          false,
+        );
+      }
+    };
+
+  const share = async () => {
+    const shareData = {
+      title: (product as any)
+        .title,
+      text: `Check out ${(product as any).title}`,
+      url: window.location.href,
+    };
+
+    try {
+      if (navigator.share) {
+        await navigator.share(
+          shareData,
+        );
+      } else {
+        await navigator.clipboard.writeText(
+          window.location.href,
+        );
+
+        alert(
+          "Link copied to clipboard!",
+        );
+      }
+    } catch {}
   };
 
   const mainResponsive = {
@@ -2606,73 +2517,19 @@ const ProductDetails: React.FC = () => {
     },
   };
 
-  const thumbResponsiveMobile = {
-    mobile: {
-      breakpoint: {
-        max: 768,
-        min: 0,
-      },
-      items: 4,
-      slidesToSlide: 1,
-      partialVisibilityGutter: 20,
-    },
-  };
+  const hasMultipleImages =
+    images.length > 1;
 
-  const handleThumbClick = (index: number) => {
-    setSelectedIndex(index);
+  const handleThumb = (
+    index: number,
+  ) => {
+    setSelectedImage(index);
 
-    if (
-      mainCarouselRef.current &&
-      hasMultipleImages
-    ) {
-      mainCarouselRef.current.goToSlide(index + 2);
+    if (hasMultipleImages) {
+      mainCarouselRef.current?.goToSlide?.(
+        index + 2,
+      );
     }
-  };
-
-  const handleShare = async () => {
-    const shareData = {
-      title: product.title,
-      text: `Check out ${product.title}`,
-      url: window.location.href,
-    };
-
-    try {
-      if (navigator.share) {
-        await navigator.share(shareData);
-      } else {
-        await navigator.clipboard.writeText(
-          window.location.href,
-        );
-
-        alert("Link copied to clipboard!");
-      }
-    } catch {}
-  };
-
-  const RatingStars = ({ rating }: { rating: number }) => {
-    const fullStars = Math.floor(rating);
-    const hasHalfStar = rating % 1 !== 0;
-
-    const emptyStars =
-      5 -
-      fullStars -
-      (hasHalfStar ? 1 : 0);
-
-    return (
-      <div className="flex items-center gap-1">
-        {Array.from({ length: fullStars }).map((_, index) => (
-          <FaStar key={`full-${index}`} size={14} />
-        ))}
-
-        {hasHalfStar ? <FaStarHalfAlt size={14} /> : null}
-
-        {Array.from({ length: emptyStars }).map(
-          (_, index) => (
-            <FaRegStar key={`empty-${index}`} size={14} />
-          ),
-        )}
-      </div>
-    );
   };
 
   return (
@@ -2682,140 +2539,201 @@ const ProductDetails: React.FC = () => {
           <div className="flex-1 flex flex-col lg:flex-row gap-4 min-w-0">
             {hasMultipleImages ? (
               <div
-                ref={desktopThumbContainerRef}
+                ref={thumbRef}
                 className="hidden lg:flex flex-col w-20 lg:w-22 shrink-0 -mt-2 overflow-y-auto h-[450px] xl:h-[600px] gap-3 py-2 scrollbar-none"
                 style={{
-                  scrollbarWidth: "none",
-                  msOverflowStyle: "none",
+                  scrollbarWidth:
+                    "none",
+                  msOverflowStyle:
+                    "none",
                 }}
               >
-                {finalDisplayImages.map((src, index) => (
-                  <div
-                    key={`${src}-${index}`}
-                    className={`w-full aspect-3/4 rounded-[9px] shrink-0 cursor-pointer overflow-hidden transition-all ${
-                      index === selectedIndex
-                        ? "opacity-100 border border-[#292d35] p-[3px]"
-                        : "opacity-60 hover:opacity-100"
-                    }`}
-                    onClick={() => handleThumbClick(index)}
-                  >
-                    <img
-                      src={src}
-                      alt={`Thumb ${index + 1}`}
-                      loading={index < 4 ? "eager" : "lazy"}
-                      className="w-full h-full object-cover aspect-3/4 object-top bg-gray-50 rounded-[6px]"
-                      onError={(event) => {
-                        event.currentTarget.src =
-                          "/placeholder.svg";
-                      }}
-                    />
-                  </div>
-                ))}
+                {images.map(
+                  (src, index) => (
+                    <button
+                      type="button"
+                      key={`${src}-${index}`}
+                      onClick={() =>
+                        handleThumb(
+                          index,
+                        )
+                      }
+                      className={`w-full aspect-3/4 rounded-[9px] shrink-0 cursor-pointer overflow-hidden transition-all ${
+                        index ===
+                        selectedImage
+                          ? "opacity-100 border border-[#292d35] p-[3px]"
+                          : "opacity-60 hover:opacity-100"
+                      }`}
+                    >
+                      <img
+                        src={src}
+                        alt={`Thumb ${index + 1}`}
+                        loading={
+                          index < 2
+                            ? "eager"
+                            : "lazy"
+                        }
+                        className="w-full h-full object-cover object-top bg-gray-50 rounded-[6px]"
+                        onError={(
+                          event,
+                        ) => {
+                          event.currentTarget.src =
+                            "/placeholder.svg";
+                        }}
+                      />
+                    </button>
+                  ),
+                )}
               </div>
             ) : null}
 
             <div className="group flex-1 relative bg-white aspect-3/4 xl:aspect-4/5 overflow-hidden min-w-0 z-0">
               {hasMultipleImages ? (
                 <Carousel
-                  ref={mainCarouselRef}
-                  responsive={mainResponsive}
+                  ref={
+                    mainCarouselRef
+                  }
+                  responsive={
+                    mainResponsive
+                  }
                   infinite
-                  customLeftArrow={<CustomLeftArrow />}
-                  customRightArrow={<CustomRightArrow />}
+                  customLeftArrow={
+                    <CustomLeftArrow />
+                  }
+                  customRightArrow={
+                    <CustomRightArrow />
+                  }
                   afterChange={(
                     _previous: number,
                     state: any,
                   ) => {
-                    const realIndex =
+                    const index =
                       (state.currentSlide -
                         2 +
-                        finalDisplayImages.length) %
-                      finalDisplayImages.length;
+                        images.length) %
+                      images.length;
 
-                    if (realIndex !== selectedIndex) {
-                      setSelectedIndex(realIndex);
+                    if (
+                      index !==
+                      selectedImage
+                    ) {
+                      setSelectedImage(
+                        index,
+                      );
                     }
                   }}
                   itemClass="flex items-center justify-center h-full w-full"
                   containerClass="h-full w-full"
                   sliderClass="h-full"
                 >
-                  {finalDisplayImages.map((src, index) => (
-                    <div
-                      className="w-full h-full relative cursor-pointer"
-                      key={`${src}-${index}`}
-                      onClick={() => {
-                        setLightboxIndex(index);
-                        setIsLightboxOpen(true);
-
-                        if (lightboxCarouselRef.current) {
-                          lightboxCarouselRef.current.goToSlide(
-                            index + 2,
+                  {images.map(
+                    (src, index) => (
+                      <button
+                        type="button"
+                        className="w-full h-full relative cursor-pointer"
+                        key={`${src}-${index}`}
+                        onClick={() => {
+                          setLightboxImage(
+                            index,
                           );
-                        }
-                      }}
-                    >
-                      <img
-                        src={src}
-                        alt={`${product.title} - Image ${
-                          index + 1
-                        }`}
-                        loading={index === 0 ? "eager" : "lazy"}
-                        className="absolute inset-0 w-full h-full object-cover object-top rounded-2xl"
-                        onError={(event) => {
-                          event.currentTarget.src =
-                            "/placeholder.svg";
+
+                          setLightboxOpen(
+                            true,
+                          );
+
+                          setTimeout(
+                            () =>
+                              lightboxCarouselRef.current?.goToSlide?.(
+                                index +
+                                  2,
+                              ),
+                            0,
+                          );
                         }}
-                      />
-                    </div>
-                  ))}
+                      >
+                        <img
+                          src={src}
+                          alt={`${(product as any).title} - Image ${index + 1}`}
+                          loading={
+                            index === 0
+                              ? "eager"
+                              : "lazy"
+                          }
+                          className="absolute inset-0 w-full h-full object-cover object-top rounded-2xl"
+                          onError={(
+                            event,
+                          ) => {
+                            event.currentTarget.src =
+                              "/placeholder.svg";
+                          }}
+                        />
+                      </button>
+                    ),
+                  )}
                 </Carousel>
               ) : (
-                <div
+                <button
+                  type="button"
                   className="w-full h-full relative cursor-pointer"
                   onClick={() => {
-                    setLightboxIndex(0);
-                    setIsLightboxOpen(true);
+                    setLightboxImage(
+                      0,
+                    );
+
+                    setLightboxOpen(
+                      true,
+                    );
                   }}
                 >
                   <img
-                    src={finalDisplayImages[0]}
-                    alt={product.title}
+                    src={images[0]}
+                    alt={
+                      (product as any)
+                        .title
+                    }
                     loading="eager"
                     className="absolute inset-0 w-full h-full object-cover object-top rounded-2xl"
-                    onError={(event) => {
+                    onError={(
+                      event,
+                    ) => {
                       event.currentTarget.src =
                         "/placeholder.svg";
                     }}
                   />
-                </div>
+                </button>
               )}
 
               <div className="absolute top-3 right-3 md:top-4 md:right-4 flex flex-col gap-3 z-10">
                 <button
                   type="button"
-                  onClick={handleShare}
+                  onClick={share}
                   aria-label="Share product"
                   className="w-10 h-10 md:w-11 md:h-11 bg-white/90 backdrop-blur-md rounded-full flex items-center justify-center shadow-md hover:scale-110 transition-transform cursor-pointer text-gray-700 hover:text-black"
                 >
-                  <FiShare2 size={18} />
+                  <FiShare2
+                    size={18}
+                  />
                 </button>
 
                 <button
                   type="button"
-                  onClick={handleWishlistToggle}
+                  onClick={
+                    toggleWishlist
+                  }
                   aria-label="Toggle wishlist"
-                  disabled={isUpdatingWishlist}
+                  disabled={
+                    updatingWishlist
+                  }
                   className={`w-10 h-10 md:w-11 md:h-11 bg-white/90 backdrop-blur-md rounded-full flex items-center justify-center shadow-md hover:scale-110 transition-transform cursor-pointer disabled:opacity-60 ${
-                    isWishlisted
-                      ? "text-red-500 hover:text-red-500"
+                    wishlisted
+                      ? "text-red-500"
                       : "text-gray-700 hover:text-black"
                   }`}
                 >
                   <FiHeart
                     size={18}
                     className={
-                      isWishlisted
+                      wishlisted
                         ? "fill-red-500"
                         : ""
                     }
@@ -2825,70 +2743,84 @@ const ProductDetails: React.FC = () => {
             </div>
 
             {hasMultipleImages ? (
-              <div className="lg:hidden mt-4">
-                <Carousel
-                  ref={mobileThumbCarouselRef}
-                  responsive={thumbResponsiveMobile}
-                  arrows={false}
-                  partialVisible
-                  itemClass="pr-3"
-                >
-                  {finalDisplayImages.map((src, index) => (
-                    <div
+              <div className="lg:hidden mt-4 flex gap-3 overflow-x-auto">
+                {images.map(
+                  (src, index) => (
+                    <button
+                      type="button"
                       key={`${src}-${index}`}
-                      className={`w-full aspect-3/4 cursor-pointer overflow-hidden transition-all snap-start ${
-                        index === selectedIndex
+                      className={`w-20 shrink-0 aspect-3/4 overflow-hidden ${
+                        index ===
+                        selectedImage
                           ? "opacity-100 border border-black"
                           : "opacity-60"
                       }`}
-                      onClick={() => handleThumbClick(index)}
+                      onClick={() =>
+                        handleThumb(
+                          index,
+                        )
+                      }
                     >
                       <img
                         src={src}
                         alt={`Thumb ${index + 1}`}
                         className="w-full h-full object-cover bg-gray-50"
-                        onError={(event) => {
+                        onError={(
+                          event,
+                        ) => {
                           event.currentTarget.src =
                             "/placeholder.svg";
                         }}
                       />
-                    </div>
-                  ))}
-                </Carousel>
+                    </button>
+                  ),
+                )}
               </div>
             ) : null}
           </div>
 
           <div className="flex-1 flex flex-col py-2 min-w-0">
             <h1 className="text-2xl lg:text-3xl font-semibold text-gray-900 mb-2">
-              {product.title}
+              {
+                (product as any)
+                  .title
+              }
             </h1>
 
             <p className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">
-              {product.brand}
+              {
+                (product as any)
+                  .brand
+              }
             </p>
 
-            {productCategoryPath ? (
+            {path ? (
               <p className="text-xs md:text-sm text-gray-400 mb-3">
-                {productCategoryPath}
+                {path}
               </p>
             ) : null}
 
             <div className="flex items-center flex-wrap gap-4 mb-4">
               <span className="text-2xl font-bold text-gray-900">
-                {formatMoney(currentPrice)}
+                {formatMoney(
+                  currentPrice,
+                )}
               </span>
 
-              {currentCompareAtPrice > currentPrice ? (
+              {comparePrice >
+              currentPrice ? (
                 <>
                   <span className="text-lg text-gray-400 line-through">
-                    {formatMoney(currentCompareAtPrice)}
+                    {formatMoney(
+                      comparePrice,
+                    )}
                   </span>
 
                   <span className="text-base font-bold text-green-600 tracking-tight">
                     {Math.round(
-                      ((currentCompareAtPrice - currentPrice) /
-                        currentCompareAtPrice) *
+                      ((comparePrice -
+                        currentPrice) /
+                        comparePrice) *
                         100,
                     )}
                     % OFF
@@ -2902,11 +2834,19 @@ const ProductDetails: React.FC = () => {
 
               <div className="flex items-center gap-1 text-[#f5b82e]">
                 <RatingStars
-                  rating={product.ratings?.average || 0}
+                  rating={
+                    (product as any)
+                      .ratings
+                      ?.average || 0
+                  }
                 />
 
                 <span className="text-gray-500 text-sm ml-2 font-medium">
-                  ({product.ratings?.count || 0} reviews)
+                  (
+                  {(product as any)
+                    .ratings
+                    ?.count || 0}{" "}
+                  reviews)
                 </span>
               </div>
             </div>
@@ -2914,120 +2854,112 @@ const ProductDetails: React.FC = () => {
             <div
               className="prose prose-sm text-gray-500 leading-relaxed mb-4"
               dangerouslySetInnerHTML={{
-                __html: product.description || "",
+                __html:
+                  (product as any)
+                    .description ||
+                  "",
               }}
             />
 
             <div className="flex flex-col gap-6 mb-6">
-              {enhancedProduct.options_with_values.map(
-                (option) => {
-                  const isColor = [
-                    "color",
-                    "colour",
-                  ].includes(option.name.toLowerCase());
+              {colors.length ? (
+                <div className="flex flex-col gap-3">
+                  <span className="text-sm font-bold text-gray-900 uppercase tracking-widest">
+                    Color
+                  </span>
 
-                  return (
-                    <div
-                      key={option.name}
-                      className="flex flex-col gap-3"
-                    >
-                      <div className="flex justify-between items-center w-full">
-                        <span className="text-sm font-bold text-gray-900 uppercase tracking-widest">
-                          {option.name}
-                        </span>
-                      </div>
-
-                      <div className="flex flex-wrap gap-3">
-                        {option.values.map((value) => {
-                          const cleanValue = isColor
-                            ? cleanColourValue(value)
-                            : cleanSingleValue(value);
-
-                          if (!cleanValue) return null;
-
-                          const isSelected = isColor
-                            ? sameColour(
-                                selectedOptions[option.name],
-                                cleanValue,
-                              )
-                            : selectedOptions[option.name] ===
-                              cleanValue;
-
-                          if (isColor) {
-                            const matchingVariant =
-                              variantOptions.find(
-                                (variant) =>
-                                  sameColour(
-                                    getVariantColor(variant),
-                                    cleanValue,
-                                  ),
-                              );
-
-                            const swatchBackground =
-                              getColorBackground(
-                                cleanValue,
-                                getVariantColourValue(
-                                  matchingVariant,
-                                ),
-                              );
-
-                            return (
-                              <button
-                                type="button"
-                                key={cleanValue}
-                                onClick={() =>
-                                  handleOptionChange(
-                                    option.name,
-                                    cleanValue,
-                                  )
-                                }
-                                title={cleanValue}
-                                className={`w-8 h-8 rounded-full border border-gray-300 transition-all ${
-                                  isSelected
-                                    ? "ring-2 ring-gray-500 ring-offset-2 scale-110"
-                                    : "hover:scale-110"
-                                }`}
-                                style={{
-                                  background: swatchBackground,
-                                  boxShadow:
-                                    "inset 0 0 0 1px rgba(0,0,0,0.08)",
-                                }}
-                                aria-label={`Select Color ${cleanValue}`}
-                              />
-                            );
-                          }
-
-                          return (
-                            <button
-                              type="button"
-                              key={cleanValue}
-                              onClick={() =>
-                                handleOptionChange(
-                                  option.name,
-                                  cleanValue,
-                                )
-                              }
-                              className={`min-w-12 px-4 py-2.5 rounded-sm text-sm font-source-sans font-bold uppercase tracking-wider transition-all border ${
-                                isSelected
-                                  ? "bg-gray-900 text-white border-gray-900"
-                                  : "bg-white text-gray-800 border-gray-300 hover:border-gray-900"
-                              }`}
-                            >
-                              {cleanValue}
-                            </button>
+                  <div className="flex flex-wrap gap-3">
+                    {colors.map(
+                      (color) => {
+                        const variant =
+                          activeVariants.find(
+                            (item) =>
+                              sameColor(
+                                item.color,
+                                color,
+                              ),
                           );
-                        })}
-                      </div>
-                    </div>
-                  );
-                },
-              )}
+
+                        const selected =
+                          sameColor(
+                            color,
+                            selectedColor,
+                          );
+
+                        return (
+                          <button
+                            type="button"
+                            key={color}
+                            onClick={() =>
+                              changeColor(
+                                color,
+                              )
+                            }
+                            title={color}
+                            aria-label={`Select Color ${color}`}
+                            className={`w-8 h-8 rounded-full border border-gray-300 transition-all ${
+                              selected
+                                ? "ring-2 ring-gray-500 ring-offset-2 scale-110"
+                                : "hover:scale-110"
+                            }`}
+                            style={{
+                              background:
+                                colorBackground(
+                                  color,
+                                  variant?.colorValue,
+                                ),
+                              boxShadow:
+                                "inset 0 0 0 1px rgba(0,0,0,0.08)",
+                            }}
+                          />
+                        );
+                      },
+                    )}
+                  </div>
+                </div>
+              ) : null}
+
+              {sizes.length ? (
+                <div className="flex flex-col gap-3">
+                  <span className="text-sm font-bold text-gray-900 uppercase tracking-widest">
+                    Size
+                  </span>
+
+                  <div className="flex flex-wrap gap-3">
+                    {sizes.map(
+                      (size) => (
+                        <button
+                          type="button"
+                          key={size}
+                          onClick={() =>
+                            changeSize(
+                              size,
+                            )
+                          }
+                          className={`min-w-12 px-4 py-2.5 rounded-sm text-sm font-source-sans font-bold uppercase tracking-wider transition-all border ${
+                            sameSize(
+                              size,
+                              selectedSize,
+                            )
+                              ? "bg-gray-900 text-white border-gray-900"
+                              : "bg-white text-gray-800 border-gray-300 hover:border-gray-900"
+                          }`}
+                        >
+                          {size}
+                        </button>
+                      ),
+                    )}
+                  </div>
+                </div>
+              ) : null}
             </div>
 
-            {currentVariant.available &&
+            {availableStock > 0 &&
             availableStock <= 10 ? (
               <div className="mb-4 inline-flex w-fit items-center rounded-md border border-orange-200 bg-orange-50 px-3 py-2 text-sm font-bold text-orange-700">
-                Hurry up! Last {availableStock} stock left
+                Hurry up! Last{" "}
+                {availableStock} stock
+                left
               </div>
             ) : null}
 
@@ -3036,11 +2968,15 @@ const ProductDetails: React.FC = () => {
                 <button
                   type="button"
                   onClick={() =>
-                    handleQuantityChange("minus")
+                    changeQuantity(
+                      "minus",
+                    )
                   }
                   className="w-12 h-12 cursor-pointer flex justify-center items-center text-gray-500 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-sm text-lg transition"
                 >
-                  <FiMinus size={16} />
+                  <FiMinus
+                    size={16}
+                  />
                 </button>
 
                 <input
@@ -3053,11 +2989,15 @@ const ProductDetails: React.FC = () => {
                 <button
                   type="button"
                   onClick={() =>
-                    handleQuantityChange("plus")
+                    changeQuantity(
+                      "plus",
+                    )
                   }
                   disabled={
-                    availableStock > 0 &&
-                    quantity >= availableStock
+                    availableStock >
+                      0 &&
+                    quantity >=
+                      availableStock
                   }
                   className="w-12 h-12 cursor-pointer flex justify-center items-center text-gray-500 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-sm text-lg transition disabled:opacity-40 disabled:cursor-not-allowed"
                 >
@@ -3065,24 +3005,24 @@ const ProductDetails: React.FC = () => {
                 </button>
               </div>
 
-              <div
-                ref={actionContainerRef}
-                className="md:flex hidden flex-col sm:flex-row gap-3 w-full"
-              >
+              <div className="md:flex hidden flex-col sm:flex-row gap-3 w-full">
                 <button
                   type="button"
-                  onClick={handleAddToCart}
+                  onClick={
+                    handleAddToCart
+                  }
                   disabled={
-                    isAdding ||
-                    !currentVariant.available
+                    adding ||
+                    availableStock <= 0
                   }
                   className={`flex-1 cursor-pointer py-3.5 flex items-center justify-center gap-2 rounded-sm font-bold uppercase tracking-wider text-sm font-source-sans transition-all shadow-sm border ${
-                    !currentVariant.available
+                    availableStock <=
+                    0
                       ? "bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed"
                       : "bg-white text-gray-900 border-gray-900 hover:bg-gray-50"
                   }`}
                 >
-                  {isAdding ? (
+                  {adding ? (
                     <span className="animate-pulse">
                       Adding...
                     </span>
@@ -3090,28 +3030,32 @@ const ProductDetails: React.FC = () => {
                     <>
                       <FiShoppingBag
                         size={16}
-                        className="mb-0.5"
                       />
 
-                      <span>Add to Cart</span>
+                      <span>
+                        Add to Cart
+                      </span>
                     </>
                   )}
                 </button>
 
                 <button
                   type="button"
-                  onClick={handleBuyNow}
+                  onClick={
+                    handleBuyNow
+                  }
                   disabled={
-                    isAdding ||
-                    !currentVariant.available
+                    adding ||
+                    availableStock <= 0
                   }
                   className={`flex-1 py-3.5 cursor-pointer flex items-center justify-center gap-2 rounded-sm font-bold uppercase tracking-wider text-sm font-source-sans transition-all shadow-sm border ${
-                    !currentVariant.available
+                    availableStock <=
+                    0
                       ? "bg-gray-200 text-gray-400 border-transparent cursor-not-allowed"
                       : "bg-primary/90 hover:bg-primary text-black border-primary"
                   }`}
                 >
-                  <span>Buy Now</span>
+                  Buy Now
                 </button>
               </div>
             </div>
@@ -3133,7 +3077,8 @@ const ProductDetails: React.FC = () => {
                 <FiTruck size={18} />
 
                 <span>
-                  Estimated Delivery: 4 TO 6 DAYS
+                  Estimated Delivery: 4
+                  TO 6 DAYS
                 </span>
               </div>
 
@@ -3141,7 +3086,10 @@ const ProductDetails: React.FC = () => {
                 type="button"
                 className="flex items-center gap-3 hover:text-black transition self-start cursor-pointer"
               >
-                <FiHelpCircle size={18} />
+                <FiHelpCircle
+                  size={18}
+                />
+
                 Ask a Question
               </button>
             </div>
@@ -3149,48 +3097,54 @@ const ProductDetails: React.FC = () => {
         </div>
       </div>
 
-      {recommendedProducts.length ? (
+      {recommended.length ? (
         <div className="mt-12 md:mt-20 border-t border-gray-100 pt-8 md:pt-16">
           <NamedSection
             title="You May Also Like"
-            productData={recommendedProducts}
+            productData={
+              recommended
+            }
             autoplay={false}
           />
         </div>
       ) : null}
 
-      <div className="fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 p-3 z-50 md:hidden transition-transform duration-300 translate-y-0">
-        <div className="flex flex-row gap-3 w-full mx-auto">
+      <div className="fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 p-3 z-50 md:hidden">
+        <div className="flex gap-3 w-full">
           <button
             type="button"
-            onClick={handleAddToCart}
-            disabled={
-              isAdding ||
-              !currentVariant.available
+            onClick={
+              handleAddToCart
             }
-            className={`flex-1 py-2 flex items-center justify-center gap-2 rounded-sm font-bold uppercase tracking-wider text-sm font-source-sans transition-all border ${
-              !currentVariant.available
-                ? "bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed"
-                : "bg-white text-gray-900 border-gray-900 hover:bg-gray-50 hover:text-red-500 hover:border-red-500"
+            disabled={
+              adding ||
+              availableStock <= 0
+            }
+            className={`flex-1 py-2 flex items-center justify-center rounded-sm font-bold uppercase text-sm border ${
+              availableStock <= 0
+                ? "bg-gray-50 text-gray-400 border-gray-200"
+                : "bg-white text-gray-900 border-gray-900"
             }`}
           >
-            {isAdding ? "Adding..." : "Add to Cart"}
+            {adding
+              ? "Adding..."
+              : "Add to Cart"}
           </button>
 
           <button
             type="button"
             onClick={handleBuyNow}
             disabled={
-              isAdding ||
-              !currentVariant.available
+              adding ||
+              availableStock <= 0
             }
-            className={`flex-[1.5] py-2 flex items-center justify-center gap-2 rounded-sm font-bold uppercase tracking-wider text-md font-source-sans transition-all border ${
-              !currentVariant.available
-                ? "bg-gray-200 text-gray-400 border-transparent cursor-not-allowed"
-                : "bg-primary text-black border-primary hover:bg-red-600 hover:border-red-600"
+            className={`flex-[1.5] py-2 flex items-center justify-center rounded-sm font-bold uppercase text-md border ${
+              availableStock <= 0
+                ? "bg-gray-200 text-gray-400 border-transparent"
+                : "bg-primary text-black border-primary"
             }`}
           >
-            {currentVariant.price
+            {currentPrice
               ? `Buy at ${formatMoney(currentPrice)}`
               : "Buy Now"}
           </button>
@@ -3199,14 +3153,16 @@ const ProductDetails: React.FC = () => {
 
       <div
         className={`fixed inset-0 bg-white flex flex-col items-center justify-between pt-16 pb-8 px-4 h-dvh w-full transition-all duration-300 ${
-          isLightboxOpen
+          lightboxOpen
             ? "z-9999 opacity-100 pointer-events-auto"
             : "-z-50 opacity-0 pointer-events-none"
         }`}
       >
         <button
           type="button"
-          onClick={() => setIsLightboxOpen(false)}
+          onClick={() =>
+            setLightboxOpen(false)
+          }
           className="absolute top-4 right-4 md:top-6 md:right-6 p-2 bg-gray-400 hover:bg-gray-500 rounded-full text-white transition z-10 cursor-pointer shadow-sm"
         >
           <FiX size={24} />
@@ -3215,53 +3171,73 @@ const ProductDetails: React.FC = () => {
         <div className="flex-1 w-full max-w-5xl flex items-center justify-center relative mb-6 overflow-hidden">
           {hasMultipleImages ? (
             <Carousel
-              ref={lightboxCarouselRef}
-              responsive={mainResponsive}
+              ref={
+                lightboxCarouselRef
+              }
+              responsive={
+                mainResponsive
+              }
               infinite
-              customLeftArrow={<CustomLeftArrow />}
-              customRightArrow={<CustomRightArrow />}
+              customLeftArrow={
+                <CustomLeftArrow />
+              }
+              customRightArrow={
+                <CustomRightArrow />
+              }
               afterChange={(
                 _previous: number,
                 state: any,
               ) => {
-                const realIndex =
+                const index =
                   (state.currentSlide -
                     2 +
-                    finalDisplayImages.length) %
-                  finalDisplayImages.length;
+                    images.length) %
+                  images.length;
 
-                if (realIndex !== lightboxIndex) {
-                  setLightboxIndex(realIndex);
+                if (
+                  index !==
+                  lightboxImage
+                ) {
+                  setLightboxImage(
+                    index,
+                  );
                 }
               }}
               itemClass="flex items-center justify-center h-full w-full"
               containerClass="h-full w-full"
               sliderClass="h-full"
             >
-              {finalDisplayImages.map((src, index) => (
-                <div
-                  className="w-full h-full relative flex items-center justify-center"
-                  key={`${src}-${index}`}
-                >
-                  <img
-                    src={src}
-                    loading="lazy"
-                    className="max-w-full max-h-full object-contain"
-                    alt={`Enlarged product ${index + 1}`}
-                    onError={(event) => {
-                      event.currentTarget.src =
-                        "/placeholder.svg";
-                    }}
-                  />
-                </div>
-              ))}
+              {images.map(
+                (src, index) => (
+                  <div
+                    className="w-full h-full relative flex items-center justify-center"
+                    key={`${src}-${index}`}
+                  >
+                    <img
+                      src={src}
+                      loading="lazy"
+                      className="max-w-full max-h-full object-contain"
+                      alt={`Enlarged product ${index + 1}`}
+                      onError={(
+                        event,
+                      ) => {
+                        event.currentTarget.src =
+                          "/placeholder.svg";
+                      }}
+                    />
+                  </div>
+                ),
+              )}
             </Carousel>
           ) : (
             <img
-              src={finalDisplayImages[0]}
+              src={images[0]}
               loading="lazy"
               className="max-w-full max-h-full object-contain"
-              alt={product.title}
+              alt={
+                (product as any)
+                  .title
+              }
               onError={(event) => {
                 event.currentTarget.src =
                   "/placeholder.svg";
@@ -3271,42 +3247,42 @@ const ProductDetails: React.FC = () => {
         </div>
 
         {hasMultipleImages ? (
-          <div
-            className="h-20 md:h-24 max-w-2xl w-full flex justify-center gap-3 md:gap-4 overflow-x-auto pb-2 scrollbar-none"
-            style={{
-              scrollbarWidth: "none",
-              msOverflowStyle: "none",
-            }}
-          >
-            {finalDisplayImages.map((src, index) => (
-              <div
-                key={`${src}-${index}`}
-                onClick={() => {
-                  setLightboxIndex(index);
+          <div className="h-20 md:h-24 max-w-2xl w-full flex justify-center gap-3 md:gap-4 overflow-x-auto pb-2 scrollbar-none">
+            {images.map(
+              (src, index) => (
+                <button
+                  type="button"
+                  key={`${src}-${index}`}
+                  onClick={() => {
+                    setLightboxImage(
+                      index,
+                    );
 
-                  if (lightboxCarouselRef.current) {
-                    lightboxCarouselRef.current.goToSlide(
+                    lightboxCarouselRef.current?.goToSlide?.(
                       index + 2,
                     );
-                  }
-                }}
-                className={`h-full aspect-3/4 shrink-0 cursor-pointer border-2 transition-all ${
-                  index === lightboxIndex
-                    ? "border-black"
-                    : "border-transparent opacity-60 hover:opacity-100"
-                }`}
-              >
-                <img
-                  src={src}
-                  className="w-full h-full object-cover bg-gray-50"
-                  alt={`Thumb ${index + 1}`}
-                  onError={(event) => {
-                    event.currentTarget.src =
-                      "/placeholder.svg";
                   }}
-                />
-              </div>
-            ))}
+                  className={`h-full aspect-3/4 shrink-0 cursor-pointer border-2 transition-all ${
+                    index ===
+                    lightboxImage
+                      ? "border-black"
+                      : "border-transparent opacity-60 hover:opacity-100"
+                  }`}
+                >
+                  <img
+                    src={src}
+                    className="w-full h-full object-cover bg-gray-50"
+                    alt={`Thumb ${index + 1}`}
+                    onError={(
+                      event,
+                    ) => {
+                      event.currentTarget.src =
+                        "/placeholder.svg";
+                    }}
+                  />
+                </button>
+              ),
+            )}
           </div>
         ) : null}
       </div>

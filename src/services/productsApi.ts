@@ -88,6 +88,120 @@ const firstValue = (...values: any[]) => {
   return "";
 };
 
+const hasNumericField = (source: any, fields: string[]) =>
+  fields.some((field) => {
+    const value = source?.[field];
+
+    return (
+      value !== undefined &&
+      value !== null &&
+      String(value).trim() !== "" &&
+      Number.isFinite(Number(value))
+    );
+  });
+
+const firstNumericField = (
+  sources: any[],
+  fields: string[],
+  fallback = 0,
+) => {
+  for (const source of sources) {
+    for (const field of fields) {
+      const value = source?.[field];
+
+      if (
+        value !== undefined &&
+        value !== null &&
+        String(value).trim() !== ""
+      ) {
+        const number = Number(value);
+
+        if (Number.isFinite(number)) {
+          return number;
+        }
+      }
+    }
+  }
+
+  return fallback;
+};
+
+const getInventoryValues = (
+  source: any,
+  fallbackSource: any = {},
+) => {
+  const sources = [source || {}, fallbackSource || {}];
+
+  const onHandFields = [
+    "on_hand",
+    "onHand",
+    "stock",
+    "quantity",
+    "qty",
+    "inventory_qty",
+    "inventoryQty",
+  ];
+
+  const reservedFields = [
+    "reserved",
+    "reserved_qty",
+    "reservedQty",
+    "reserved_stock",
+    "reservedStock",
+  ];
+
+  const availableFields = [
+    "available_qty",
+    "availableQty",
+    "available",
+    "available_stock",
+    "availableStock",
+  ];
+
+  const hasOnHand = sources.some((item) =>
+    hasNumericField(item, onHandFields),
+  );
+
+  const hasReserved = sources.some((item) =>
+    hasNumericField(item, reservedFields),
+  );
+
+  const hasAvailable = sources.some((item) =>
+    hasNumericField(item, availableFields),
+  );
+
+  const reserved = Math.max(
+    0,
+    firstNumericField(sources, reservedFields, 0),
+  );
+
+  const explicitAvailable = Math.max(
+    0,
+    firstNumericField(sources, availableFields, 0),
+  );
+
+  const explicitOnHand = Math.max(
+    0,
+    firstNumericField(sources, onHandFields, 0),
+  );
+
+  const available = hasAvailable
+    ? explicitAvailable
+    : hasOnHand
+      ? Math.max(0, explicitOnHand - reserved)
+      : 0;
+
+  const onHand = hasOnHand
+    ? explicitOnHand
+    : available + (hasReserved ? reserved : 0);
+
+  return {
+    onHand,
+    reserved,
+    available,
+  };
+};
+
 const calculateDiscountedPrice = (
   original: any,
   discount: any,
@@ -166,6 +280,12 @@ const normalizeColorDisplay = (value: any) => {
     "see blue": "SEA BLUE",
     iceblue: "ICE BLUE",
     "ice blu": "ICE BLUE",
+    "navy b": "NAVY BLUE",
+    navyb: "NAVY BLUE",
+    "navy blu": "NAVY BLUE",
+    navyblue: "NAVY BLUE",
+    horizonblue: "HORIZON BLUE",
+    "horizon blu": "HORIZON BLUE",
     offwhite: "OFF WHITE",
     "off white": "OFF WHITE",
   };
@@ -715,24 +835,14 @@ const normalizeVariant = (
   const imageUrl =
     images[0] || "";
 
-  const onHand = toNumber(
-    firstValue(
-      variant?.available_qty,
-      variant?.availableQty,
-      variant?.on_hand,
-      variant?.onHand,
-      variant?.stock,
-      variant?.quantity,
-      row?.available_qty,
-      row?.availableQty,
-      row?.on_hand,
-      row?.onHand,
-      row?.stock,
-      row?.quantity,
-      0,
-    ),
-    0,
+  const inventory = getInventoryValues(
+    variant,
+    row,
   );
+
+  const onHand = inventory.onHand;
+  const reserved = inventory.reserved;
+  const availableQty = inventory.available;
 
   const categoryId = String(
     firstValue(
@@ -879,10 +989,13 @@ const normalizeVariant = (
       b2cDiscount,
     on_hand: onHand,
     onHand,
-    available_qty: onHand,
-    availableQty: onHand,
-    in_stock: onHand > 0,
-    inStock: onHand > 0,
+    reserved,
+    reserved_qty: reserved,
+    reservedQty: reserved,
+    available_qty: availableQty,
+    availableQty,
+    in_stock: availableQty > 0,
+    inStock: availableQty > 0,
     image_url: imageUrl,
     imageUrl,
     front_image_url:
@@ -1045,22 +1158,32 @@ const normalizeProductCard = (
       ),
     );
 
-  const onHand =
+  const inventoryTotals =
     selectedGroup.reduce(
       (
-        sum: number,
+        totals: {
+          onHand: number;
+          reserved: number;
+          available: number;
+        },
         variant: any,
-      ) =>
-        sum +
-        toNumber(
-          variant.available_qty ??
-            variant.availableQty ??
-            variant.on_hand ??
-            variant.onHand ??
-            0,
-          0,
-        ),
-      0,
+      ) => {
+        const inventory = getInventoryValues(
+          variant,
+          row,
+        );
+
+        totals.onHand += inventory.onHand;
+        totals.reserved += inventory.reserved;
+        totals.available += inventory.available;
+
+        return totals;
+      },
+      {
+        onHand: 0,
+        reserved: 0,
+        available: 0,
+      },
     );
 
   const mrp = toNumber(
@@ -1249,14 +1372,10 @@ const normalizeProductCard = (
             accumulator[size] ||
             0
           ) +
-          toNumber(
-            variant.available_qty ??
-              variant.availableQty ??
-              variant.on_hand ??
-              variant.onHand ??
-              0,
-            0,
-          );
+          getInventoryValues(
+            variant,
+            row,
+          ).available;
 
         return accumulator;
       },
@@ -1461,13 +1580,20 @@ const normalizeProductCard = (
           row.createdAt ||
           new Date().toISOString(),
       ),
-    onHand,
+    onHand:
+      inventoryTotals.onHand,
     on_hand:
-      onHand,
+      inventoryTotals.onHand,
+    reserved:
+      inventoryTotals.reserved,
+    reserved_qty:
+      inventoryTotals.reserved,
+    reservedQty:
+      inventoryTotals.reserved,
     available_qty:
-      onHand,
+      inventoryTotals.available,
     availableQty:
-      onHand,
+      inventoryTotals.available,
     patternCode:
       String(
         row.pattern_code ||
@@ -2302,6 +2428,82 @@ const getRawVariantKey = (
   ].join("|");
 };
 
+const mergeRawVariant = (
+  existing: any,
+  incoming: any,
+) => {
+  const merged = {
+    ...(existing || {}),
+  };
+
+  Object.entries(incoming || {}).forEach(
+    ([field, value]) => {
+      const current = merged[field];
+
+      const currentMissing =
+        current === undefined ||
+        current === null ||
+        current === "" ||
+        (
+          Array.isArray(current) &&
+          current.length === 0
+        );
+
+      const nextPresent =
+        value !== undefined &&
+        value !== null &&
+        value !== "" &&
+        (
+          !Array.isArray(value) ||
+          value.length > 0
+        );
+
+      if (currentMissing && nextPresent) {
+        merged[field] = value;
+      }
+    },
+  );
+
+  const numericStockFields = [
+    "on_hand",
+    "onHand",
+    "available_qty",
+    "availableQty",
+    "reserved",
+    "reserved_qty",
+    "reservedQty",
+    "stock",
+    "quantity",
+    "qty",
+  ];
+
+  numericStockFields.forEach((field) => {
+    const first = Number(existing?.[field]);
+    const second = Number(incoming?.[field]);
+
+    if (
+      Number.isFinite(first) ||
+      Number.isFinite(second)
+    ) {
+      merged[field] = Math.max(
+        Number.isFinite(first) ? first : 0,
+        Number.isFinite(second) ? second : 0,
+      );
+    }
+  });
+
+  const mergedImages = [
+    ...parseImages(existing?.images),
+    ...parseImages(incoming?.images),
+  ];
+
+  if (mergedImages.length) {
+    merged.images = mergedImages;
+  }
+
+  return merged;
+};
+
 const mergeRawProductRows = (
   rows: any[],
 ) => {
@@ -2386,16 +2588,20 @@ const mergeRawProductRows = (
             variant,
           );
 
-        if (
-          !group.variants.has(
+        const existingVariant =
+          group.variants.get(
             variantKey,
-          )
-        ) {
-          group.variants.set(
-            variantKey,
-            variant,
           );
-        }
+
+        group.variants.set(
+          variantKey,
+          existingVariant
+            ? mergeRawVariant(
+                existingVariant,
+                variant,
+              )
+            : variant,
+        );
       },
     );
   });
