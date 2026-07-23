@@ -1,24 +1,14 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router";
-import {
-  FiChevronDown,
-  FiChevronUp,
-  FiFilter,
-  FiX,
-} from "react-icons/fi";
+import { FiChevronDown, FiChevronUp, FiFilter, FiX } from "react-icons/fi";
 import { FaStar } from "react-icons/fa";
 import { BiSortAlt2 } from "react-icons/bi";
+import { ProductCard, ProductCardSkeleton } from "../components/ProductCard";
+import type { Product, ProductGender } from "../Models/Product";
 import {
-  ProductCard,
-  ProductCardSkeleton,
-} from "../components/ProductCard";
-import type {
-  Product,
-  ProductGender,
-} from "../Models/Product";
-import {
-  fetchBranchProducts,
   fetchCategoriesTree,
+  fetchProductsByCategoryId,
+  fetchProductsByGender,
   flattenCategoryTree,
   type StorefrontCategory,
 } from "../services/productsApi";
@@ -42,11 +32,7 @@ const toTitleGender = (value: any): ProductGender => {
 };
 
 const getProductGender = (product: any) =>
-  normalizeText(
-    product?.gender ||
-      product?.category ||
-      "",
-  );
+  normalizeText(product?.gender || product?.category || "");
 
 const getProductSelectedColor = (product: any) =>
   String(
@@ -59,14 +45,11 @@ const getProductSelectedColor = (product: any) =>
 
 const getProductCardKey = (product: any) => {
   const productId = normalizeText(
-    product?.productId ||
-      product?.product_id ||
-      product?.id,
+    product?.productId || product?.product_id || product?.id,
   );
 
   const categoryId = normalizeText(
-    product?.categoryId ||
-      product?.category_id,
+    product?.categoryId || product?.category_id,
   );
 
   const color = normalizeText(
@@ -79,26 +62,22 @@ const getProductCardKey = (product: any) => {
   );
 
   const patternCode = normalizeText(
-    product?.patternCode ||
-      product?.pattern_code,
+    product?.patternCode || product?.pattern_code,
   );
 
   const brand = normalizeText(
-    product?.brand ||
-      product?.brand_name,
+    product?.brand || product?.brand_name,
   );
 
   const title = normalizeText(
-    product?.title ||
-      product?.product_name ||
-      product?.name,
+    product?.title || product?.product_name || product?.name,
   );
 
   return [
     productId || "product",
     categoryId || "category",
+    patternCode || "pattern",
     color || "default",
-    patternCode,
     brand,
     title,
   ]
@@ -129,14 +108,11 @@ const findCategoryFromParams = (
     searchParams.get("categorySlug") ||
     "";
 
-  const category =
-    searchParams.get("category") ||
-    "";
+  const category = searchParams.get("category") || "";
 
   if (categoryId) {
     const found = categories.find(
-      (item) =>
-        String(item.id) === String(categoryId),
+      (item) => String(item.id) === String(categoryId),
     );
 
     if (found) return found;
@@ -148,18 +124,14 @@ const findCategoryFromParams = (
     const pathMatch = findUniqueCategory(
       categories,
       (item) =>
-        normalizeText(
-          item.categoryPath ||
-            item.category_path,
-        ) === query,
+        normalizeText(item.categoryPath || item.category_path) === query,
     );
 
     if (pathMatch) return pathMatch;
 
     const nameMatch = findUniqueCategory(
       categories,
-      (item) =>
-        normalizeText(item.name) === query,
+      (item) => normalizeText(item.name) === query,
     );
 
     if (nameMatch) return nameMatch;
@@ -170,8 +142,7 @@ const findCategoryFromParams = (
 
     const slugMatch = findUniqueCategory(
       categories,
-      (item) =>
-        normalizeText(item.slug) === query,
+      (item) => normalizeText(item.slug) === query,
     );
 
     if (slugMatch) return slugMatch;
@@ -185,9 +156,7 @@ const getCategoryGender = (
 ): ProductGender | "" => {
   if (!category) return "";
 
-  const gender = String(
-    category.gender || "",
-  ).toUpperCase();
+  const gender = String(category.gender || "").toUpperCase();
 
   if (gender === "MEN") return "Men";
   if (gender === "WOMEN") return "Women";
@@ -196,9 +165,7 @@ const getCategoryGender = (
   return "";
 };
 
-const getCategoryPath = (
-  category: StorefrontCategory,
-) =>
+const getCategoryPath = (category: StorefrontCategory) =>
   String(
     category.categoryPath ||
       category.category_path ||
@@ -221,8 +188,7 @@ const getCategoryLabel = (
 
   if (
     parts.length &&
-    normalizeText(parts[0]) ===
-      normalizeText(selectedGender)
+    normalizeText(parts[0]) === normalizeText(selectedGender)
   ) {
     parts.shift();
   }
@@ -230,21 +196,11 @@ const getCategoryLabel = (
   return parts.join(" > ") || category.name;
 };
 
-const getCategoryParentId = (
-  category: StorefrontCategory,
-) =>
-  String(
-    category.parentId ||
-      category.parent_id ||
-      "",
-  ).trim();
+const getCategoryParentId = (category: StorefrontCategory) =>
+  String(category.parentId || category.parent_id || "").trim();
 
 const getProductCategoryId = (product: any) =>
-  String(
-    product?.categoryId ||
-      product?.category_id ||
-      "",
-  ).trim();
+  String(product?.categoryId || product?.category_id || "").trim();
 
 const getProductParentCategoryId = (product: any) =>
   String(
@@ -305,8 +261,7 @@ const productMatchesCategory = (
     String(category.id),
   );
 
-  const productCategoryId =
-    getProductCategoryId(product);
+  const productCategoryId = getProductCategoryId(product);
 
   if (productCategoryId) {
     return allowedIds.has(productCategoryId);
@@ -327,16 +282,13 @@ const productMatchesCategory = (
       category.category_path,
   );
 
-  const productCategoryPath =
-    getProductCategoryPath(product);
+  const productCategoryPath = getProductCategoryPath(product);
 
   return Boolean(
     categoryPath &&
       productCategoryPath &&
       (productCategoryPath === categoryPath ||
-        productCategoryPath.startsWith(
-          `${categoryPath} `,
-        )),
+        productCategoryPath.startsWith(`${categoryPath} `)),
   );
 };
 
@@ -389,18 +341,19 @@ const getCollectionProductIdentity = (product: any) => {
       "",
   );
 
-  if (productId) {
-    return [
-      `product:${productId}`,
-      `category:${categoryId || "none"}`,
-      `color:${color || "default"}`,
-    ].join("|");
-  }
-
   const patternCode = normalizeText(
     product?.patternCode ||
       product?.pattern_code,
   );
+
+  if (productId) {
+    return [
+      `product:${productId}`,
+      `category:${categoryId || "none"}`,
+      `pattern:${patternCode || "none"}`,
+      `color:${color || "default"}`,
+    ].join("|");
+  }
 
   if (patternCode) {
     return [
@@ -439,9 +392,7 @@ const getCollectionProductIdentity = (product: any) => {
   ].join("|");
 };
 
-const dedupeCollectionProducts = (
-  items: Product[],
-) => {
+const dedupeCollectionProducts = (items: Product[]) => {
   const seen = new Set<string>();
 
   return items.filter((product: any) => {
@@ -457,8 +408,7 @@ const dedupeCollectionProducts = (
 const getInitialGender = (
   searchParams: URLSearchParams,
 ): ProductGender => {
-  const queryGender =
-    searchParams.get("gender") || "";
+  const queryGender = searchParams.get("gender") || "";
 
   if (queryGender) {
     return toTitleGender(queryGender);
@@ -482,6 +432,8 @@ const SORT_OPTIONS: SortOption[] = [
   "Price : High to Low",
   "Price : Low to High",
 ];
+
+const PAGE_SIZE = 12;
 
 const getDiscountPercent = (product: Product) => {
   const original = Number(
@@ -508,13 +460,22 @@ export default function Collection() {
     useState<StorefrontCategory[]>([]);
   const [productsLoading, setProductsLoading] =
     useState(true);
-  const [productsError, setProductsError] = useState("");
+  const [productsError, setProductsError] =
+    useState("");
 
   const [activeFilters, setActiveFilters] = useState<
     Record<string, string[]>
   >(() => ({
     Gender: [getInitialGender(searchParams)],
   }));
+
+  const selectedGender =
+    activeFilters.Gender?.[0] || "Men";
+
+  const selectedCategoryId =
+    activeFilters.Category?.length === 1
+      ? activeFilters.Category[0]
+      : "";
 
   const [sortBy, setSortBy] =
     useState<SortOption>("Popularity");
@@ -536,32 +497,21 @@ export default function Collection() {
   const [mobileActiveTab, setMobileActiveTab] =
     useState("Sizes");
 
-  const [visibleCount, setVisibleCount] = useState(12);
-  const [isLoadingMore, setIsLoadingMore] =
-    useState(false);
+  const [visibleCount, setVisibleCount] =
+    useState(PAGE_SIZE);
 
   const observerTarget = useRef<HTMLDivElement>(null);
+  const loadMoreLockRef = useRef(false);
+  const productRequestRef = useRef(0);
 
   useEffect(() => {
     let alive = true;
 
-    const loadData = async () => {
-      setProductsLoading(true);
-      setProductsError("");
-
+    const loadCategories = async () => {
       try {
-        const [productData, tree] = await Promise.all([
-          fetchBranchProducts(3),
-          fetchCategoriesTree(),
-        ]);
+        const tree = await fetchCategoriesTree();
 
         if (alive) {
-          setProducts(
-            Array.isArray(productData)
-              ? productData
-              : [],
-          );
-
           setCategories(
             flattenCategoryTree(tree).filter(
               (category: any) =>
@@ -571,8 +521,61 @@ export default function Collection() {
         }
       } catch (error: any) {
         if (alive) {
-          setProducts([]);
           setCategories([]);
+
+          setProductsError(
+            error?.message ||
+              "Unable to load categories",
+          );
+        }
+      }
+    };
+
+    void loadCategories();
+
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const requestId = productRequestRef.current + 1;
+    productRequestRef.current = requestId;
+
+    let alive = true;
+
+    const loadProducts = async () => {
+      setProductsLoading(true);
+      setProductsError("");
+      setProducts([]);
+
+      try {
+        const productData = selectedCategoryId
+          ? await fetchProductsByCategoryId(
+              selectedCategoryId,
+              3,
+            )
+          : await fetchProductsByGender(
+              selectedGender,
+              3,
+            );
+
+        if (
+          alive &&
+          requestId === productRequestRef.current
+        ) {
+          setProducts(
+            Array.isArray(productData)
+              ? productData
+              : [],
+          );
+        }
+      } catch (error: any) {
+        if (
+          alive &&
+          requestId === productRequestRef.current
+        ) {
+          setProducts([]);
 
           setProductsError(
             error?.message ||
@@ -580,18 +583,21 @@ export default function Collection() {
           );
         }
       } finally {
-        if (alive) {
+        if (
+          alive &&
+          requestId === productRequestRef.current
+        ) {
           setProductsLoading(false);
         }
       }
     };
 
-    void loadData();
+    void loadProducts();
 
     return () => {
       alive = false;
     };
-  }, []);
+  }, [selectedGender, selectedCategoryId]);
 
   useEffect(() => {
     if (!categories.length) return;
@@ -643,8 +649,8 @@ export default function Collection() {
   }, [categories, searchParams]);
 
   useEffect(() => {
-    setVisibleCount(12);
-    setIsLoadingMore(false);
+    setVisibleCount(PAGE_SIZE);
+    loadMoreLockRef.current = false;
   }, [activeFilters, sortBy]);
 
   useEffect(() => {
@@ -657,9 +663,6 @@ export default function Collection() {
       document.body.style.overflow = "auto";
     };
   }, [isMobileFilterOpen, isMobileSortOpen]);
-
-  const selectedGender =
-    activeFilters.Gender?.[0] || "Men";
 
   const filterConfig = useMemo(() => {
     const genderProducts = products.filter(
@@ -790,6 +793,21 @@ export default function Collection() {
 
       const current = previous[category] || [];
 
+      if (category === "Category") {
+        if (current.includes(value)) {
+          const next = { ...previous };
+
+          delete next.Category;
+
+          return next;
+        }
+
+        return {
+          ...previous,
+          Category: [value],
+        };
+      }
+
       if (current.includes(value)) {
         const nextValues = current.filter(
           (item) => item !== value,
@@ -826,7 +844,9 @@ export default function Collection() {
     });
   };
 
-  const filterCount = Object.entries(activeFilters).reduce(
+  const filterCount = Object.entries(
+    activeFilters as Record<string, string[]>,
+  ).reduce(
     (total, [key, values]) =>
       key === "Gender"
         ? total
@@ -886,9 +906,8 @@ export default function Collection() {
     }
 
     if (activeFilters.Color?.length) {
-      const activeColors = activeFilters.Color.map(
-        normalizeText,
-      );
+      const activeColors =
+        activeFilters.Color.map(normalizeText);
 
       result = result.filter((product: any) => {
         const selectedColor = normalizeText(
@@ -1000,31 +1019,38 @@ export default function Collection() {
   useEffect(() => {
     const target = observerTarget.current;
 
-    if (!target) return;
-
-    let timeoutId: ReturnType<typeof setTimeout>;
+    if (
+      !target ||
+      visibleCount >= filteredProducts.length
+    ) {
+      return;
+    }
 
     const observer = new IntersectionObserver(
       (entries) => {
         if (
-          entries[0].isIntersecting &&
-          !isLoadingMore &&
-          visibleCount < filteredProducts.length
+          !entries[0]?.isIntersecting ||
+          loadMoreLockRef.current
         ) {
-          setIsLoadingMore(true);
-
-          timeoutId = setTimeout(() => {
-            setVisibleCount(
-              (previous) => previous + 12,
-            );
-
-            setIsLoadingMore(false);
-          }, 350);
+          return;
         }
+
+        loadMoreLockRef.current = true;
+
+        setVisibleCount((previous) =>
+          Math.min(
+            previous + PAGE_SIZE,
+            filteredProducts.length,
+          ),
+        );
+
+        window.requestAnimationFrame(() => {
+          loadMoreLockRef.current = false;
+        });
       },
       {
         threshold: 0.1,
-        rootMargin: "100px",
+        rootMargin: "240px",
       },
     );
 
@@ -1032,13 +1058,8 @@ export default function Collection() {
 
     return () => {
       observer.disconnect();
-      clearTimeout(timeoutId);
     };
-  }, [
-    visibleCount,
-    filteredProducts.length,
-    isLoadingMore,
-  ]);
+  }, [visibleCount, filteredProducts.length]);
 
   const getHeaderTitle = () => {
     const selectedCategoryIds =
@@ -1344,21 +1365,6 @@ export default function Collection() {
                       {...product}
                     />
                   ))}
-
-                  {isLoadingMore &&
-                  visibleCount <
-                    filteredProducts.length
-                    ? Array.from({ length: 4 }).map(
-                        (_, index) => (
-                          <div
-                            key={`col-skeleton-${index}`}
-                            className="min-w-0"
-                          >
-                            <ProductCardSkeleton />
-                          </div>
-                        ),
-                      )
-                    : null}
                 </div>
 
                 {visibleCount <
