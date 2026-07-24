@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useSearchParams } from "react-router";
 import { FiChevronDown, FiChevronUp, FiFilter, FiX } from "react-icons/fi";
 import { FaStar } from "react-icons/fa";
@@ -7,7 +7,6 @@ import { ProductCard, ProductCardSkeleton } from "../components/ProductCard";
 import type { Product, ProductGender } from "../Models/Product";
 import {
   fetchCategoriesTree,
-  fetchProductsByCategoryId,
   fetchProductsByGender,
   flattenCategoryTree,
   type StorefrontCategory,
@@ -433,7 +432,6 @@ const SORT_OPTIONS: SortOption[] = [
   "Price : Low to High",
 ];
 
-const PAGE_SIZE = 12;
 
 const getDiscountPercent = (product: Product) => {
   const original = Number(
@@ -472,10 +470,6 @@ export default function Collection() {
   const selectedGender =
     activeFilters.Gender?.[0] || "Men";
 
-  const selectedCategoryId =
-    activeFilters.Category?.length === 1
-      ? activeFilters.Category[0]
-      : "";
 
   const [sortBy, setSortBy] =
     useState<SortOption>("Popularity");
@@ -497,12 +491,6 @@ export default function Collection() {
   const [mobileActiveTab, setMobileActiveTab] =
     useState("Sizes");
 
-  const [visibleCount, setVisibleCount] =
-    useState(PAGE_SIZE);
-
-  const observerTarget = useRef<HTMLDivElement>(null);
-  const loadMoreLockRef = useRef(false);
-  const productRequestRef = useRef(0);
 
   useEffect(() => {
     let alive = true;
@@ -539,9 +527,6 @@ export default function Collection() {
   }, []);
 
   useEffect(() => {
-    const requestId = productRequestRef.current + 1;
-    productRequestRef.current = requestId;
-
     let alive = true;
 
     const loadProducts = async () => {
@@ -550,20 +535,12 @@ export default function Collection() {
       setProducts([]);
 
       try {
-        const productData = selectedCategoryId
-          ? await fetchProductsByCategoryId(
-              selectedCategoryId,
-              3,
-            )
-          : await fetchProductsByGender(
-              selectedGender,
-              3,
-            );
+        const productData = await fetchProductsByGender(
+          selectedGender,
+          3,
+        );
 
-        if (
-          alive &&
-          requestId === productRequestRef.current
-        ) {
+        if (alive) {
           setProducts(
             Array.isArray(productData)
               ? productData
@@ -571,22 +548,15 @@ export default function Collection() {
           );
         }
       } catch (error: any) {
-        if (
-          alive &&
-          requestId === productRequestRef.current
-        ) {
+        if (alive) {
           setProducts([]);
-
           setProductsError(
             error?.message ||
               "Unable to load products",
           );
         }
       } finally {
-        if (
-          alive &&
-          requestId === productRequestRef.current
-        ) {
+        if (alive) {
           setProductsLoading(false);
         }
       }
@@ -597,7 +567,7 @@ export default function Collection() {
     return () => {
       alive = false;
     };
-  }, [selectedGender, selectedCategoryId]);
+  }, [selectedGender]);
 
   useEffect(() => {
     if (!categories.length) return;
@@ -648,10 +618,6 @@ export default function Collection() {
     });
   }, [categories, searchParams]);
 
-  useEffect(() => {
-    setVisibleCount(PAGE_SIZE);
-    loadMoreLockRef.current = false;
-  }, [activeFilters, sortBy]);
 
   useEffect(() => {
     document.body.style.overflow =
@@ -795,16 +761,57 @@ export default function Collection() {
 
       if (category === "Category") {
         if (current.includes(value)) {
+          const nextValues = current.filter(
+            (item) => item !== value,
+          );
+
           const next = { ...previous };
 
-          delete next.Category;
+          if (nextValues.length) {
+            next.Category = nextValues;
+          } else {
+            delete next.Category;
+          }
 
           return next;
         }
 
+        const selectedCategory = categories.find(
+          (item) => String(item.id) === String(value),
+        );
+
+        if (!selectedCategory) {
+          return {
+            ...previous,
+            Category: [...current, value],
+          };
+        }
+
+        const selectedDescendants = getCategoryDescendantIds(
+          categories,
+          value,
+        );
+
+        const selectedAncestors = new Set<string>();
+        let parentId = getCategoryParentId(selectedCategory);
+
+        while (parentId) {
+          selectedAncestors.add(parentId);
+          const parent = categories.find(
+            (item) => String(item.id) === parentId,
+          );
+          parentId = parent ? getCategoryParentId(parent) : "";
+        }
+
+        const nextValues = current.filter(
+          (item) =>
+            !selectedDescendants.has(item) &&
+            !selectedAncestors.has(item),
+        );
+
         return {
           ...previous,
-          Category: [value],
+          Category: [...nextValues, value],
         };
       }
 
@@ -1016,50 +1023,6 @@ export default function Collection() {
     categories,
   ]);
 
-  useEffect(() => {
-    const target = observerTarget.current;
-
-    if (
-      !target ||
-      visibleCount >= filteredProducts.length
-    ) {
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (
-          !entries[0]?.isIntersecting ||
-          loadMoreLockRef.current
-        ) {
-          return;
-        }
-
-        loadMoreLockRef.current = true;
-
-        setVisibleCount((previous) =>
-          Math.min(
-            previous + PAGE_SIZE,
-            filteredProducts.length,
-          ),
-        );
-
-        window.requestAnimationFrame(() => {
-          loadMoreLockRef.current = false;
-        });
-      },
-      {
-        threshold: 0.1,
-        rootMargin: "240px",
-      },
-    );
-
-    observer.observe(target);
-
-    return () => {
-      observer.disconnect();
-    };
-  }, [visibleCount, filteredProducts.length]);
 
   const getHeaderTitle = () => {
     const selectedCategoryIds =
@@ -1212,10 +1175,6 @@ export default function Collection() {
     );
   };
 
-  const displayedProducts = filteredProducts.slice(
-    0,
-    visibleCount,
-  );
 
   return (
     <div className="bg-white min-h-screen font-montserrat">
@@ -1356,25 +1315,15 @@ export default function Collection() {
                   ),
                 )}
               </div>
-            ) : displayedProducts.length ? (
-              <>
-                <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
-                  {displayedProducts.map((product: any) => (
-                    <ProductCard
-                      key={getProductCardKey(product)}
-                      {...product}
-                    />
-                  ))}
-                </div>
-
-                {visibleCount <
-                filteredProducts.length ? (
-                  <div
-                    ref={observerTarget}
-                    className="w-full h-4 flex items-center justify-center mt-2"
+            ) : filteredProducts.length ? (
+              <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+                {filteredProducts.map((product: any) => (
+                  <ProductCard
+                    key={getProductCardKey(product)}
+                    {...product}
                   />
-                ) : null}
-              </>
+                ))}
+              </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-20 text-center">
                 <FiFilter
