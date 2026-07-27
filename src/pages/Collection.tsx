@@ -1,13 +1,23 @@
-import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router";
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import {
+  useSearchParams,
+} from "react-router";
 import {
   FiChevronDown,
   FiChevronUp,
   FiFilter,
   FiX,
 } from "react-icons/fi";
-import { FaStar } from "react-icons/fa";
-import { BiSortAlt2 } from "react-icons/bi";
+import {
+  FaStar,
+} from "react-icons/fa";
+import {
+  BiSortAlt2,
+} from "react-icons/bi";
 import {
   ProductCard,
   ProductCardSkeleton,
@@ -23,27 +33,51 @@ import {
   type StorefrontCategory,
 } from "../services/productsApi";
 
-const normalizeText = (value: unknown) =>
+const norm = (
+  value: unknown,
+) =>
   String(value ?? "")
     .toLowerCase()
     .replace(/-/g, " ")
     .replace(/&/g, " and ")
-    .replace(/[^a-z0-9]+/g, " ")
+    .replace(
+      /[^a-z0-9]+/g,
+      " ",
+    )
     .replace(/\s+/g, " ")
     .trim();
 
-const toTitleGender = (
+const uniqueValues = (
+  values: any[],
+) =>
+  Array.from(
+    new Map(
+      values
+        .map((value) =>
+          String(
+            value ?? "",
+          ).trim(),
+        )
+        .filter(Boolean)
+        .map((value) => [
+          value.toLowerCase(),
+          value,
+        ]),
+    ).values(),
+  );
+
+const genderValue = (
   value: unknown,
 ): ProductGender => {
-  const normalized = normalizeText(value);
+  const gender = norm(value);
 
-  if (normalized === "women") {
+  if (gender === "women") {
     return "Women";
   }
 
   if (
-    normalized === "kids" ||
-    normalized === "kid"
+    gender === "kids" ||
+    gender === "kid"
   ) {
     return "Kids";
   }
@@ -51,12 +85,14 @@ const toTitleGender = (
   return "Men";
 };
 
-const getCategoryId = (
+const categoryId = (
   category: StorefrontCategory,
 ) =>
-  String(category.id ?? "").trim();
+  String(
+    category.id ?? "",
+  ).trim();
 
-const getCategoryParentId = (
+const parentId = (
   category: StorefrontCategory,
 ) =>
   String(
@@ -65,7 +101,7 @@ const getCategoryParentId = (
       "",
   ).trim();
 
-const getCategoryPath = (
+const categoryPath = (
   category: StorefrontCategory,
 ) =>
   String(
@@ -75,48 +111,85 @@ const getCategoryPath = (
       "",
   ).trim();
 
-const getProductCategoryId = (
+const productGender = (
   product: Product,
 ) =>
-  String(
-    (product as any).categoryId ??
-      (product as any).category_id ??
-      "",
-  ).trim();
-
-const getProductGender = (
-  product: Product,
-) =>
-  normalizeText(
+  norm(
     (product as any).gender ??
       (product as any).category ??
       "",
   );
 
-const getProductSelectedColor = (
+const productColor = (
   product: Product,
 ) =>
   String(
     (product as any).selectedColor ??
-      (product as any).selected_color ??
+      (product as any)
+        .selected_color ??
+      (product as any)
+        .selectedColour ??
+      (product as any)
+        .selected_colour ??
       (product as any).colour ??
       (product as any).color ??
       "",
   ).trim();
 
-const getCategoryLabel = (
+const productCategoryIds = (
+  product: Product,
+) => {
+  const ids =
+    new Set<string>();
+
+  const add = (value: any) => {
+    const id = String(
+      value ?? "",
+    ).trim();
+
+    if (id) {
+      ids.add(id);
+    }
+  };
+
+  add(
+    (product as any).categoryId ??
+      (product as any).category_id,
+  );
+
+  const variants =
+    Array.isArray(
+      (product as any).variants,
+    )
+      ? (product as any).variants
+      : [];
+
+  variants.forEach(
+    (variant: any) =>
+      add(
+        variant.categoryId ??
+          variant.category_id,
+      ),
+  );
+
+  return ids;
+};
+
+const categoryLabel = (
   category: StorefrontCategory,
   gender: ProductGender,
 ) => {
-  const parts = getCategoryPath(category)
-    .split(">")
-    .map((part) => part.trim())
-    .filter(Boolean);
+  const parts =
+    categoryPath(category)
+      .split(">")
+      .map((part) =>
+        part.trim(),
+      )
+      .filter(Boolean);
 
   if (
     parts.length &&
-    normalizeText(parts[0]) ===
-      normalizeText(gender)
+    norm(parts[0]) === norm(gender)
   ) {
     parts.shift();
   }
@@ -127,109 +200,91 @@ const getCategoryLabel = (
   );
 };
 
-const findUniqueCategory = (
-  categories: StorefrontCategory[],
-  predicate: (
-    category: StorefrontCategory,
-  ) => boolean,
+const categoryFromParams = (
+  categories:
+    StorefrontCategory[],
+  params: URLSearchParams,
 ) => {
-  const matches =
-    categories.filter(predicate);
-
-  return matches.length === 1
-    ? matches[0]
-    : null;
-};
-
-const findCategoryFromParams = (
-  categories: StorefrontCategory[],
-  searchParams: URLSearchParams,
-) => {
-  const categoryId =
-    searchParams.get("category_id") ||
-    searchParams.get("categoryId") ||
+  const id =
+    params.get("category_id") ||
+    params.get("categoryId") ||
     "";
 
-  const categorySlug =
-    searchParams.get("category_slug") ||
-    searchParams.get("categorySlug") ||
-    "";
+  const slug = norm(
+    params.get("category_slug") ||
+      params.get("categorySlug") ||
+      "",
+  );
 
-  const category =
-    searchParams.get("category") || "";
+  const name = norm(
+    params.get("category") ||
+      "",
+  );
 
-  if (categoryId) {
-    const found = categories.find(
-      (item) =>
-        getCategoryId(item) ===
-        String(categoryId),
+  if (id) {
+    return (
+      categories.find(
+        (category) =>
+          categoryId(category) ===
+          id,
+      ) || null
     );
+  }
 
-    if (found) {
-      return found;
+  if (name) {
+    const pathMatches =
+      categories.filter(
+        (category) =>
+          norm(
+            categoryPath(category),
+          ) === name,
+      );
+
+    if (
+      pathMatches.length === 1
+    ) {
+      return pathMatches[0];
+    }
+
+    const nameMatches =
+      categories.filter(
+        (category) =>
+          norm(category.name) ===
+          name,
+      );
+
+    if (
+      nameMatches.length === 1
+    ) {
+      return nameMatches[0];
     }
   }
 
-  if (category) {
-    const query =
-      normalizeText(category);
-
-    const pathMatch =
-      findUniqueCategory(
-        categories,
-        (item) =>
-          normalizeText(
-            getCategoryPath(item),
-          ) === query,
+  if (slug) {
+    const slugMatches =
+      categories.filter(
+        (category) =>
+          norm(category.slug) ===
+          slug,
       );
 
-    if (pathMatch) {
-      return pathMatch;
-    }
-
-    const nameMatch =
-      findUniqueCategory(
-        categories,
-        (item) =>
-          normalizeText(item.name) ===
-          query,
-      );
-
-    if (nameMatch) {
-      return nameMatch;
-    }
-  }
-
-  if (categorySlug) {
-    const query =
-      normalizeText(categorySlug);
-
-    const slugMatch =
-      findUniqueCategory(
-        categories,
-        (item) =>
-          normalizeText(item.slug) ===
-          query,
-      );
-
-    if (slugMatch) {
-      return slugMatch;
+    if (
+      slugMatches.length === 1
+    ) {
+      return slugMatches[0];
     }
   }
 
   return null;
 };
 
-const getCategoryGender = (
-  category: StorefrontCategory | null,
+const categoryGender = (
+  category:
+    StorefrontCategory | null,
 ): ProductGender | "" => {
   const gender = String(
     category?.gender ?? "",
   ).toUpperCase();
-
-  if (gender === "MEN") {
-    return "Men";
-  }
 
   if (gender === "WOMEN") {
     return "Women";
@@ -239,121 +294,132 @@ const getCategoryGender = (
     return "Kids";
   }
 
+  if (gender === "MEN") {
+    return "Men";
+  }
+
   return "";
 };
 
-const getDescendantIds = (
-  categories: StorefrontCategory[],
-  categoryId: string,
+const descendants = (
+  categories:
+    StorefrontCategory[],
+  id: string,
 ) => {
-  const ids = new Set<string>();
-
-  const rootId = String(
-    categoryId || "",
-  ).trim();
-
-  if (!rootId) {
-    return ids;
-  }
-
-  ids.add(rootId);
+  const ids =
+    new Set<string>(
+      id ? [id] : [],
+    );
 
   let changed = true;
 
   while (changed) {
     changed = false;
 
-    categories.forEach((category) => {
-      const id =
-        getCategoryId(category);
+    categories.forEach(
+      (category) => {
+        const child =
+          categoryId(category);
 
-      const parentId =
-        getCategoryParentId(category);
+        const parent =
+          parentId(category);
 
-      if (
-        id &&
-        parentId &&
-        ids.has(parentId) &&
-        !ids.has(id)
-      ) {
-        ids.add(id);
-        changed = true;
-      }
-    });
+        if (
+          child &&
+          parent &&
+          ids.has(parent) &&
+          !ids.has(child)
+        ) {
+          ids.add(child);
+          changed = true;
+        }
+      },
+    );
   }
 
   return ids;
 };
 
-const getAncestorIds = (
-  categories: StorefrontCategory[],
-  categoryId: string,
+const ancestors = (
+  categories:
+    StorefrontCategory[],
+  id: string,
 ) => {
-  const categoryMap = new Map(
-    categories.map((category) => [
-      getCategoryId(category),
-      category,
-    ]),
+  const map = new Map(
+    categories.map(
+      (category) => [
+        categoryId(category),
+        category,
+      ],
+    ),
   );
 
-  const ids = new Set<string>();
+  const ids =
+    new Set<string>();
 
-  let currentId = String(
-    categoryId || "",
-  ).trim();
+  let current = id;
 
-  while (currentId) {
+  while (current) {
     const category =
-      categoryMap.get(currentId);
+      map.get(current);
 
     if (!category) {
       break;
     }
 
-    const parentId =
-      getCategoryParentId(category);
+    const parent =
+      parentId(category);
 
     if (
-      !parentId ||
-      ids.has(parentId)
+      !parent ||
+      ids.has(parent)
     ) {
       break;
     }
 
-    ids.add(parentId);
-    currentId = parentId;
+    ids.add(parent);
+    current = parent;
   }
 
   return ids;
 };
 
-const productMatchesSelectedCategories = (
-  product: Product,
-  selectedCategoryIds: string[],
-  categories: StorefrontCategory[],
-) => {
-  if (!selectedCategoryIds.length) {
-    return true;
-  }
-
-  const productCategoryId =
-    getProductCategoryId(product);
-
-  if (!productCategoryId) {
-    return false;
-  }
-
-  return selectedCategoryIds.some(
-    (categoryId) =>
-      getDescendantIds(
+const allowedCategoryIds = (
+  categories:
+    StorefrontCategory[],
+  id: string,
+) =>
+  categories.some(
+    (category) =>
+      parentId(category) === id,
+  )
+    ? descendants(
         categories,
-        categoryId,
-      ).has(productCategoryId),
-  );
-};
+        id,
+      )
+    : new Set([id]);
 
-const getCategoriesForGender = (
-  categories: StorefrontCategory[],
+const matchesCategories = (
+  product: Product,
+  selected: string[],
+  categories:
+    StorefrontCategory[],
+) =>
+  !selected.length ||
+  selected.some((id) =>
+    Array.from(
+      productCategoryIds(product),
+    ).some((productId) =>
+      allowedCategoryIds(
+        categories,
+        id,
+      ).has(productId),
+    ),
+  );
+
+const categoriesForGender = (
+  categories:
+    StorefrontCategory[],
   gender: ProductGender,
 ) => {
   const target =
@@ -366,15 +432,19 @@ const getCategoriesForGender = (
   return categories
     .filter(
       (category) =>
-        category.gender === target &&
-        category.is_active !== false &&
-        Number(category.level || 0) > 0,
+        category.gender ===
+          target &&
+        category.is_active !==
+          false &&
+        Number(
+          category.level || 0,
+        ) > 0,
     )
     .sort((first, second) =>
-      getCategoryPath(
+      categoryPath(
         first,
       ).localeCompare(
-        getCategoryPath(second),
+        categoryPath(second),
         undefined,
         {
           numeric: true,
@@ -383,141 +453,95 @@ const getCategoriesForGender = (
     );
 };
 
-const getProductCardKey = (
-  product: Product,
-) =>
-  [
-    (product as any).productId ??
-      (product as any).product_id ??
-      product.id,
-    (product as any).categoryId ??
-      (product as any).category_id,
-    (product as any).patternCode ??
-      (product as any).pattern_code,
-    (product as any).selectedColor ??
-      (product as any).selected_color ??
-      (product as any).colour ??
-      (product as any).color,
-    (product as any).variantId ??
-      (product as any).variant_id,
-    (product as any).barcode ??
-      (product as any).ean_code,
-  ]
-    .map((value) =>
-      normalizeText(value),
-    )
-    .filter(Boolean)
-    .join("|");
-
-const getProductIdentity = (
+const productIdentity = (
   product: Product,
 ) => {
-  const productId = String(
-    (product as any).productId ??
-      (product as any).product_id ??
+  const route = String(
+    (product as any).routeKey ??
+      (product as any).route_key ??
+      (product as any).designKey ??
+      (product as any).design_key ??
       "",
   ).trim();
 
-  const categoryId = String(
+  if (route) {
+    return route;
+  }
+
+  const productId = norm(
+    (product as any).productId ??
+      (product as any).product_id ??
+      product.id ??
+      "",
+  );
+
+  const category = norm(
     (product as any).categoryId ??
       (product as any).category_id ??
       "",
-  ).trim();
+  );
 
-  const pattern = normalizeText(
-    (product as any).patternCode ??
-      (product as any).pattern_code ??
+  const color = norm(
+    productColor(product),
+  );
+
+  const variant = norm(
+    (product as any).variantId ??
+      (product as any).variant_id ??
       "",
   );
 
-  const color = normalizeText(
-    getProductSelectedColor(product),
-  );
+  if (
+    productId &&
+    color
+  ) {
+    return `product-colour|${productId}|${category || "none"}|${color}`;
+  }
 
   if (productId) {
-    return [
-      productId,
-      categoryId,
-      pattern,
-      color,
-    ].join("|");
+    return `product|${productId}|${category || "none"}`;
+  }
+
+  if (variant) {
+    return `variant|${variant}`;
   }
 
   return [
-    normalizeText(
-      (product as any).gender ??
-        (product as any).category,
-    ),
-    categoryId,
-    normalizeText(
+    "details",
+    productGender(product),
+    category,
+    norm(
       (product as any).brand ??
         (product as any).brand_name,
     ),
-    normalizeText(
+    norm(
       (product as any).title ??
-        (product as any).product_name ??
+        (product as any)
+          .product_name ??
         (product as any).name,
     ),
-    pattern,
     color,
   ].join("|");
 };
 
-const dedupeProducts = (
-  products: Product[],
-) => {
-  const seen = new Set<string>();
-
-  return products.filter((product) => {
-    const key =
-      getProductIdentity(product);
-
-    if (seen.has(key)) {
-      return false;
-    }
-
-    seen.add(key);
-
-    return true;
-  });
-};
-
-const getInitialGender = (
-  searchParams: URLSearchParams,
-): ProductGender => {
-  const queryGender =
-    searchParams.get("gender");
-
-  if (queryGender) {
-    return toTitleGender(queryGender);
-  }
-
-  return toTitleGender(
-    localStorage.getItem(
-      "preferred_gender",
-    ) || "Men",
+const initialGender = (
+  params: URLSearchParams,
+) =>
+  genderValue(
+    params.get("gender") ||
+      localStorage.getItem(
+        "preferred_gender",
+      ) ||
+      "Men",
   );
-};
 
-type SortOption =
-  | "Popularity"
-  | "New Arrival"
-  | "Price : High to Low"
-  | "Price : Low to High";
-
-const SORT_OPTIONS: SortOption[] = [
-  "Popularity",
-  "New Arrival",
-  "Price : High to Low",
-  "Price : Low to High",
-];
-
-const getDiscountPercent = (
+const discountPercent = (
   product: Product,
 ) => {
   const original = Number(
     (product as any).originalPrice ??
-      (product as any).original_price ??
+      (product as any)
+        .original_price ??
       (product as any).mrp ??
       product.price ??
       0,
@@ -527,58 +551,79 @@ const getDiscountPercent = (
     product.price || 0,
   );
 
-  if (
-    !original ||
-    original <= price
-  ) {
-    return 0;
-  }
-
-  return Math.round(
-    ((original - price) / original) *
-      100,
-  );
+  return original > price
+    ? Math.round(
+        ((original - price) /
+          original) *
+          100,
+      )
+    : 0;
 };
+
+type SortOption =
+  | "Popularity"
+  | "New Arrival"
+  | "Price : High to Low"
+  | "Price : Low to High";
+
+const SORT_OPTIONS:
+  SortOption[] = [
+  "Popularity",
+  "New Arrival",
+  "Price : High to Low",
+  "Price : Low to High",
+];
 
 export default function Collection() {
   const [searchParams] =
     useSearchParams();
 
-  const [products, setProducts] =
-    useState<Product[]>([]);
-
-  const [categories, setCategories] =
-    useState<StorefrontCategory[]>([]);
+  const [
+    products,
+    setProducts,
+  ] = useState<Product[]>([]);
 
   const [
-    productsLoading,
-    setProductsLoading,
+    categories,
+    setCategories,
+  ] = useState<
+    StorefrontCategory[]
+  >([]);
+
+  const [
+    loading,
+    setLoading,
   ] = useState(true);
 
   const [
-    productsError,
-    setProductsError,
+    error,
+    setError,
   ] = useState("");
 
   const [
-    activeFilters,
-    setActiveFilters,
+    filters,
+    setFilters,
   ] = useState<
     Record<string, string[]>
   >(() => ({
     Gender: [
-      getInitialGender(searchParams),
+      initialGender(
+        searchParams,
+      ),
     ],
   }));
 
-  const [sortBy, setSortBy] =
+  const [
+    sortBy,
+    setSortBy,
+  ] =
     useState<SortOption>(
       "Popularity",
     );
 
   const [
-    expandedFilters,
-    setExpandedFilters,
+    expanded,
+    setExpanded,
   ] = useState<
     Record<string, boolean>
   >({
@@ -588,57 +633,51 @@ export default function Collection() {
   });
 
   const [
-    isMobileFilterOpen,
-    setIsMobileFilterOpen,
+    mobileFilter,
+    setMobileFilter,
   ] = useState(false);
 
   const [
-    isMobileSortOpen,
-    setIsMobileSortOpen,
+    mobileSort,
+    setMobileSort,
   ] = useState(false);
 
   const [
-    mobileActiveTab,
-    setMobileActiveTab,
+    mobileTab,
+    setMobileTab,
   ] = useState("Sizes");
 
-  const selectedGender: ProductGender =
-    toTitleGender(
-      activeFilters.Gender?.[0] ||
+  const selectedGender =
+    genderValue(
+      filters.Gender?.[0] ||
         "Men",
     );
 
   useEffect(() => {
     let active = true;
 
-    const loadCategories =
-      async () => {
-        try {
-          const tree =
-            await fetchCategoriesTree();
-
-          if (active) {
-            setCategories(
-              flattenCategoryTree(
-                tree,
-              ).filter(
-                (category) =>
-                  category.is_active !==
-                  false,
-              ),
-            );
-          }
-        } catch (error: any) {
-          if (active) {
-            setProductsError(
-              error?.message ||
-                "Unable to load categories",
-            );
-          }
+    fetchCategoriesTree()
+      .then((tree) => {
+        if (active) {
+          setCategories(
+            flattenCategoryTree(
+              tree,
+            ).filter(
+              (category) =>
+                category.is_active !==
+                false,
+            ),
+          );
         }
-      };
-
-    void loadCategories();
+      })
+      .catch((reason) => {
+        if (active) {
+          setError(
+            reason?.message ||
+              "Unable to load categories",
+          );
+        }
+      });
 
     return () => {
       active = false;
@@ -648,17 +687,14 @@ export default function Collection() {
   useEffect(() => {
     let active = true;
 
-    const loadProducts = async () => {
-      setProductsLoading(true);
-      setProductsError("");
+    setLoading(true);
+    setError("");
 
-      try {
-        const data =
-          await fetchProductsByGender(
-            selectedGender,
-            3,
-          );
-
+    fetchProductsByGender(
+      selectedGender,
+      3,
+    )
+      .then((data) => {
         if (active) {
           setProducts(
             Array.isArray(data)
@@ -666,23 +702,22 @@ export default function Collection() {
               : [],
           );
         }
-      } catch (error: any) {
+      })
+      .catch((reason) => {
         if (active) {
           setProducts([]);
 
-          setProductsError(
-            error?.message ||
+          setError(
+            reason?.message ||
               "Unable to load products",
           );
         }
-      } finally {
+      })
+      .finally(() => {
         if (active) {
-          setProductsLoading(false);
+          setLoading(false);
         }
-      }
-    };
-
-    void loadProducts();
+      });
 
     return () => {
       active = false;
@@ -694,24 +729,18 @@ export default function Collection() {
       return;
     }
 
-    const matchedCategory =
-      findCategoryFromParams(
+    const matched =
+      categoryFromParams(
         categories,
         searchParams,
       );
 
-    const matchedGender =
-      getCategoryGender(
-        matchedCategory,
-      );
-
-    const queryGender =
-      searchParams.get("gender");
-
-    const nextGender: ProductGender =
-      matchedGender ||
-      toTitleGender(
-        queryGender ||
+    const nextGender =
+      categoryGender(matched) ||
+      genderValue(
+        searchParams.get(
+          "gender",
+        ) ||
           selectedGender,
       );
 
@@ -725,35 +754,34 @@ export default function Collection() {
       `/${nextGender.toLowerCase()}`,
     );
 
-    setActiveFilters(
-      (previous) => {
-        const next: Record<
-          string,
-          string[]
-        > = {
-          ...previous,
-          Gender: [nextGender],
-        };
+    setFilters((previous) => {
+      const next: Record<
+        string,
+        string[]
+      > = {
+        ...previous,
+        Gender: [nextGender],
+      };
 
-        if (matchedCategory) {
-          next.Category = [
-            getCategoryId(
-              matchedCategory,
-            ),
-          ];
-        } else {
-          delete next.Category;
-        }
+      if (matched) {
+        next.Category = [
+          categoryId(matched),
+        ];
+      } else {
+        delete next.Category;
+      }
 
-        return next;
-      },
-    );
-  }, [categories, searchParams]);
+      return next;
+    });
+  }, [
+    categories,
+    searchParams,
+  ]);
 
   useEffect(() => {
     document.body.style.overflow =
-      isMobileFilterOpen ||
-      isMobileSortOpen
+      mobileFilter ||
+      mobileSort
         ? "hidden"
         : "auto";
 
@@ -762,232 +790,154 @@ export default function Collection() {
         "auto";
     };
   }, [
-    isMobileFilterOpen,
-    isMobileSortOpen,
+    mobileFilter,
+    mobileSort,
   ]);
 
-  const genderProducts = useMemo(
-    () =>
-      products.filter(
-        (product) =>
-          getProductGender(
-            product,
-          ) ===
-          normalizeText(
-            selectedGender,
-          ),
-      ),
-    [products, selectedGender],
-  );
+  const genderProducts =
+    useMemo(
+      () =>
+        products.filter(
+          (product) =>
+            productGender(product) ===
+            norm(selectedGender),
+        ),
+      [
+        products,
+        selectedGender,
+      ],
+    );
 
-  const filterConfig = useMemo(
-    () => {
-      const categoryOptions =
-        getCategoriesForGender(
-          categories,
+  const config = useMemo(() => {
+    const categoryOptions =
+      categoriesForGender(
+        categories,
+        selectedGender,
+      ).map((category) => ({
+        label: categoryLabel(
+          category,
           selectedGender,
-        ).map((category) => ({
-          label: getCategoryLabel(
-            category,
-            selectedGender,
-          ),
-          value:
-            getCategoryId(category),
-          isLevel1:
-            Number(
-              category.level || 0,
-            ) === 1,
-          depth: Math.max(
-            Number(
-              category.level || 0,
-            ) - 1,
-            0,
-          ),
-        }));
+        ),
+        value:
+          categoryId(category),
+        levelOne:
+          Number(
+            category.level || 0,
+          ) === 1,
+        depth: Math.max(
+          Number(
+            category.level || 0,
+          ) - 1,
+          0,
+        ),
+      }));
 
-      const brands = Array.from(
-        new Set(
-          genderProducts
-            .map((product) =>
-              String(
-                (product as any)
-                  .brand ??
-                  (product as any)
-                    .brand_name ??
-                  "",
-              ).trim(),
-            )
-            .filter(Boolean),
+    const brands =
+      uniqueValues(
+        genderProducts.map(
+          (product) =>
+            (product as any).brand ??
+            (product as any)
+              .brand_name,
         ),
       );
 
-      const colors = Array.from(
-        new Set(
-          genderProducts
-            .flatMap((product) => [
-              getProductSelectedColor(
-                product,
-              ),
-              ...((product as any)
-                .colors || []),
-              ...((product as any)
-                .colours || []),
-            ])
-            .map((value) =>
-              String(value).trim(),
-            )
-            .filter(Boolean),
+    const colors =
+      uniqueValues(
+        genderProducts.flatMap(
+          (product) => [
+            productColor(product),
+            ...((product as any)
+              .colors || []),
+            ...((product as any)
+              .colours || []),
+          ],
         ),
       );
 
-      const sizes = Array.from(
-        new Set(
-          genderProducts
-            .flatMap(
-              (product) =>
-                (product as any)
-                  .sizes || [],
-            )
-            .map((value) =>
-              String(value).trim(),
-            )
-            .filter(Boolean),
+    const sizes =
+      uniqueValues(
+        genderProducts.flatMap(
+          (product) =>
+            (product as any).sizes ||
+            [],
         ),
       );
 
-      return {
-        Category: categoryOptions,
-        Sizes: sizes.length
-          ? sizes
-          : [
-              "S",
-              "M",
-              "L",
-              "XL",
-              "2XL",
-              "3XL",
-              "4XL",
-              "5XL",
-              "6XL",
-            ],
-        Brand: brands.length
-          ? brands
-          : ["Vandhana"],
-        Color: colors.length
-          ? colors
-          : [
-              "Black",
-              "White",
-              "Red",
-              "Blue",
-              "Green",
-              "Yellow",
-              "Grey",
-              "Brown",
-            ],
-        Discount: [
-          "10% and above",
-          "20% and above",
-          "30% and above",
-          "40% and above",
-          "50% and above",
-        ],
-        Ratings: [4, 3, 2, 1],
-      };
-    },
-    [
-      categories,
-      genderProducts,
-      selectedGender,
-    ],
-  );
+    return {
+      Category:
+        categoryOptions,
+      Sizes: sizes.length
+        ? sizes
+        : [
+            "S",
+            "M",
+            "L",
+            "XL",
+            "2XL",
+            "3XL",
+            "4XL",
+            "5XL",
+            "6XL",
+          ],
+      Brand: brands.length
+        ? brands
+        : ["Vandhana"],
+      Color: colors.length
+        ? colors
+        : [
+            "Black",
+            "White",
+            "Red",
+            "Blue",
+            "Green",
+            "Yellow",
+            "Grey",
+            "Brown",
+          ],
+      Discount: [
+        "10% and above",
+        "20% and above",
+        "30% and above",
+        "40% and above",
+        "50% and above",
+      ],
+      Ratings: [4, 3, 2, 1],
+    };
+  }, [
+    categories,
+    genderProducts,
+    selectedGender,
+  ]);
 
-  const toggleFilter = (
-    filterName: string,
+  const toggle = (
+    name: string,
     value: string,
   ) => {
-    setActiveFilters(
-      (previous) => {
-        if (
-          filterName === "Gender"
-        ) {
-          const gender =
-            toTitleGender(value);
+    setFilters((previous) => {
+      if (name === "Gender") {
+        const gender =
+          genderValue(value);
 
-          localStorage.setItem(
-            "preferred_gender",
-            gender,
-          );
+        localStorage.setItem(
+          "preferred_gender",
+          gender,
+        );
 
-          localStorage.setItem(
-            "preferred_gender_url",
-            `/${gender.toLowerCase()}`,
-          );
+        localStorage.setItem(
+          "preferred_gender_url",
+          `/${gender.toLowerCase()}`,
+        );
 
-          return {
-            Gender: [gender],
-          };
-        }
+        return {
+          Gender: [gender],
+        };
+      }
 
-        const current =
-          previous[filterName] || [];
+      const current =
+        previous[name] || [];
 
-        if (
-          filterName === "Category"
-        ) {
-          if (
-            current.includes(value)
-          ) {
-            const remaining =
-              current.filter(
-                (item) =>
-                  item !== value,
-              );
-
-            const next = {
-              ...previous,
-            };
-
-            if (remaining.length) {
-              next.Category =
-                remaining;
-            } else {
-              delete next.Category;
-            }
-
-            return next;
-          }
-
-          const descendants =
-            getDescendantIds(
-              categories,
-              value,
-            );
-
-          const ancestors =
-            getAncestorIds(
-              categories,
-              value,
-            );
-
-          const cleaned =
-            current.filter(
-              (item) =>
-                !descendants.has(
-                  item,
-                ) &&
-                !ancestors.has(item),
-            );
-
-          return {
-            ...previous,
-            Category: [
-              ...cleaned,
-              value,
-            ],
-          };
-        }
-
+      if (name === "Category") {
         if (
           current.includes(value)
         ) {
@@ -1002,63 +952,112 @@ export default function Collection() {
           };
 
           if (remaining.length) {
-            next[filterName] =
+            next.Category =
               remaining;
           } else {
-            delete next[filterName];
+            delete next.Category;
           }
 
           return next;
         }
 
+        const children =
+          descendants(
+            categories,
+            value,
+          );
+
+        const parents =
+          ancestors(
+            categories,
+            value,
+          );
+
         return {
           ...previous,
-          [filterName]: [
-            ...current,
+          Category: [
+            ...current.filter(
+              (item) =>
+                !children.has(
+                  item,
+                ) &&
+                !parents.has(item),
+            ),
             value,
           ],
         };
-      },
-    );
-  };
+      }
 
-  const clearAllFilters = () => {
-    setActiveFilters({
-      Gender: [selectedGender],
+      if (
+        current.includes(value)
+      ) {
+        const remaining =
+          current.filter(
+            (item) =>
+              item !== value,
+          );
+
+        const next = {
+          ...previous,
+        };
+
+        if (remaining.length) {
+          next[name] =
+            remaining;
+        } else {
+          delete next[name];
+        }
+
+        return next;
+      }
+
+      return {
+        ...previous,
+        [name]: [
+          ...current,
+          value,
+        ],
+      };
     });
   };
 
+  const clear = () =>
+    setFilters({
+      Gender: [
+        selectedGender,
+      ],
+    });
+
   const filterCount =
     Object.entries(
-      activeFilters,
+      filters,
     ).reduce(
       (
-        total,
-        [key, values],
+        count,
+        [name, values],
       ) =>
-        key === "Gender"
-          ? total
-          : total +
+        name === "Gender"
+          ? count
+          : count +
             values.length,
       0,
     );
 
-  const filteredProducts =
+  const visibleProducts =
     useMemo(() => {
       let result =
         genderProducts.filter(
           (product) =>
-            productMatchesSelectedCategories(
+            matchesCategories(
               product,
-              activeFilters.Category ||
+              filters.Category ||
                 [],
               categories,
             ),
         );
 
       if (
-        activeFilters.Sizes
-          ?.length
+        filters.Sizes?.length
       ) {
         result = result.filter(
           (product) =>
@@ -1067,7 +1066,7 @@ export default function Collection() {
                 .sizes || []
             ).some(
               (size: string) =>
-                activeFilters.Sizes.includes(
+                filters.Sizes.includes(
                   String(size),
                 ),
             ),
@@ -1075,43 +1074,37 @@ export default function Collection() {
       }
 
       if (
-        activeFilters.Color
-          ?.length
+        filters.Color?.length
       ) {
-        const colors =
-          activeFilters.Color.map(
-            normalizeText,
-          );
+        const selected =
+          filters.Color.map(norm);
 
         result = result.filter(
-          (product) => {
-            const values = [
-              getProductSelectedColor(
+          (product) =>
+            [
+              productColor(
                 product,
               ),
               ...((product as any)
                 .colors || []),
               ...((product as any)
                 .colours || []),
-            ].map(normalizeText);
-
-            return values.some(
-              (value) =>
-                colors.includes(
-                  value,
+            ]
+              .map(norm)
+              .some((color) =>
+                selected.includes(
+                  color,
                 ),
-            );
-          },
+              ),
         );
       }
 
       if (
-        activeFilters.Brand
-          ?.length
+        filters.Brand?.length
       ) {
         result = result.filter(
           (product) =>
-            activeFilters.Brand.includes(
+            filters.Brand.includes(
               String(
                 (product as any)
                   .brand ??
@@ -1124,12 +1117,11 @@ export default function Collection() {
       }
 
       if (
-        activeFilters.Discount
-          ?.length
+        filters.Discount?.length
       ) {
         const minimum =
           Math.min(
-            ...activeFilters.Discount.map(
+            ...filters.Discount.map(
               (value) =>
                 Number(
                   value.match(
@@ -1141,19 +1133,18 @@ export default function Collection() {
 
         result = result.filter(
           (product) =>
-            getDiscountPercent(
+            discountPercent(
               product,
             ) >= minimum,
         );
       }
 
       if (
-        activeFilters.Ratings
-          ?.length
+        filters.Ratings?.length
       ) {
         const minimum =
           Math.min(
-            ...activeFilters.Ratings.map(
+            ...filters.Ratings.map(
               Number,
             ),
           );
@@ -1168,11 +1159,13 @@ export default function Collection() {
         );
       }
 
+      const sorted = [...result];
+
       if (
         sortBy ===
         "Price : High to Low"
       ) {
-        result.sort(
+        sorted.sort(
           (first, second) =>
             Number(
               second.price || 0,
@@ -1185,7 +1178,7 @@ export default function Collection() {
         sortBy ===
         "Price : Low to High"
       ) {
-        result.sort(
+        sorted.sort(
           (first, second) =>
             Number(
               first.price || 0,
@@ -1197,7 +1190,7 @@ export default function Collection() {
       } else if (
         sortBy === "New Arrival"
       ) {
-        result.sort(
+        sorted.sort(
           (first, second) =>
             new Date(
               (second as any)
@@ -1216,25 +1209,22 @@ export default function Collection() {
         );
       }
 
-      return dedupeProducts(
-        result,
-      );
+      return sorted;
     }, [
-      activeFilters,
+      filters,
       categories,
       genderProducts,
       sortBy,
     ]);
 
-  const selectedCategoryNames = (
-    activeFilters.Category || []
+  const selectedNames = (
+    filters.Category || []
   )
     .map((id) =>
       categories.find(
         (category) =>
-          getCategoryId(
-            category,
-          ) === id,
+          categoryId(category) ===
+          id,
       ),
     )
     .filter(
@@ -1244,207 +1234,160 @@ export default function Collection() {
         Boolean(category),
     )
     .map((category) =>
-      getCategoryLabel(
+      categoryLabel(
         category,
         selectedGender,
       ),
     );
 
-  const headerTitle =
-    selectedCategoryNames.length
-      ? selectedCategoryNames.join(
-          " + ",
-        )
+  const title =
+    selectedNames.length
+      ? selectedNames.join(" + ")
       : `${selectedGender} Products`;
 
-  const toggleExpanded = (
-    key: string,
-  ) => {
-    setExpandedFilters(
-      (previous) => ({
-        ...previous,
-        [key]: !previous[key],
-      }),
-    );
-  };
-
-  const FilterCheckboxes = ({
-    categoryKey,
-    options,
-  }: {
-    categoryKey: string;
-    options: any[];
-  }) => {
-    const finalOptions =
-      categoryKey === "Gender"
-        ? [
-            "Men",
-            "Women",
-            "Kids",
-          ]
-        : options;
-
-    return (
-      <div className="flex flex-col gap-3 mt-3 px-1">
-        {finalOptions.map(
-          (
-            optionObject,
-            index,
-          ) => {
-            const isObject =
-              typeof optionObject ===
-                "object" &&
-              optionObject !== null;
-
-            const optionValue =
-              isObject
-                ? String(
-                    optionObject.value,
-                  )
-                : String(
-                    optionObject,
-                  );
-
-            const optionLabel =
-              isObject
-                ? String(
-                    optionObject.label,
-                  )
-                : String(
-                    optionObject,
-                  );
-
-            const isLevel1 =
-              isObject
-                ? Boolean(
-                    optionObject.isLevel1,
-                  )
-                : false;
-
-            const depth =
-              isObject
-                ? Number(
-                    optionObject.depth ||
-                      0,
-                  )
-                : 0;
-
-            const selected =
-              activeFilters[
-                categoryKey
-              ]?.includes(
-                optionValue,
-              ) || false;
-
-            return (
-              <button
-                type="button"
-                key={`${categoryKey}-${optionValue}-${index}`}
-                className={`flex items-center justify-between text-left cursor-pointer group ${
-                  isObject &&
-                  isLevel1
-                    ? "mt-3 mb-1"
-                    : ""
-                }`}
-                style={
-                  isObject
-                    ? {
-                        paddingLeft: `${depth * 12}px`,
-                      }
-                    : undefined
-                }
-                onClick={() =>
-                  toggleFilter(
-                    categoryKey,
-                    optionValue,
-                  )
-                }
-              >
-                <div className="flex items-center gap-3">
-                  <div
-                    className={`w-4 h-4 rounded-sm flex items-center justify-center border transition-colors ${
-                      selected
-                        ? "bg-primary border-primary text-black"
-                        : "border-gray-300 bg-white group-hover:border-gray-400"
-                    }`}
-                  >
-                    {selected ? (
-                      <svg
-                        className="w-3 h-3"
-                        viewBox="0 0 12 10"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <path
-                          d="M1 5L4.5 8.5L11 1.5"
-                          stroke="black"
-                          strokeWidth="1.5"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                    ) : null}
-                  </div>
-
-                  <span
-                    className={`text-sm tracking-wide capitalize ${
-                      selected
-                        ? "text-gray-900 font-bold"
-                        : "text-gray-500"
-                    } ${
-                      isLevel1
-                        ? "font-bold text-gray-800"
-                        : ""
-                    }`}
-                  >
-                    {categoryKey ===
-                    "Ratings" ? (
-                      <span className="flex items-center gap-1">
-                        {Array.from({
-                          length:
-                            Number(
-                              optionValue,
-                            ),
-                        }).map(
-                          (
-                            _,
-                            starIndex,
-                          ) => (
-                            <FaStar
-                              key={
-                                starIndex
-                              }
-                              className="text-[#f5b82e]"
-                              size={12}
-                            />
-                          ),
-                        )}
-
-                        <span className="ml-1 text-xs opacity-70">
-                          &amp; up
-                        </span>
-                      </span>
-                    ) : (
-                      optionLabel
-                    )}
-                  </span>
-                </div>
-              </button>
-            );
-          },
-        )}
-      </div>
-    );
-  };
-
-  const filterGroups = {
+  const groups = {
     Gender: [
       "Men",
       "Women",
       "Kids",
     ],
-    ...filterConfig,
+    ...config,
   };
+
+  const Options = ({
+    name,
+    options,
+  }: {
+    name: string;
+    options: any[];
+  }) => (
+    <div className="flex flex-col gap-3 mt-3 px-1">
+      {(name === "Gender"
+        ? [
+            "Men",
+            "Women",
+            "Kids",
+          ]
+        : options
+      ).map(
+        (option, index) => {
+          const object =
+            typeof option ===
+              "object" &&
+            option !== null;
+
+          const value = object
+            ? String(
+                option.value,
+              )
+            : String(option);
+
+          const label = object
+            ? String(
+                option.label,
+              )
+            : String(option);
+
+          const selected =
+            filters[name]?.includes(
+              value,
+            ) || false;
+
+          const depth = object
+            ? Number(
+                option.depth || 0,
+              )
+            : 0;
+
+          return (
+            <button
+              type="button"
+              key={`${name}-${value}-${index}`}
+              onClick={() =>
+                toggle(name, value)
+              }
+              className={`flex items-center justify-between text-left cursor-pointer group ${
+                object &&
+                option.levelOne
+                  ? "mt-3 mb-1"
+                  : ""
+              }`}
+              style={
+                object
+                  ? {
+                      paddingLeft: `${depth * 12}px`,
+                    }
+                  : undefined
+              }
+            >
+              <div className="flex items-center gap-3">
+                <div
+                  className={`w-4 h-4 rounded-sm flex items-center justify-center border ${
+                    selected
+                      ? "bg-primary border-primary"
+                      : "border-gray-300 bg-white"
+                  }`}
+                >
+                  {selected ? (
+                    <svg
+                      className="w-3 h-3"
+                      viewBox="0 0 12 10"
+                      fill="none"
+                    >
+                      <path
+                        d="M1 5L4.5 8.5L11 1.5"
+                        stroke="black"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  ) : null}
+                </div>
+
+                <span
+                  className={`text-sm tracking-wide capitalize ${
+                    selected
+                      ? "text-gray-900 font-bold"
+                      : "text-gray-500"
+                  } ${
+                    object &&
+                    option.levelOne
+                      ? "font-bold text-gray-800"
+                      : ""
+                  }`}
+                >
+                  {name ===
+                  "Ratings" ? (
+                    <span className="flex items-center gap-1">
+                      {Array.from({
+                        length:
+                          Number(value),
+                      }).map(
+                        (_, star) => (
+                          <FaStar
+                            key={star}
+                            className="text-[#f5b82e]"
+                            size={12}
+                          />
+                        ),
+                      )}
+
+                      <span className="ml-1 text-xs opacity-70">
+                        &amp; up
+                      </span>
+                    </span>
+                  ) : (
+                    label
+                  )}
+                </span>
+              </div>
+            </button>
+          );
+        },
+      )}
+    </div>
+  );
 
   return (
     <div className="bg-white min-h-screen font-montserrat pb-16 lg:pb-0">
@@ -1452,13 +1395,11 @@ export default function Collection() {
         <div className="max-w-[1440px] mx-auto px-4 md:px-8 py-4 flex items-center justify-between gap-4">
           <div className="min-w-0">
             <h1 className="text-xl md:text-2xl font-bold text-gray-900 tracking-tight capitalize truncate">
-              {headerTitle}
+              {title}
             </h1>
 
             <span className="text-gray-500 text-sm">
-              {
-                filteredProducts.length
-              }{" "}
+              {visibleProducts.length}{" "}
               Products
             </span>
           </div>
@@ -1477,18 +1418,16 @@ export default function Collection() {
                 <FiChevronDown />
               </button>
 
-              <div className="absolute right-0 top-full mt-2 w-52 bg-white border border-gray-100 shadow-xl rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-40">
+              <div className="absolute right-0 top-full mt-2 w-52 bg-white border border-gray-100 shadow-xl rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible z-40">
                 {SORT_OPTIONS.map(
                   (option) => (
                     <button
                       type="button"
                       key={option}
                       onClick={() =>
-                        setSortBy(
-                          option,
-                        )
+                        setSortBy(option)
                       }
-                      className="block w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 hover:text-black font-medium"
+                      className="block w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 font-medium"
                     >
                       {option}
                     </button>
@@ -1501,9 +1440,9 @@ export default function Collection() {
       </div>
 
       <div className="max-w-[1440px] mx-auto px-4 md:px-8 py-6">
-        {productsError ? (
+        {error ? (
           <div className="mb-4 rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm font-medium text-red-700">
-            {productsError}
+            {error}
           </div>
         ) : null}
 
@@ -1526,10 +1465,8 @@ export default function Collection() {
               {filterCount ? (
                 <button
                   type="button"
-                  onClick={
-                    clearAllFilters
-                  }
-                  className="text-sm text-teal-500 hover:text-teal-700 hover:underline font-medium"
+                  onClick={clear}
+                  className="text-sm text-teal-500 hover:underline font-medium"
                 >
                   Clear All
                 </button>
@@ -1538,31 +1475,37 @@ export default function Collection() {
 
             <div className="flex flex-col gap-6">
               {Object.entries(
-                filterGroups,
+                groups,
               ).map(
                 ([
-                  key,
+                  name,
                   options,
                 ]) => (
                   <div
-                    key={key}
+                    key={name}
                     className="border-b border-gray-50 pb-4"
                   >
                     <button
                       type="button"
                       onClick={() =>
-                        toggleExpanded(
-                          key,
+                        setExpanded(
+                          (current) => ({
+                            ...current,
+                            [name]:
+                              !current[
+                                name
+                              ],
+                          }),
                         )
                       }
                       className="flex w-full items-center justify-between"
                     >
                       <span className="font-bold text-gray-900 text-sm uppercase tracking-wider">
-                        {key}
+                        {name}
                       </span>
 
-                      {expandedFilters[
-                        key
+                      {expanded[
+                        name
                       ] ? (
                         <FiChevronUp className="text-gray-400" />
                       ) : (
@@ -1570,13 +1513,11 @@ export default function Collection() {
                       )}
                     </button>
 
-                    {expandedFilters[
-                      key
+                    {expanded[
+                      name
                     ] ? (
-                      <FilterCheckboxes
-                        categoryKey={
-                          key
-                        }
+                      <Options
+                        name={name}
                         options={
                           options as any[]
                         }
@@ -1589,29 +1530,29 @@ export default function Collection() {
           </aside>
 
           <main className="flex-1 w-full min-w-0">
-            {productsLoading ? (
+            {loading ? (
               <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
                 {Array.from({
                   length: 8,
                 }).map(
                   (_, index) => (
-                    <div
-                      key={`loading-${index}`}
-                      className="min-w-0"
-                    >
+                    <div key={index}>
                       <ProductCardSkeleton />
                     </div>
                   ),
                 )}
               </div>
-            ) : filteredProducts.length ? (
+            ) : visibleProducts.length ? (
               <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
-                {filteredProducts.map(
-                  (product) => (
+                {visibleProducts.map(
+                  (
+                    product,
+                    index,
+                  ) => (
                     <ProductCard
-                      key={getProductCardKey(
+                      key={`${productIdentity(
                         product,
-                      )}
+                      )}-${index}`}
                       {...product}
                     />
                   ),
@@ -1637,10 +1578,8 @@ export default function Collection() {
 
                 <button
                   type="button"
-                  onClick={
-                    clearAllFilters
-                  }
-                  className="px-10 py-4 bg-primary text-black font-bold tracking-widest text-sm uppercase rounded-sm hover:scale-105 transition-transform"
+                  onClick={clear}
+                  className="px-10 py-4 bg-primary text-black font-bold tracking-widest text-sm uppercase rounded-sm"
                 >
                   Clear all
                 </button>
@@ -1650,33 +1589,24 @@ export default function Collection() {
         </div>
       </div>
 
-      <div className="lg:hidden fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 z-40 grid grid-cols-2 divide-x divide-gray-200 py-3 shadow-[0_-4px_10px_rgba(0,0,0,0.05)]">
+      <div className="lg:hidden fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 z-40 grid grid-cols-2 divide-x py-3">
         <button
           type="button"
           onClick={() =>
-            setIsMobileSortOpen(
-              true,
-            )
+            setMobileSort(true)
           }
-          className="flex items-center justify-center gap-2 font-bold uppercase tracking-wider text-sm text-gray-800"
+          className="flex items-center justify-center gap-2 font-bold uppercase text-sm"
         >
           <BiSortAlt2 size={20} />
           Sort
-
-          {sortBy !==
-          "Popularity" ? (
-            <span className="w-1.5 h-1.5 bg-primary rounded-full" />
-          ) : null}
         </button>
 
         <button
           type="button"
           onClick={() =>
-            setIsMobileFilterOpen(
-              true,
-            )
+            setMobileFilter(true)
           }
-          className="flex items-center justify-center gap-2 font-bold uppercase tracking-wider text-sm text-gray-800"
+          className="flex items-center justify-center gap-2 font-bold uppercase text-sm"
         >
           <FiFilter size={18} />
           Filter
@@ -1687,22 +1617,19 @@ export default function Collection() {
         </button>
       </div>
 
-      {isMobileSortOpen ? (
-        <div className="lg:hidden fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm">
-          <div className="w-full bg-white rounded-t-3xl pt-6 pb-8 px-6 shadow-[0_-10px_40px_rgba(0,0,0,0.1)]">
-            <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-100">
-              <h3 className="text-xl font-bold text-gray-900">
+      {mobileSort ? (
+        <div className="lg:hidden fixed inset-0 z-50 flex items-end bg-black/50">
+          <div className="w-full bg-white rounded-t-3xl p-6">
+            <div className="flex justify-between mb-6">
+              <h3 className="text-xl font-bold">
                 Sort by
               </h3>
 
               <button
                 type="button"
                 onClick={() =>
-                  setIsMobileSortOpen(
-                    false,
-                  )
+                  setMobileSort(false)
                 }
-                className="p-2 bg-gray-100 rounded-full"
               >
                 <FiX size={20} />
               </button>
@@ -1715,38 +1642,33 @@ export default function Collection() {
                     type="button"
                     key={option}
                     onClick={() => {
-                      setSortBy(
-                        option,
-                      );
-
-                      setIsMobileSortOpen(
+                      setSortBy(option);
+                      setMobileSort(
                         false,
                       );
                     }}
-                    className="flex items-center justify-between"
+                    className="flex justify-between"
                   >
                     <span
-                      className={`text-[17px] ${
-                        sortBy ===
-                        option
-                          ? "font-bold text-black"
-                          : "text-gray-600 font-medium"
-                      }`}
+                      className={
+                        sortBy === option
+                          ? "font-bold"
+                          : "text-gray-600"
+                      }
                     >
                       {option}
                     </span>
 
                     <span
-                      className={`w-5 h-5 rounded-full border-[1.5px] p-[3px] flex items-center justify-center ${
-                        sortBy ===
-                        option
+                      className={`w-5 h-5 rounded-full border p-[3px] ${
+                        sortBy === option
                           ? "border-primary"
                           : "border-gray-400"
                       }`}
                     >
                       {sortBy ===
                       option ? (
-                        <span className="w-full h-full bg-primary rounded-full" />
+                        <span className="block w-full h-full bg-primary rounded-full" />
                       ) : null}
                     </span>
                   </button>
@@ -1758,14 +1680,14 @@ export default function Collection() {
       ) : null}
 
       <div
-        className={`lg:hidden fixed inset-0 z-50 bg-white flex flex-col transition-all duration-300 ${
-          isMobileFilterOpen
-            ? "translate-y-0 opacity-100"
-            : "translate-y-full opacity-0 pointer-events-none"
+        className={`lg:hidden fixed inset-0 z-50 bg-white flex flex-col transition-all ${
+          mobileFilter
+            ? "translate-y-0"
+            : "translate-y-full pointer-events-none"
         }`}
       >
-        <div className="pt-4 pb-3 px-4 flex items-center justify-between border-b border-gray-100 bg-white shadow-sm z-10">
-          <h3 className="text-xl font-bold text-gray-900">
+        <div className="p-4 flex justify-between border-b">
+          <h3 className="text-xl font-bold">
             Filters
             {filterCount
               ? ` (${filterCount})`
@@ -1775,92 +1697,59 @@ export default function Collection() {
           <button
             type="button"
             onClick={() =>
-              setIsMobileFilterOpen(
-                false,
-              )
+              setMobileFilter(false)
             }
-            className="p-2 bg-gray-100 rounded-full"
           >
             <FiX size={20} />
           </button>
         </div>
 
-        <div className="flex-1 flex overflow-hidden bg-[#f9f9f9]">
-          <div
-            className="w-1/3 border-r border-gray-200 overflow-y-auto"
-            style={{
-              scrollbarWidth:
-                "none",
-            }}
-          >
+        <div className="flex-1 flex overflow-hidden">
+          <div className="w-1/3 bg-gray-50 overflow-y-auto">
             {Object.keys(
-              filterGroups,
-            ).map((key) => {
-              const activeCount =
-                key === "Gender"
-                  ? 0
-                  : activeFilters[
-                      key
-                    ]?.length || 0;
-
-              return (
-                <button
-                  type="button"
-                  key={key}
-                  onClick={() =>
-                    setMobileActiveTab(
-                      key,
-                    )
-                  }
-                  className={`w-full text-left py-4 px-3 text-[13px] uppercase tracking-wider font-bold relative ${
-                    mobileActiveTab ===
-                    key
-                      ? "bg-white text-black"
-                      : "text-gray-500 hover:bg-gray-100"
-                  }`}
-                >
-                  {mobileActiveTab ===
-                  key ? (
-                    <span className="absolute left-0 top-0 h-full w-1 bg-primary" />
-                  ) : null}
-
-                  {key}
-                  {activeCount
-                    ? ` (${activeCount})`
-                    : ""}
-                </button>
-              );
-            })}
+              groups,
+            ).map((name) => (
+              <button
+                type="button"
+                key={name}
+                onClick={() =>
+                  setMobileTab(name)
+                }
+                className={`w-full text-left py-4 px-3 text-sm font-bold uppercase ${
+                  mobileTab === name
+                    ? "bg-white"
+                    : "text-gray-500"
+                }`}
+              >
+                {name}
+              </button>
+            ))}
           </div>
 
-          <div className="w-2/3 bg-white p-4 overflow-y-auto">
-            <FilterCheckboxes
-              categoryKey={
-                mobileActiveTab
-              }
+          <div className="w-2/3 p-4 overflow-y-auto">
+            <Options
+              name={mobileTab}
               options={
-                mobileActiveTab ===
+                mobileTab ===
                 "Gender"
                   ? [
                       "Men",
                       "Women",
                       "Kids",
                     ]
-                  : (filterConfig as any)[
-                      mobileActiveTab
+                  : (config as any)[
+                      mobileTab
                     ] || []
               }
             />
           </div>
         </div>
 
-        <div className="p-4 bg-white border-t border-gray-200 flex gap-3 shadow-[0_-10px_20px_rgba(0,0,0,0.05)]">
+        <div className="p-4 flex gap-3 border-t">
           <button
             type="button"
-            onClick={
-              clearAllFilters
-            }
-            className="flex-1 py-3.5 border-2 border-gray-300 text-gray-700 font-bold uppercase tracking-wider text-sm rounded-md"
+            onClick={clear}
+            className="flex-1 py-3 border-2 border-gray-300 font-bold uppercase"
           >
             Clear All
           </button>
@@ -1868,11 +1757,9 @@ export default function Collection() {
           <button
             type="button"
             onClick={() =>
-              setIsMobileFilterOpen(
-                false,
-              )
+              setMobileFilter(false)
             }
-            className="flex-1 py-3.5 bg-primary border-2 border-primary text-black font-bold uppercase tracking-wider text-sm rounded-md"
+            className="flex-1 py-3 bg-primary border-2 border-primary font-bold uppercase"
           >
             Apply
           </button>
