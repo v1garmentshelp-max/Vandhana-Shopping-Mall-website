@@ -520,7 +520,6 @@ const getPattern = (variant: Row, row: Row = {}) =>
     ),
   );
 
-
 const getDesignCode = (variant: Row, row: Row = {}) =>
   clean(
     first(
@@ -732,123 +731,6 @@ const stockOf = (source: Row, fallback: Row = {}) => {
     reserved,
     available,
   };
-};
-
-const meaningfulDesignCode = (
-  value: any,
-  context: any[],
-) => {
-  const code = norm(value);
-
-  if (!code) {
-    return "";
-  }
-
-  if (
-    new Set(
-      context.map(norm).filter(Boolean),
-    ).has(code)
-  ) {
-    return "";
-  }
-
-  if (
-    new Set([
-      "product",
-      "design",
-      "pattern",
-      "style",
-      "men",
-      "women",
-      "kids",
-      "half saree",
-      "co ord set",
-      "coord set",
-      "kurthi pant set",
-      "night dress",
-      "nighty",
-      "nightys",
-      "jeans",
-      "t shirt",
-      "t shirts",
-      "dress",
-    ]).has(code)
-  ) {
-    return "";
-  }
-
-  if (/^\d+$/.test(code) && code.length < 3) {
-    return "";
-  }
-
-  return code;
-};
-
-const imageFamilyKey = (row: Row) => {
-  const pair = chooseImagePair(
-    collectImageRecords(row),
-  );
-
-  const url =
-    pair.front?.image_url ||
-    pair.back?.image_url ||
-    "";
-
-  if (!url) {
-    return "";
-  }
-
-  try {
-    let filename =
-      decodeURIComponent(url.split("?")[0])
-        .split("/")
-        .pop() || "";
-
-    filename = filename.replace(
-      /\.[a-z0-9]+$/i,
-      "",
-    );
-
-    filename = filename.replace(
-      /(?:^|[_\-.\s])(front|back|rear|reverse|main|primary|default)(?:$|[_\-.\s])/gi,
-      " ",
-    );
-
-    const removable = uniqueText([
-      first(
-        row.barcode,
-        row.ean_code,
-        row.eanCode,
-        "",
-      ),
-      getSize(row, row),
-    ]);
-
-    removable.forEach((value) => {
-      const escaped = value.replace(
-        /[.*+?^${}()|[\]\\]/g,
-        "\\$&",
-      );
-
-      filename = filename.replace(
-        new RegExp(
-          `(?:^|[_\\-.\\s])${escaped}(?:$|[_\\-.\\s])`,
-          "gi",
-        ),
-        " ",
-      );
-    });
-
-    const family = norm(filename);
-
-    return !family ||
-      /^\d+$/.test(family) ||
-      family.length < 3
-      ? ""
-      : family;
-  } catch {
-    return "";
-  }
 };
 
 const designKey = (row: Row) => {
