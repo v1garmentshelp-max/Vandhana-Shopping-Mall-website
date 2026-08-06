@@ -1,4 +1,5 @@
 import type { Product, ProductGender } from "../Models/Product";
+import { resolveColorHex } from "../utils/colorHexMap";
 import categoriesJson from "../Data/categories.json";
 
 const API_BASE = "https://vandhana-shopping-mall-backend.vercel.app";
@@ -42,6 +43,7 @@ export type StorefrontCategory = {
   categoryPath?: string;
   category_path?: string;
   is_active?: boolean;
+  selectable?: boolean;
   sort_order?: number;
   children?: StorefrontCategory[];
 };
@@ -440,10 +442,6 @@ const chooseImagePair = (records: ImageRecord[]) => {
 };
 
 const rawVariants = (row: Row) => {
-  if (Array.isArray(row.variants) && row.variants.length) {
-    return row.variants;
-  }
-
   if (
     Array.isArray(row.color_variants) &&
     row.color_variants.length
@@ -456,6 +454,24 @@ const rawVariants = (row: Row) => {
     row.colorVariants.length
   ) {
     return row.colorVariants;
+  }
+
+  if (
+    Array.isArray(row.listing_variants) &&
+    row.listing_variants.length
+  ) {
+    return row.listing_variants;
+  }
+
+  if (
+    Array.isArray(row.listingVariants) &&
+    row.listingVariants.length
+  ) {
+    return row.listingVariants;
+  }
+
+  if (Array.isArray(row.variants) && row.variants.length) {
+    return row.variants;
   }
 
   return [row];
@@ -503,6 +519,142 @@ const getPattern = (variant: Row, row: Row = {}) =>
       "",
     ),
   );
+
+
+const getDesignCode = (variant: Row, row: Row = {}) =>
+  clean(
+    first(
+      variant.source_design_code,
+      variant.sourceDesignCode,
+      variant.design_code,
+      row.source_design_code,
+      row.sourceDesignCode,
+      row.design_code,
+      "",
+    ),
+  ).toUpperCase();
+
+const getStorefrontGroupKey = (value: Row) =>
+  clean(
+    first(
+      value.storefront_group_key,
+      value.storefrontGroupKey,
+      value.group_key,
+      value.groupKey,
+      value.route_key,
+      value.routeKey,
+      value.design_key,
+      value.designKey,
+      "",
+    ),
+  ).toUpperCase();
+
+const getPatternType = (variant: Row, row: Row = {}) =>
+  clean(
+    first(
+      variant.pattern_type,
+      variant.patternType,
+      row.pattern_type,
+      row.patternType,
+      "",
+    ),
+  ).toUpperCase();
+
+const physicalMetadata = (variant: Row, row: Row = {}) => ({
+  weight: numeric(
+    first(
+      variant.weight,
+      variant.weight_kg,
+      variant.weightKg,
+      row.weight,
+      row.weight_kg,
+      row.weightKg,
+      0,
+    ),
+  ),
+  length: numeric(
+    first(
+      variant.length,
+      variant.package_length,
+      variant.packageLength,
+      row.length,
+      row.package_length,
+      row.packageLength,
+      0,
+    ),
+  ),
+  width: numeric(
+    first(
+      variant.width,
+      variant.package_width,
+      variant.packageWidth,
+      row.width,
+      row.package_width,
+      row.packageWidth,
+      0,
+    ),
+  ),
+  height: numeric(
+    first(
+      variant.height,
+      variant.package_height,
+      variant.packageHeight,
+      row.height,
+      row.package_height,
+      row.packageHeight,
+      0,
+    ),
+  ),
+  hsnCode: clean(
+    first(
+      variant.hsn_code,
+      variant.hsnCode,
+      row.hsn_code,
+      row.hsnCode,
+      "",
+    ),
+  ),
+  hsnPercentage: numeric(
+    first(
+      variant.hsn_percentage,
+      variant.hsnPercentage,
+      variant.tax_percentage,
+      variant.taxPercentage,
+      row.hsn_percentage,
+      row.hsnPercentage,
+      row.tax_percentage,
+      row.taxPercentage,
+      0,
+    ),
+  ),
+  material: clean(
+    first(
+      variant.material,
+      row.material,
+      "",
+    ),
+  ),
+  fitType: clean(
+    first(
+      variant.fit_type,
+      variant.fitType,
+      variant.fit,
+      row.fit_type,
+      row.fitType,
+      row.fit,
+      "",
+    ),
+  ),
+  markCode: clean(
+    first(
+      variant.mark_code,
+      variant.markCode,
+      row.mark_code,
+      row.markCode,
+      "",
+    ),
+  ),
+});
 
 const getImageCode = (variant: Row, row: Row = {}) =>
   clean(
@@ -700,6 +852,18 @@ const imageFamilyKey = (row: Row) => {
 };
 
 const designKey = (row: Row) => {
+  const storefrontGroupKey = getStorefrontGroupKey(row);
+
+  if (storefrontGroupKey) {
+    return storefrontGroupKey;
+  }
+
+  const explicitDesignCode = getDesignCode(row, row);
+
+  if (explicitDesignCode) {
+    return explicitDesignCode;
+  }
+
   const productId = clean(
     first(
       row.product_id,
@@ -709,176 +873,62 @@ const designKey = (row: Row) => {
     ),
   );
 
-  const categoryId = clean(
-    first(
-      row.category_id,
-      row.categoryId,
-      "",
-    ),
-  );
-
-  const categoryName = clean(
-    first(
-      row.category_name,
-      row.categoryName,
-      row.category_slug,
-      row.categorySlug,
-      "",
-    ),
-  );
-
-  const category =
-    categoryId ||
-    norm(categoryName) ||
-    "none";
-
-  const brand = clean(
-    first(
-      row.brand_name,
-      row.brandName,
-      row.brand,
-      "",
-    ),
-  );
-
-  const title = clean(
-    first(
-      row.product_name,
-      row.productName,
-      row.name,
-      row.title,
-      "Product",
-    ),
-  );
-
-  const gender = norm(
-    first(
-      row.gender,
-      row.category,
-      "",
-    ),
-  );
-
-  const colour = norm(
-    getColor(row, row),
-  );
-
-  const context = [
-    title,
-    categoryName,
-    brand,
-    row.category,
-  ];
-
-  const imageCode =
-    meaningfulDesignCode(
-      getImageCode(row, row),
-      context,
-    );
-
-  const styleCode =
-    meaningfulDesignCode(
-      first(
-        row.design_code,
-        row.designCode,
-        row.style_code,
-        row.styleCode,
-        row.model_code,
-        row.modelCode,
-        "",
-      ),
-      context,
-    );
-
-  const patternCode =
-    meaningfulDesignCode(
-      getPattern(row, row),
-      context,
-    );
-
-  if (imageCode) {
-    return [
-      "image-code",
-      gender || "none",
-      category,
-      norm(brand),
-      imageCode,
-    ].join("|");
-  }
-
-  if (styleCode) {
-    return [
-      "design-code",
-      gender || "none",
-      category,
-      norm(brand),
-      styleCode,
-    ].join("|");
-  }
-
-  if (patternCode) {
-    return [
-      "pattern-code",
-      gender || "none",
-      category,
-      norm(brand),
-      patternCode,
-    ].join("|");
-  }
-
-  if (productId && colour) {
-    return [
-      "product-colour",
-      productId,
-      category,
-      colour,
-    ].join("|");
-  }
-
-  const family = imageFamilyKey(row);
-
-  if (family) {
-    return [
-      "image-family",
-      gender || "none",
-      category,
-      norm(brand),
-      family,
-    ].join("|");
-  }
-
   if (productId) {
-    return [
-      "product",
-      productId,
-      category,
-    ].join("|");
+    return `PRODUCT-${productId}`;
+  }
+
+  const variantId = clean(
+    first(
+      row.variant_id,
+      row.variantId,
+      "",
+    ),
+  );
+
+  if (variantId) {
+    return `VARIANT-${variantId}`;
+  }
+
+  const barcode = clean(
+    first(
+      row.barcode,
+      row.ean_code,
+      row.eanCode,
+      "",
+    ),
+  );
+
+  if (barcode) {
+    return `BARCODE-${barcode.toUpperCase()}`;
   }
 
   return [
-    "fallback",
-    gender || "none",
-    category,
-    norm(brand),
-    norm(title),
-    colour || "none",
+    "FALLBACK",
     norm(
       first(
-        row.barcode,
-        row.ean_code,
-        row.eanCode,
+        row.gender,
+        row.category,
         "",
       ),
-    ) || "none",
-    numeric(
+    ) || "NONE",
+    norm(
       first(
-        row.mrp,
-        row.original_price_b2c,
-        row.price,
-        0,
+        row.brand_name,
+        row.brandName,
+        row.brand,
+        "",
       ),
-    ),
-  ].join("|");
+    ) || "NONE",
+    norm(
+      first(
+        row.product_name,
+        row.productName,
+        row.name,
+        row.title,
+        "PRODUCT",
+      ),
+    ) || "PRODUCT",
+  ].join("-");
 };
 
 const variantKey = (variant: Row) => {
@@ -997,6 +1047,10 @@ const contextualVariant = (
     "",
   );
 
+  const storefrontGroupKey =
+    getStorefrontGroupKey(variant) ||
+    getStorefrontGroupKey(row);
+
   const value: Row = {
     ...flat,
     product_id: productId,
@@ -1021,6 +1075,36 @@ const contextualVariant = (
       row.category,
       "",
     ),
+    design_code:
+      getDesignCode(variant, row),
+    designCode:
+      getDesignCode(variant, row),
+    storefront_group_key:
+      storefrontGroupKey,
+    storefrontGroupKey:
+      storefrontGroupKey,
+    group_key:
+      storefrontGroupKey ||
+      getDesignCode(variant, row),
+    groupKey:
+      storefrontGroupKey ||
+      getDesignCode(variant, row),
+    design_key:
+      storefrontGroupKey ||
+      getDesignCode(variant, row),
+    designKey:
+      storefrontGroupKey ||
+      getDesignCode(variant, row),
+    route_key:
+      storefrontGroupKey ||
+      getDesignCode(variant, row),
+    routeKey:
+      storefrontGroupKey ||
+      getDesignCode(variant, row),
+    pattern_type:
+      getPatternType(variant, row),
+    patternType:
+      getPatternType(variant, row),
     pattern_code:
       getPattern(variant, row),
     patternCode:
@@ -1034,8 +1118,8 @@ const contextualVariant = (
   const key = designKey(value);
 
   const records = mergeImageRecords(
-    collectImageRecords(row),
     collectImageRecords(variant),
+    collectImageRecords(row),
   );
 
   const pair = chooseImagePair(records);
@@ -1453,7 +1537,8 @@ const normalizeVariant = (
     ),
   );
 
-  const colorValue = clean(
+  const colorValue = resolveColorHex(
+    colour,
     first(
       variant.colour_hex,
       variant.color_hex,
@@ -1471,32 +1556,79 @@ const normalizeVariant = (
     ),
   );
 
+  const designCode = getDesignCode(variant, row);
+  const storefrontGroupKey =
+    getStorefrontGroupKey(variant) ||
+    getStorefrontGroupKey(row) ||
+    designKey(row);
+  const patternType = getPatternType(variant, row);
+  const physical = physicalMetadata(variant, row);
+  const b2bDiscount = percentage(
+    first(
+      variant.b2b_discount_pct,
+      variant.b2bDiscountPct,
+      variant.discount_b2b,
+      variant.discountB2b,
+      row.b2b_discount_pct,
+      row.b2bDiscountPct,
+      row.discount_b2b,
+      row.discountB2b,
+      0,
+    ),
+  );
+  const originalB2B = numeric(
+    first(
+      variant.original_price_b2b,
+      variant.originalPriceB2b,
+      variant.cost_price,
+      variant.costPrice,
+      row.original_price_b2b,
+      row.originalPriceB2b,
+      row.cost_price,
+      row.costPrice,
+      mrp,
+    ),
+    mrp,
+  );
+  const directB2B = numeric(
+    first(
+      variant.final_price_b2b,
+      variant.finalPriceB2b,
+      variant.b2b_final_price,
+      variant.b2bFinalPrice,
+      row.final_price_b2b,
+      row.finalPriceB2b,
+      row.b2b_final_price,
+      row.b2bFinalPrice,
+      originalB2B,
+    ),
+    originalB2B,
+  );
+  const finalB2B =
+    b2bDiscount > 0 && originalB2B > 0
+      ? money(originalB2B - (originalB2B * b2bDiscount) / 100)
+      : directB2B;
+
   return {
     id: variantId || barcode,
     variant_id: variantId,
     variantId,
     product_id: productId,
     productId,
-    design_key:
-      row.design_key ||
-      row.designKey ||
-      designKey(row),
-    designKey:
-      row.designKey ||
-      row.design_key ||
-      designKey(row),
-    route_key:
-      row.route_key ||
-      row.routeKey ||
-      row.design_key ||
-      row.designKey ||
-      designKey(row),
-    routeKey:
-      row.routeKey ||
-      row.route_key ||
-      row.designKey ||
-      row.design_key ||
-      designKey(row),
+    design_code: designCode,
+    designCode,
+    source_design_code: designCode,
+    sourceDesignCode: designCode,
+    storefront_group_key: storefrontGroupKey,
+    storefrontGroupKey: storefrontGroupKey,
+    group_key: storefrontGroupKey,
+    groupKey: storefrontGroupKey,
+    design_key: storefrontGroupKey,
+    designKey: storefrontGroupKey,
+    route_key: storefrontGroupKey,
+    routeKey: storefrontGroupKey,
+    pattern_type: patternType,
+    patternType,
     pattern_code:
       getPattern(variant, row),
     patternCode:
@@ -1541,6 +1673,30 @@ const normalizeVariant = (
       salePrice,
     finalPriceB2c:
       salePrice,
+    original_price_b2b:
+      originalB2B,
+    originalPriceB2b:
+      originalB2B,
+    final_price_b2b:
+      finalB2B,
+    finalPriceB2b:
+      finalB2B,
+    b2b_final_price:
+      finalB2B,
+    b2bFinalPrice:
+      finalB2B,
+    cost_price:
+      originalB2B,
+    costPrice:
+      originalB2B,
+    b2b_discount_pct:
+      b2bDiscount,
+    b2bDiscountPct:
+      b2bDiscount,
+    discount_b2b:
+      b2bDiscount,
+    discountB2b:
+      b2bDiscount,
     sale_price: salePrice,
     salePrice,
     price: salePrice,
@@ -1597,6 +1753,21 @@ const normalizeVariant = (
       pair.front?.image_url || "",
     mainImageUrl:
       pair.front?.image_url || "",
+    weight: physical.weight,
+    weight_kg: physical.weight,
+    weightKg: physical.weight,
+    length: physical.length,
+    width: physical.width,
+    height: physical.height,
+    hsn_code: physical.hsnCode,
+    hsnCode: physical.hsnCode,
+    hsn_percentage: physical.hsnPercentage,
+    hsnPercentage: physical.hsnPercentage,
+    material: physical.material,
+    fit_type: physical.fitType,
+    fitType: physical.fitType,
+    mark_code: physical.markCode,
+    markCode: physical.markCode,
     raw: variant,
   };
 };
@@ -1946,13 +2117,24 @@ const normalizeProduct = (
     ),
   );
 
-  const routeKey = clean(
-    row.route_key ||
-      row.routeKey ||
-      row.design_key ||
-      row.designKey ||
-      designKey(row),
-  );
+  const designCode =
+    getDesignCode(selected, source) ||
+    getDesignCode(row, row);
+
+  const routeKey =
+    getStorefrontGroupKey(row) ||
+    clean(
+      row.route_key ||
+        row.routeKey ||
+        row.design_key ||
+        row.designKey ||
+        designCode ||
+        designKey(row),
+    );
+
+  const patternType =
+    getPatternType(selected, source) ||
+    getPatternType(row, row);
 
   const patternCode = clean(
     first(
@@ -1984,6 +2166,34 @@ const normalizeProduct = (
     ]),
   );
 
+  const selectedPhysical = physicalMetadata(selected, source);
+  const originalB2B = numeric(
+    first(
+      selected.original_price_b2b,
+      selected.originalPriceB2b,
+      selected.cost_price,
+      mrp,
+    ),
+    mrp,
+  );
+  const finalB2B = numeric(
+    first(
+      selected.final_price_b2b,
+      selected.finalPriceB2b,
+      selected.b2b_final_price,
+      originalB2B,
+    ),
+    originalB2B,
+  );
+  const b2bDiscount = percentage(
+    first(
+      selected.b2b_discount_pct,
+      selected.b2bDiscountPct,
+      selected.discount_b2b,
+      0,
+    ),
+  );
+
   return {
     id:
       routeKey ||
@@ -2005,10 +2215,20 @@ const normalizeProduct = (
       selected.variant_id,
     primary_variant_id:
       selected.variant_id,
+    designCode: routeKey || designCode,
+    design_code: designCode,
+    sourceDesignCode: designCode,
+    source_design_code: designCode,
+    storefrontGroupKey: routeKey,
+    storefront_group_key: routeKey,
+    groupKey: routeKey,
+    group_key: routeKey,
     designKey: routeKey,
     design_key: routeKey,
-    routeKey,
+    routeKey: routeKey,
     route_key: routeKey,
+    patternType,
+    pattern_type: patternType,
     patternCode,
     pattern_code: patternCode,
     imageCode,
@@ -2053,6 +2273,14 @@ const normalizeProduct = (
     mahaveer_price: price,
     originalPrice: mrp,
     original_price_b2c: mrp,
+    originalPriceB2b: originalB2B,
+    original_price_b2b: originalB2B,
+    finalPriceB2b: finalB2B,
+    final_price_b2b: finalB2B,
+    b2b_final_price: finalB2B,
+    cost_price: originalB2B,
+    b2b_discount_pct: b2bDiscount,
+    discount_b2b: b2bDiscount,
     mrp,
     isSale: mrp > price,
     discount,
@@ -2190,6 +2418,20 @@ const normalizeProduct = (
       totals.available > 0,
     inStock:
       totals.available > 0,
+    weight: selectedPhysical.weight,
+    weight_kg: selectedPhysical.weight,
+    weightKg: selectedPhysical.weight,
+    length: selectedPhysical.length,
+    width: selectedPhysical.width,
+    height: selectedPhysical.height,
+    hsn_code: selectedPhysical.hsnCode,
+    hsnCode: selectedPhysical.hsnCode,
+    hsn_percentage: selectedPhysical.hsnPercentage,
+    hsnPercentage: selectedPhysical.hsnPercentage,
+    fit_type: selectedPhysical.fitType,
+    fitType: selectedPhysical.fitType,
+    mark_code: selectedPhysical.markCode,
+    markCode: selectedPhysical.markCode,
     variants,
     colorVariants: variants,
     color_variants: variants,
@@ -2256,6 +2498,9 @@ const categoryNode = (
         node.name,
     ),
     is_active:
+      node.is_active !== false,
+    selectable:
+      node.selectable !== false &&
       node.is_active !== false,
     sort_order: Number(
       node.sort_order || 0,
@@ -2485,6 +2730,7 @@ const fetchRows = async (
     "_ts",
     String(Date.now()),
   );
+  params.set("group_by", "color");
 
   try {
     return rowsFrom(
@@ -2495,41 +2741,80 @@ const fetchRows = async (
   } catch {
     return rowsFrom(
       await fetchJson(
-        `${API_BASE}/api/products?branch_id=${encodeURIComponent(branchId)}&all=true&_ts=${Date.now()}`,
+        `${API_BASE}/api/products?branch_id=${encodeURIComponent(branchId)}&all=true&group_by=color&_ts=${Date.now()}`,
       ),
     );
   }
 };
 
-const productKey = (product: Row) =>
-  clean(
-    product.routeKey ||
-      product.route_key ||
-      product.designKey ||
+const productKey = (product: Row) => {
+  const storefrontKey = clean(
+    first(
+      product.storefrontGroupKey,
+      product.storefront_group_key,
+      product.groupKey,
+      product.group_key,
+      product.routeKey,
+      product.route_key,
+      product.designKey,
       product.design_key,
-  ) ||
-  `product:${clean(
+      "",
+    ),
+  ).toUpperCase();
+
+  if (storefrontKey) {
+    return storefrontKey;
+  }
+
+  const explicitDesignCode = clean(
+    first(
+      product.designCode,
+      product.design_code,
+      "",
+    ),
+  ).toUpperCase();
+
+  if (explicitDesignCode) {
+    return explicitDesignCode;
+  }
+
+  const productId = clean(
     first(
       product.productId,
       product.product_id,
+      "",
+    ),
+  );
+
+  if (productId) {
+    return `PRODUCT-${productId}`;
+  }
+
+  const variantId = clean(
+    first(
+      product.variantId,
+      product.variant_id,
+      product.primaryVariantId,
+      product.primary_variant_id,
+      "",
+    ),
+  );
+
+  if (variantId) {
+    return `VARIANT-${variantId}`;
+  }
+
+  return clean(
+    first(
+      product.routeKey,
+      product.route_key,
+      product.designKey,
+      product.design_key,
       product.id,
       "",
     ),
-  )}|category:${clean(
-    first(
-      product.categoryId,
-      product.category_id,
-      "",
-    ),
-  )}|colour:${norm(
-    first(
-      product.selectedColor,
-      product.selected_color,
-      product.colour,
-      product.color,
-      "",
-    ),
-  )}`;
+  );
+};
 
 export const productMatchesCategoryId =
   (
@@ -2774,6 +3059,10 @@ export const fetchProductById =
           product,
           target,
           [
+            "designCode",
+            "design_code",
+            "groupKey",
+            "group_key",
             "routeKey",
             "route_key",
             "designKey",

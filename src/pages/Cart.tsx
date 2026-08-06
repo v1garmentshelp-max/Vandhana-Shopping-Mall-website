@@ -23,6 +23,10 @@ type StoredUser = {
   email?: string;
   mobile?: string;
   type?: string;
+  userType?: string;
+  user_type?: string;
+  customer_type?: string;
+  role?: string;
 };
 
 type CartLine = {
@@ -30,6 +34,10 @@ type CartLine = {
   id: string | number;
   productId?: string | number | null;
   variantId?: string | number | null;
+  designCode?: string;
+  patternType?: string;
+  patternCode?: string;
+  eanCode?: string;
   title: string;
   description: string;
   brand?: string;
@@ -40,6 +48,13 @@ type CartLine = {
   selectedSize: string;
   selectedColor: string;
   stock: number;
+  weight?: number | null;
+  weightKg?: number | null;
+  length?: number | null;
+  width?: number | null;
+  height?: number | null;
+  hsnCode?: string;
+  hsnPercentage?: number | null;
   isCustom?: boolean;
 };
 
@@ -52,6 +67,30 @@ const getStoredUser = (): StoredUser | null => {
   } catch {
     return null;
   }
+};
+
+const getAccountType = (user: StoredUser | null) =>
+  String(
+    user?.userType ||
+      user?.user_type ||
+      user?.customer_type ||
+      user?.type ||
+      user?.role ||
+      "B2C",
+  )
+    .trim()
+    .toUpperCase();
+
+const isBusinessAccount = (user: StoredUser | null) =>
+  ["B2B", "BUSINESS", "WHOLESALE"].includes(getAccountType(user));
+
+const numberOrNull = (value: any) => {
+  if (value === null || value === undefined || String(value).trim() === "") {
+    return null;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
 };
 
 const parseImages = (value: any) => {
@@ -67,7 +106,10 @@ const parseImages = (value: any) => {
   return [];
 };
 
-const normalizeCartItem = (item: CartApiItem): CartLine => {
+const normalizeCartItem = (
+  item: CartApiItem,
+  businessAccount: boolean,
+): CartLine => {
   const images = parseImages(item.images);
   const fallbackImage =
     item.front_image_url ||
@@ -75,30 +117,57 @@ const normalizeCartItem = (item: CartApiItem): CartLine => {
     item.main_image_url ||
     item.back_image_url ||
     "/placeholder.svg";
+  const b2cPrice = Number(item.final_price_b2c || 0);
+  const b2bPrice = Number(item.final_price_b2b || b2cPrice || 0);
+  const b2cOriginal = Number(item.original_price_b2c || b2cPrice || 0);
+  const b2bOriginal = Number(item.original_price_b2b || b2bPrice || 0);
+  const customPayload =
+    item.custom_payload && typeof item.custom_payload === "object"
+      ? item.custom_payload
+      : {};
 
   return {
     cartItemId: item.cart_item_id,
     id: item.id || item.variant_id || item.product_id || item.cart_item_id || "",
-    productId: item.product_id,
-    variantId: item.variant_id || item.id,
+    productId: item.product_id ?? item.productId ?? null,
+    variantId: item.variant_id ?? item.variantId ?? item.id ?? null,
+    designCode: String(item.design_code || item.designCode || "").trim(),
+    patternType: String(item.pattern_type || item.patternType || "").trim(),
+    patternCode: String(item.pattern_code || item.patternCode || "").trim(),
+    eanCode: String(item.ean_code || item.barcode || "").trim(),
     title: item.product_name || "Product",
     description: "",
     brand: item.brand || "",
-    price: Number(item.final_price_b2c || 0),
-    originalPrice: Number(item.original_price_b2c || 0) || undefined,
+    price: businessAccount ? b2bPrice : b2cPrice,
+    originalPrice: businessAccount ? b2bOriginal : b2cOriginal,
     images: images.length ? images : [fallbackImage],
     quantity: Math.max(1, Number(item.quantity || 1)),
     selectedSize: String(item.selected_size || item.size || ""),
     selectedColor: String(item.selected_color || item.color || item.colour || ""),
-    stock: Number(item.on_hand || 1),
+    stock: Math.max(0, Number(item.on_hand || 0)),
+    weight: numberOrNull(item.weight ?? customPayload.weight),
+    weightKg: numberOrNull(
+      item.weight_kg ?? customPayload.weight_kg ?? item.weight,
+    ),
+    length: numberOrNull(item.length ?? customPayload.length),
+    width: numberOrNull(item.width ?? customPayload.width),
+    height: numberOrNull(item.height ?? customPayload.height),
+    hsnCode: String(
+      item.hsn_code || item.hsnCode || customPayload.hsn_code || "",
+    ).trim(),
+    hsnPercentage: numberOrNull(
+      item.hsn_percentage ??
+        item.hsnPercentage ??
+        customPayload.hsn_percentage,
+    ),
     isCustom: Boolean(item.is_custom),
   };
 };
-
 export default function Cart() {
   const navigate = useNavigate();
   const user = getStoredUser();
   const userId = Number(user?.id || 0);
+  const businessAccount = isBusinessAccount(user);
 
   const [cartItems, setCartItems] = useState<CartLine[]>([]);
   const [loading, setLoading] = useState(true);
@@ -117,7 +186,11 @@ export default function Cart() {
 
     try {
       const data = await fetchCart(userId, 3);
-      setCartItems(data.map(normalizeCartItem).filter((item) => item.id));
+      setCartItems(
+        data
+          .map((item) => normalizeCartItem(item, businessAccount))
+          .filter((item) => item.id),
+      );
     } catch (err: any) {
       setCartItems([]);
       setError(err?.message || "Unable to load cart");
@@ -134,11 +207,13 @@ export default function Cart() {
     };
 
     window.addEventListener("cart-updated", sync);
+    window.addEventListener("cartUpdated", sync);
 
     return () => {
       window.removeEventListener("cart-updated", sync);
+      window.removeEventListener("cartUpdated", sync);
     };
-  }, [userId]);
+  }, [userId, businessAccount]);
 
   const getItemKey = (item: CartLine) => {
     return String(item.cartItemId || item.id);
@@ -158,7 +233,7 @@ export default function Cart() {
       await updateCartQuantity({
         cart_item_id: item.cartItemId,
         user_id: userId,
-        product_id: item.variantId || item.id,
+        product_id: item.productId ?? null,
         variant_id: item.variantId || item.id,
         selected_size: item.selectedSize,
         selected_color: item.selectedColor,
@@ -188,7 +263,7 @@ export default function Cart() {
       await removeFromCart({
         cart_item_id: item.cartItemId,
         user_id: userId,
-        product_id: item.variantId || item.id,
+        product_id: item.productId ?? null,
         variant_id: item.variantId || item.id,
         selected_size: item.selectedSize,
         selected_color: item.selectedColor,
@@ -216,7 +291,7 @@ export default function Cart() {
     return cartItems.reduce((sum, item) => sum + item.quantity, 0);
   }, [cartItems]);
 
-  const shipping = subtotal > 1000 || subtotal === 0 ? 0 : 99;
+  const shipping = subtotal >= 1000 || subtotal === 0 ? 0 : 75;
   const total = subtotal + shipping;
 
   const totalOriginalPrice = useMemo(() => {
@@ -299,7 +374,14 @@ export default function Cart() {
                         className="p-4 md:p-6 flex flex-row gap-4 md:gap-6 bg-white relative group"
                       >
                         <Link
-                          to={`/product/${encodeURIComponent(String(item.variantId || item.id))}`}
+                          to={`/product/${encodeURIComponent(
+                            String(
+                              item.designCode ||
+                                item.productId ||
+                                item.variantId ||
+                                item.id,
+                            ),
+                          )}`}
                           className="w-[90px] h-[120px] md:w-32 md:h-40 shrink-0 bg-gray-50 rounded-[4px] md:rounded-lg overflow-hidden"
                         >
                           <img
@@ -316,15 +398,29 @@ export default function Cart() {
                                 {item.brand}
                               </p>
                               <Link
-                                to={`/product/${encodeURIComponent(String(item.variantId || item.id))}`}
+                                to={`/product/${encodeURIComponent(
+                                  String(
+                                    item.designCode ||
+                                      item.productId ||
+                                      item.variantId ||
+                                      item.id,
+                                  ),
+                                )}`}
                                 className="text-[12px] md:text-lg font-normal md:font-bold text-gray-500 md:text-gray-900 hover:text-primary transition-colors line-clamp-2 md:line-clamp-1 leading-snug"
                               >
                                 {item.title}
                               </Link>
 
-                              <p className="md:hidden text-[10.5px] text-[#ff8c4b] mt-1.5">
-                                Hurry! Only {item.stock} Left
-                              </p>
+                              {item.patternType ? (
+                                <p className="text-[10.5px] md:text-xs text-gray-500 mt-1 uppercase tracking-wide">
+                                  {item.patternType}
+                                </p>
+                              ) : null}
+                              {item.stock > 0 ? (
+                                <p className="md:hidden text-[10.5px] text-[#ff8c4b] mt-1.5">
+                                  Hurry! Only {item.stock} Left
+                                </p>
+                              ) : null}
                               <p className="md:hidden text-[10.5px] text-gray-600 font-medium flex items-center gap-1 mt-1">
                                 <FiTruck className="text-[#009b4d]" size={13} />{" "}
                                 Ships in 1-2 days

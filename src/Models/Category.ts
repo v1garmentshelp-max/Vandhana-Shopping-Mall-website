@@ -1,12 +1,18 @@
+export type CategoryGender = "MEN" | "WOMEN" | "KIDS";
+
 export interface Category {
   id: string;
-  name: string; // "Men", "Topwear", or "Cargos"
-  slug: string; // "men-bottomwear-cargos" (Critical for SEO URLs)
+  name: string;
+  slug: string;
   image?: string;
-
-  // Link to the parent. Level 0 categories (Men/Women) will have null.
   parentId: string | null;
-
-  // Helps logic: 0 = Gender, 1 = Department (Topwear), 2 = Product Type (T-shirt)
+  parent_id?: string | null;
   level: number;
+  gender?: CategoryGender;
+  categoryPath?: string;
+  category_path?: string;
+  is_active?: boolean;
+  selectable?: boolean;
+  sort_order?: number;
+  children?: Category[];
 }

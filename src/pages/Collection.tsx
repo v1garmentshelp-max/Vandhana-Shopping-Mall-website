@@ -26,6 +26,7 @@ import type {
   Product,
   ProductGender,
 } from "../Models/Product";
+import { resolveColorStyle } from "../utils/colorHexMap";
 import {
   fetchCategoriesTree,
   fetchProductsByGender,
@@ -135,6 +136,65 @@ const productColor = (
       (product as any).color ??
       "",
   ).trim();
+
+const productDesignCode = (
+  product: Product,
+) =>
+  String(
+    (product as any).designCode ??
+      (product as any).design_code ??
+      "",
+  ).trim();
+
+const productPatternType = (
+  product: Product,
+) =>
+  String(
+    (product as any).patternType ??
+      (product as any).pattern_type ??
+      "",
+  ).trim();
+
+const dedupeByDesign = (
+  products: Product[],
+) => {
+  const seen = new Set<string>();
+
+  return products.filter((product) => {
+    const designCode = norm(
+      productDesignCode(product),
+    );
+
+    const productId = norm(
+      (product as any).productId ??
+        (product as any).product_id ??
+        product.id ??
+        "",
+    );
+
+    const key = designCode
+      ? `design|${designCode}`
+      : productId
+        ? `product|${productId}`
+        : `fallback|${norm(
+            (product as any).title ??
+              (product as any).product_name ??
+              (product as any).name ??
+              "",
+          )}|${norm(
+            (product as any).brand ??
+              (product as any).brand_name ??
+              "",
+          )}`;
+
+    if (seen.has(key)) {
+      return false;
+    }
+
+    seen.add(key);
+    return true;
+  });
+};
 
 const productCategoryIds = (
   product: Product,
@@ -456,6 +516,14 @@ const categoriesForGender = (
 const productIdentity = (
   product: Product,
 ) => {
+  const designCode = norm(
+    productDesignCode(product),
+  );
+
+  if (designCode) {
+    return `design|${designCode}`;
+  }
+
   const route = String(
     (product as any).routeKey ??
       (product as any).route_key ??
@@ -465,7 +533,7 @@ const productIdentity = (
   ).trim();
 
   if (route) {
-    return route;
+    return `route|${norm(route)}`;
   }
 
   const productId = norm(
@@ -475,52 +543,29 @@ const productIdentity = (
       "",
   );
 
-  const category = norm(
-    (product as any).categoryId ??
-      (product as any).category_id ??
-      "",
-  );
-
-  const color = norm(
-    productColor(product),
-  );
-
-  const variant = norm(
-    (product as any).variantId ??
-      (product as any).variant_id ??
-      "",
-  );
-
-  if (
-    productId &&
-    color
-  ) {
-    return `product-colour|${productId}|${category || "none"}|${color}`;
-  }
-
   if (productId) {
-    return `product|${productId}|${category || "none"}`;
-  }
-
-  if (variant) {
-    return `variant|${variant}`;
+    return `product|${productId}`;
   }
 
   return [
     "details",
     productGender(product),
-    category,
+    norm(
+      (product as any).categoryId ??
+        (product as any).category_id ??
+        "",
+    ),
     norm(
       (product as any).brand ??
-        (product as any).brand_name,
+        (product as any).brand_name ??
+        "",
     ),
     norm(
       (product as any).title ??
-        (product as any)
-          .product_name ??
-        (product as any).name,
+        (product as any).product_name ??
+        (product as any).name ??
+        "",
     ),
-    color,
   ].join("|");
 };
 
@@ -630,6 +675,7 @@ export default function Collection() {
     Gender: true,
     Category: true,
     Sizes: true,
+    "Pattern Type": true,
   });
 
   const [
@@ -697,9 +743,11 @@ export default function Collection() {
       .then((data) => {
         if (active) {
           setProducts(
-            Array.isArray(data)
-              ? data
-              : [],
+            dedupeByDesign(
+              Array.isArray(data)
+                ? data
+                : [],
+            ),
           );
         }
       })
@@ -797,10 +845,12 @@ export default function Collection() {
   const genderProducts =
     useMemo(
       () =>
-        products.filter(
-          (product) =>
-            productGender(product) ===
-            norm(selectedGender),
+        dedupeByDesign(
+          products.filter(
+            (product) =>
+              productGender(product) ===
+              norm(selectedGender),
+          ),
         ),
       [
         products,
@@ -864,9 +914,18 @@ export default function Collection() {
         ),
       );
 
+    const patternTypes =
+      uniqueValues(
+        genderProducts.map(
+          productPatternType,
+        ),
+      );
+
     return {
       Category:
         categoryOptions,
+      "Pattern Type":
+        patternTypes,
       Sizes: sizes.length
         ? sizes
         : [
@@ -1057,6 +1116,26 @@ export default function Collection() {
         );
 
       if (
+        filters["Pattern Type"]?.length
+      ) {
+        const selectedPatternTypes =
+          filters["Pattern Type"].map(
+            norm,
+          );
+
+        result = result.filter(
+          (product) =>
+            selectedPatternTypes.includes(
+              norm(
+                productPatternType(
+                  product,
+                ),
+              ),
+            ),
+        );
+      }
+
+      if (
         filters.Sizes?.length
       ) {
         result = result.filter(
@@ -1209,7 +1288,7 @@ export default function Collection() {
         );
       }
 
-      return sorted;
+      return dedupeByDesign(sorted);
     }, [
       filters,
       categories,
@@ -1344,6 +1423,14 @@ export default function Collection() {
                     </svg>
                   ) : null}
                 </div>
+
+                {name === "Color" ? (
+                  <span
+                    className="h-4 w-4 rounded-full border border-black/15 shadow-sm"
+                    style={{ background: resolveColorStyle(value) }}
+                    title={label}
+                  />
+                ) : null}
 
                 <span
                   className={`text-sm tracking-wide capitalize ${
@@ -1545,14 +1632,11 @@ export default function Collection() {
             ) : visibleProducts.length ? (
               <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
                 {visibleProducts.map(
-                  (
-                    product,
-                    index,
-                  ) => (
+                  (product) => (
                     <ProductCard
-                      key={`${productIdentity(
+                      key={productIdentity(
                         product,
-                      )}-${index}`}
+                      )}
                       {...product}
                     />
                   ),

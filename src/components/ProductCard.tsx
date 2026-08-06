@@ -1,20 +1,9 @@
-import React, {
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
-import {
-  Link,
-  useNavigate,
-} from "react-router";
+import React, { useEffect, useMemo, useState } from "react";
+import { Link, useNavigate } from "react-router";
 import type { Product } from "../Models/Product";
 import { Heart } from "lucide-react";
 
-const API_BASE =
-  "https://vandhana-shopping-mall-backend.vercel.app";
-
-const FALLBACK_IMAGE =
-  "data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='900' height='1200' viewBox='0 0 900 1200'%3E%3Crect width='900' height='1200' fill='%23f3f4f6'/%3E%3Cpath d='M315 540h270v120H315z' fill='%23e5e7eb'/%3E%3C/svg%3E";
+const API_BASE = "https://vandhana-shopping-mall-backend.vercel.app";
 
 type StoredUser = {
   id?: number;
@@ -24,169 +13,112 @@ type StoredUser = {
   type?: string;
 };
 
-const getStoredUser =
-  (): StoredUser | null => {
-    const raw =
-      localStorage.getItem(
-        "user",
-      ) ||
-      sessionStorage.getItem(
-        "user",
-      );
+const getStoredUser = (): StoredUser | null => {
+  const raw =
+    localStorage.getItem("user") ||
+    sessionStorage.getItem("user") ||
+    null;
 
-    if (!raw) {
-      return null;
-    }
+  if (!raw) return null;
 
-    try {
-      return JSON.parse(raw);
-    } catch {
-      return null;
-    }
-  };
-
-const toPositiveNumber = (
-  value: any,
-) => {
-  const parsed = Number(
-    String(
-      value || "",
-    ).trim(),
-  );
-
-  return Number.isInteger(parsed) &&
-    parsed > 0
-    ? parsed
-    : null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
 };
 
-const getWishlistKey = (
-  userId: number,
-) =>
+const toPositiveNumber = (value: any) => {
+  const parsed = Number(String(value || "").trim());
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+};
+
+const getWishlistKey = (userId: number) =>
   `wishlist_variant_ids_${userId}`;
 
-const readWishlistIds = (
-  userId: number,
-): number[] => {
+const readWishlistIds = (userId: number): number[] => {
   try {
     const raw =
-      localStorage.getItem(
-        getWishlistKey(userId),
-      ) ||
-      localStorage.getItem(
-        `wishlist_product_ids_${userId}`,
-      );
+      localStorage.getItem(getWishlistKey(userId)) ||
+      localStorage.getItem(`wishlist_product_ids_${userId}`);
 
-    if (!raw) {
-      return [];
-    }
+    if (!raw) return [];
 
     const parsed = JSON.parse(raw);
 
     return Array.isArray(parsed)
-      ? parsed
-          .map(Number)
-          .filter(
-            Number.isFinite,
-          )
+      ? parsed.map(Number).filter(Number.isFinite)
       : [];
   } catch {
     return [];
   }
 };
 
-const writeWishlistIds = (
-  userId: number,
-  ids: number[],
-) => {
-  localStorage.setItem(
-    getWishlistKey(userId),
-    JSON.stringify(ids),
-  );
-
+const writeWishlistIds = (userId: number, ids: number[]) => {
+  localStorage.setItem(getWishlistKey(userId), JSON.stringify(ids));
   localStorage.setItem(
     `wishlist_product_ids_${userId}`,
     JSON.stringify(ids),
   );
-
-  window.dispatchEvent(
-    new Event(
-      "wishlist-updated",
-    ),
-  );
+  window.dispatchEvent(new Event("wishlist-updated"));
 };
 
-const cleanText = (value: any) =>
-  String(value || "")
+const normalizeBarcode = (value: any) => {
+  return String(value || "")
+    .trim()
+    .replace(/^"|"$/g, "")
+    .replace(/\s+/g, "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9._-]/g, "");
+};
+
+const cleanText = (value: any) => {
+  return String(value || "")
     .replace(/\s+/g, " ")
     .trim();
+};
 
-const normalizeText = (
-  value: any,
-) =>
-  cleanText(value)
+const normalizeText = (value: any) => {
+  return String(value || "")
     .toLowerCase()
     .replace(/&/g, " and ")
     .replace(/['’]/g, "")
     .replace(/[./_-]+/g, " ")
-    .replace(
-      /[^a-z0-9]+/g,
-      " ",
-    )
+    .replace(/[^a-z0-9]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+};
 
-const toTitleCase = (value: any) =>
-  cleanText(value)
+const toTitleCase = (value: any) => {
+  return cleanText(value)
     .toLowerCase()
     .split(" ")
     .filter(Boolean)
-    .map((word) =>
-      word.length <= 2 &&
-      /^[a-z]+$/.test(word)
-        ? word.toUpperCase()
-        : word
-            .charAt(0)
-            .toUpperCase() +
-          word.slice(1),
-    )
+    .map((word) => {
+      if (word.length <= 2 && /^[a-z]+$/.test(word)) {
+        return word.toUpperCase();
+      }
+
+      return word.charAt(0).toUpperCase() + word.slice(1);
+    })
     .join(" ");
+};
 
-const removeStartToken = (
-  source: string,
-  token: any,
-) => {
-  const raw =
-    cleanText(source);
+const removeStartToken = (text: string, token: any) => {
+  const raw = cleanText(text);
+  const cleanToken = cleanText(token);
 
-  const cleanToken =
-    cleanText(token);
+  if (!raw || !cleanToken) return raw;
 
-  if (
-    !raw ||
-    !cleanToken ||
-    !normalizeText(
-      raw,
-    ).startsWith(
-      normalizeText(
-        cleanToken,
-      ),
-    )
-  ) {
-    return raw;
-  }
+  const rawNorm = normalizeText(raw);
+  const tokenNorm = normalizeText(cleanToken);
 
-  return cleanText(
-    raw
-      .split(" ")
-      .slice(
-        cleanToken
-          .split(" ")
-          .filter(Boolean)
-          .length,
-      )
-      .join(" "),
-  );
+  if (!rawNorm.startsWith(tokenNorm)) return raw;
+
+  const rawWords = raw.split(" ");
+  const tokenWordCount = cleanToken.split(" ").filter(Boolean).length;
+
+  return cleanText(rawWords.slice(tokenWordCount).join(" "));
 };
 
 const commonColorWords = [
@@ -223,29 +155,21 @@ const commonColorWords = [
   "khaki",
 ];
 
-const removeColorPrefix = (
-  source: string,
-  colorValue: any,
-) => {
-  let next =
-    cleanText(source);
-
-  const color =
-    cleanText(colorValue);
+const removeColorPrefix = (text: string, colorValue: any) => {
+  let next = cleanText(text);
+  const color = cleanText(colorValue);
 
   if (color) {
-    for (const part of [
+    const colorParts = [
       color,
       color.replace(/\./g, " "),
       color.replace(/\//g, " "),
       color.replace(/-/g, " "),
-    ]) {
-      const before = next;
+    ];
 
-      next = removeStartToken(
-        next,
-        part,
-      );
+    for (const part of colorParts) {
+      const before = next;
+      next = removeStartToken(next, part);
 
       if (before !== next) {
         return next;
@@ -253,16 +177,9 @@ const removeColorPrefix = (
     }
   }
 
-  for (
-    const colorWord of
-    commonColorWords
-  ) {
+  for (const colorWord of commonColorWords) {
     const before = next;
-
-    next = removeStartToken(
-      next,
-      colorWord,
-    );
+    next = removeStartToken(next, colorWord);
 
     if (before !== next) {
       return next;
@@ -272,9 +189,7 @@ const removeColorPrefix = (
   return next;
 };
 
-const cleanDisplayTitle = (
-  props: any,
-) => {
+const cleanDisplayTitle = (props: any) => {
   const rawTitle = cleanText(
     props.title ||
       props.name ||
@@ -298,130 +213,62 @@ const cleanDisplayTitle = (
       props.selected_color,
   );
 
-  const categoryName =
-    cleanText(
-      props.categoryName ||
-        props.category_name ||
-        "",
-    );
+  const categoryName = cleanText(
+    props.categoryName ||
+      props.category_name ||
+      "",
+  );
 
   let title = rawTitle
     .replace(/['’]/g, "'")
-    .replace(
-      /\bmen's\b/gi,
-      "MENS",
-    )
-    .replace(
-      /\bwomen's\b/gi,
-      "WOMENS",
-    )
+    .replace(/\bmen's\b/gi, "MENS")
+    .replace(/\bwomen's\b/gi, "WOMENS")
     .replace(/\s+/g, " ")
     .trim();
 
-  title = removeStartToken(
-    title,
-    brand,
-  );
+  title = removeStartToken(title, brand);
+  title = removeStartToken(title, "MENS");
+  title = removeStartToken(title, "MEN");
+  title = removeStartToken(title, "WOMENS");
+  title = removeStartToken(title, "WOMEN");
+  title = removeStartToken(title, "LADIES");
+  title = removeStartToken(title, "KIDS");
+  title = removeStartToken(title, "BOYS");
+  title = removeStartToken(title, "GIRLS");
+  title = removeColorPrefix(title, color);
 
-  for (const token of [
-    "MENS",
-    "MEN",
-    "WOMENS",
-    "WOMEN",
-    "LADIES",
-    "KIDS",
-    "BOYS",
-    "GIRLS",
-  ]) {
-    title = removeStartToken(
-      title,
-      token,
-    );
-  }
-
-  title = removeColorPrefix(
-    title,
-    color,
-  );
-
-  if (
-    normalizeText(
-      title,
-    ).length <= 2 &&
-    categoryName
-  ) {
+  if (normalizeText(title).length <= 2 && categoryName) {
     title = categoryName;
   }
 
   if (!title) {
-    title =
-      categoryName ||
-      rawTitle ||
-      "Product";
+    title = categoryName || rawTitle || "Product";
   }
 
   return toTitleCase(title);
 };
 
-const cleanDisplayBrand = (
-  value: any,
-) =>
-  cleanText(
-    value || "Vandhana",
-  ).toUpperCase();
+const cleanDisplayBrand = (value: any) => {
+  const brand = cleanText(value || "Vandhana");
+  return brand.toUpperCase();
+};
 
 const formatPrice = (value: any) => {
-  const number = Number(
-    value || 0,
-  );
+  const number = Number(value || 0);
 
-  return Number.isFinite(number)
-    ? number.toLocaleString(
-        "en-IN",
-        {
-          maximumFractionDigits: 0,
-        },
-      )
-    : "0";
+  if (!Number.isFinite(number)) {
+    return "0";
+  }
+
+  return number.toLocaleString("en-IN", {
+    maximumFractionDigits: 0,
+  });
 };
 
-const parseImages = (
-  value: any,
-): any[] => {
-  if (Array.isArray(value)) {
-    return value;
-  }
+const getImageString = (value: any) => {
+  if (!value) return "";
 
-  if (
-    typeof value !== "string" ||
-    !value.trim()
-  ) {
-    return [];
-  }
-
-  try {
-    const parsed =
-      JSON.parse(value);
-
-    return Array.isArray(parsed)
-      ? parsed
-      : [];
-  } catch {
-    return [];
-  }
-};
-
-const getImageString = (
-  value: any,
-) => {
-  if (!value) {
-    return "";
-  }
-
-  if (
-    typeof value ===
-    "string"
-  ) {
+  if (typeof value === "string") {
     return value.trim();
   }
 
@@ -434,122 +281,141 @@ const getImageString = (
   ).trim();
 };
 
-const getImageType = (
-  value: any,
-) => {
-  if (
-    !value ||
-    typeof value ===
-      "string"
-  ) {
-    return "";
-  }
+const getImageType = (value: any) => {
+  if (!value || typeof value === "string") return "";
 
-  return normalizeText(
+  return String(
     value.image_type ||
       value.imageType ||
       value.type ||
-      value.label ||
-      value.name ||
-      value.view ||
-      value.position,
-  );
+      "",
+  )
+    .trim()
+    .toLowerCase();
 };
 
-const isBadImage = (
-  value: any,
-) => {
-  const image = String(
-    value || "",
-  )
+const isBadImage = (value: any) => {
+  const image = String(value || "")
     .trim()
     .toLowerCase();
 
   return (
     !image ||
-    image ===
-      "[object object]" ||
-    image.includes(
-      "undefined",
-    ) ||
+    image === "[object object]" ||
+    image.includes("undefined") ||
     image.includes("null") ||
-    image.includes(
-      "placeholder.svg",
-    )
+    image.includes("placeholder.svg")
   );
 };
 
-const sameImage = (
-  first: any,
-  second: any,
-) => {
-  const firstImage = String(
-    first || "",
-  )
+const sameImage = (first: any, second: any) => {
+  const firstImage = String(first || "")
     .trim()
     .toLowerCase();
 
-  const secondImage = String(
-    second || "",
-  )
+  const secondImage = String(second || "")
     .trim()
     .toLowerCase();
 
-  return Boolean(
-    firstImage &&
-      secondImage &&
-      firstImage ===
-        secondImage,
+  return (
+    Boolean(firstImage) &&
+    Boolean(secondImage) &&
+    firstImage === secondImage
   );
+};
+
+const getArrayValues = (value: any) => {
+  if (Array.isArray(value)) {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    return value
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  return [];
+};
+
+const extractBarcodeFromImageUrl = (url: any) => {
+  const text = decodeURIComponent(String(url || ""));
+  const filename =
+    text.split("?")[0].split("/").pop() || text;
+
+  const clean = filename.replace(/\.[a-z0-9]+$/i, "");
+
+  if (clean.includes("__")) {
+    const first = normalizeBarcode(
+      clean.split("__")[0],
+    );
+
+    if (first) return first;
+  }
+
+  const match = clean.match(
+    /[A-Za-z0-9._-]*\d{5,}[A-Za-z0-9._-]*/,
+  );
+
+  return match
+    ? normalizeBarcode(match[0])
+    : "";
+};
+
+const imageMatchesAllowedCodes = (
+  url: string,
+  allowedCodes: Set<string>,
+) => {
+  if (!url || isBadImage(url)) {
+    return false;
+  }
+
+  if (!allowedCodes.size) {
+    return true;
+  }
+
+  const imageCode = extractBarcodeFromImageUrl(url);
+
+  if (!imageCode) {
+    return true;
+  }
+
+  return allowedCodes.has(imageCode);
 };
 
 const firstValidImage = (
   values: any[],
+  allowedCodes: Set<string>,
 ) => {
   for (const value of values) {
-    const image =
-      getImageString(value);
+    const image = getImageString(value);
 
-    if (!isBadImage(image)) {
-      return image;
-    }
-  }
-
-  return "";
-};
-
-const findImageByTypes = (
-  images: any[],
-  types: string[],
-) => {
-  const targets =
-    types.map(normalizeText);
-
-  for (
-    const imageRecord of
-    images
-  ) {
-    const type =
-      getImageType(
-        imageRecord,
-      );
-
-    if (
-      !targets.some(
-        (target) =>
-          type === target ||
-          type.includes(target),
-      )
-    ) {
+    if (!imageMatchesAllowedCodes(image, allowedCodes)) {
       continue;
     }
 
-    const image =
-      getImageString(
-        imageRecord,
-      );
+    return image;
+  }
 
-    if (!isBadImage(image)) {
+  return "";
+};
+
+const findImageByType = (
+  images: any[],
+  type: string,
+  allowedCodes: Set<string>,
+) => {
+  const target = String(type || "").toLowerCase();
+
+  for (const imageItem of images) {
+    if (getImageType(imageItem) !== target) {
+      continue;
+    }
+
+    const image = getImageString(imageItem);
+
+    if (imageMatchesAllowedCodes(image, allowedCodes)) {
       return image;
     }
   }
@@ -557,35 +423,38 @@ const findImageByTypes = (
   return "";
 };
 
-export const ProductCardSkeleton:
-  React.FC = () => (
-  <div className="w-full max-w-[400px] block animate-pulse">
-    <div className="relative aspect-[3/4] overflow-hidden rounded-xl bg-gray-200" />
+export const ProductCardSkeleton: React.FC = () => {
+  return (
+    <div className="block w-full max-w-[400px] animate-pulse">
+      <div className="relative aspect-[3/4] overflow-hidden rounded-xl bg-gray-200" />
 
-    <div className="mt-3 min-h-[86px] space-y-2">
-      <div className="h-4 bg-gray-200 rounded w-2/5" />
-      <div className="h-6 bg-gray-200 rounded w-4/5" />
-      <div className="h-6 bg-gray-200 rounded w-1/3 mt-3" />
+      <div className="mt-3 space-y-2">
+        <div className="h-4 w-2/5 rounded bg-gray-200" />
+        <div className="h-6 w-4/5 rounded bg-gray-200" />
+        <div className="mt-3 h-6 w-1/3 rounded bg-gray-200" />
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
-export const ProductCard:
-  React.FC<Product> = (
+export const ProductCard: React.FC<Product> = (
   props: any,
 ) => {
   const {
     id,
     productId,
     product_id,
-    designKey,
-    design_key,
-    routeKey,
-    route_key,
     variantId,
     variant_id,
     primaryVariantId,
     primary_variant_id,
+    designCode,
+    design_code,
+    routeKey,
+    route_key,
+    groupKey,
+    group_key,
+    variants,
     images,
     title,
     brand,
@@ -600,226 +469,243 @@ export const ProductCard:
     main_image_url,
     imageUrl,
     image_url,
+    barcode,
+    ean_code,
+    eanCode,
+    barcodes,
+    ean_codes,
   } = props;
 
-  const navigate =
-    useNavigate();
+  const navigate = useNavigate();
 
-  const [
-    frontFailed,
-    setFrontFailed,
-  ] = useState(false);
+  const [frontFailed, setFrontFailed] =
+    useState(false);
 
-  const [
-    backFailed,
-    setBackFailed,
-  ] = useState(false);
+  const [backFailed, setBackFailed] =
+    useState(false);
 
-  const [
-    isWishlisted,
-    setIsWishlisted,
-  ] = useState(false);
+  const [isWishlisted, setIsWishlisted] =
+    useState(false);
 
   const [
     isUpdatingWishlist,
     setIsUpdatingWishlist,
   ] = useState(false);
 
-  const displayTitle =
-    useMemo(
-      () =>
-        cleanDisplayTitle(
-          props,
-        ),
-      [props],
+  const displayTitle = useMemo(
+    () => cleanDisplayTitle(props),
+    [props],
+  );
+
+  const displayBrand = useMemo(
+    () =>
+      cleanDisplayBrand(
+        brand ||
+          props.brand_name ||
+          props.brandName,
+      ),
+    [
+      brand,
+      props.brand_name,
+      props.brandName,
+    ],
+  );
+
+  const allowedImageCodes = useMemo(() => {
+    const codes = [
+      barcode,
+      ean_code,
+      eanCode,
+      ...getArrayValues(barcodes),
+      ...getArrayValues(ean_codes),
+    ]
+      .map(normalizeBarcode)
+      .filter(Boolean);
+
+    return new Set(codes);
+  }, [
+    barcode,
+    ean_code,
+    eanCode,
+    barcodes,
+    ean_codes,
+  ]);
+
+  const resolvedImages = useMemo(() => {
+    let imageList: any[] = [];
+
+    if (Array.isArray(images)) {
+      imageList = images;
+    } else if (typeof images === "string") {
+      try {
+        const parsed = JSON.parse(images);
+        imageList = Array.isArray(parsed)
+          ? parsed
+          : [];
+      } catch {
+        imageList = [];
+      }
+    }
+
+    const typedFront = findImageByType(
+      imageList,
+      "front",
+      allowedImageCodes,
     );
 
-  const displayBrand =
-    useMemo(
-      () =>
-        cleanDisplayBrand(
-          brand ||
-            props.brand_name ||
-            props.brandName,
-        ),
-      [
-        brand,
-        props.brand_name,
-        props.brandName,
-      ],
+    const typedMain = findImageByType(
+      imageList,
+      "main",
+      allowedImageCodes,
     );
 
-  const resolvedImages =
-    useMemo(() => {
-      const imageList =
-        parseImages(images);
+    const typedBack = findImageByType(
+      imageList,
+      "back",
+      allowedImageCodes,
+    );
 
-      const typedFront =
-        findImageByTypes(
-          imageList,
-          [
-            "front",
-            "primary",
-            "main",
-            "default",
-          ],
-        );
-
-      const typedBack =
-        findImageByTypes(
-          imageList,
-          [
-            "back",
-            "rear",
-            "reverse",
-          ],
-        );
-
-      const untypedFront =
-        firstValidImage(
-          imageList.filter(
-            (image) =>
-              !getImageType(image),
-          ),
-        );
-
-      const front =
-        firstValidImage([
+    const front =
+      firstValidImage(
+        [
           frontImageUrl,
           front_image_url,
           typedFront,
           mainImageUrl,
           main_image_url,
+          typedMain,
           imageUrl,
           image_url,
-          untypedFront,
-          ...imageList,
-        ]) || FALLBACK_IMAGE;
+        ],
+        allowedImageCodes,
+      ) || "/placeholder.svg";
 
-      const back =
-        firstValidImage([
-          backImageUrl,
-          back_image_url,
-          typedBack,
-        ]);
+    const back = firstValidImage(
+      [
+        backImageUrl,
+        back_image_url,
+        typedBack,
+      ],
+      allowedImageCodes,
+    );
 
-      return {
-        front,
-        back:
-          back &&
-          !sameImage(
-            back,
-            front,
-          )
-            ? back
-            : "",
-      };
-    }, [
-      images,
-      frontImageUrl,
-      front_image_url,
-      backImageUrl,
-      back_image_url,
-      mainImageUrl,
-      main_image_url,
-      imageUrl,
-      image_url,
-    ]);
+    return {
+      front,
+      back:
+        back && !sameImage(back, front)
+          ? back
+          : "",
+    };
+  }, [
+    images,
+    frontImageUrl,
+    front_image_url,
+    backImageUrl,
+    back_image_url,
+    mainImageUrl,
+    main_image_url,
+    imageUrl,
+    image_url,
+    allowedImageCodes,
+  ]);
+
+  const firstVariant = useMemo(() => {
+    if (!Array.isArray(variants)) {
+      return null;
+    }
+
+    return (
+      variants.find(
+        (variant: any) =>
+          variant?.is_active !== false,
+      ) ||
+      variants[0] ||
+      null
+    );
+  }, [variants]);
 
   const finalVariantId =
     variantId ||
     variant_id ||
     primaryVariantId ||
-    primary_variant_id;
+    primary_variant_id ||
+    firstVariant?.variantId ||
+    firstVariant?.variant_id ||
+    firstVariant?.id;
 
-  const wishlistVariantId =
-    useMemo(
-      () =>
-        toPositiveNumber(
-          finalVariantId,
-        ) ||
-        toPositiveNumber(id),
-      [finalVariantId, id],
-    );
-
-  const parentProductId =
-    useMemo(
-      () =>
-        toPositiveNumber(
-          productId ||
-            product_id,
-        ) ||
-        toPositiveNumber(id),
-      [
-        productId,
-        product_id,
-        id,
-      ],
-    );
-
-  const productRoute =
-    useMemo(() => {
-      const routeProductId =
-        cleanText(
-          routeKey ||
-            route_key ||
-            designKey ||
-            design_key ||
-            productId ||
-            product_id ||
-            id,
-        );
-
-      const routeVariantId =
-        cleanText(
-          finalVariantId,
-        );
-
-      const baseRoute =
-        `/product/${encodeURIComponent(routeProductId)}`;
-
-      return routeVariantId
-        ? `${baseRoute}?variant_id=${encodeURIComponent(routeVariantId)}`
-        : baseRoute;
-    }, [
-      routeKey,
-      route_key,
-      designKey,
-      design_key,
-      productId,
-      product_id,
-      finalVariantId,
-      id,
-    ]);
-
-  const finalPrice = Number(
-    price || 0,
+  const wishlistVariantId = useMemo(
+    () => toPositiveNumber(finalVariantId),
+    [finalVariantId],
   );
 
-  const finalOriginalPrice =
-    Number(
-      originalPrice ||
-        props.original_price ||
-        props.mrp ||
-        0,
+  const parentProductId = useMemo(() => {
+    return (
+      toPositiveNumber(
+        productId || product_id,
+      ) ||
+      toPositiveNumber(
+        firstVariant?.productId ||
+          firstVariant?.product_id,
+      ) ||
+      toPositiveNumber(id)
     );
+  }, [
+    productId,
+    product_id,
+    firstVariant,
+    id,
+  ]);
+
+  const routeId = useMemo(() => {
+    const value =
+      designCode ||
+      design_code ||
+      routeKey ||
+      route_key ||
+      groupKey ||
+      group_key ||
+      productId ||
+      product_id ||
+      id;
+
+    return encodeURIComponent(
+      String(value || ""),
+    );
+  }, [
+    designCode,
+    design_code,
+    routeKey,
+    route_key,
+    groupKey,
+    group_key,
+    productId,
+    product_id,
+    id,
+  ]);
+
+  const finalPrice = Number(price || 0);
+
+  const finalOriginalPrice = Number(
+    originalPrice ||
+      props.original_price ||
+      props.mrp ||
+      0,
+  );
 
   const discount =
-    finalOriginalPrice >
-    finalPrice
+    finalOriginalPrice &&
+    finalOriginalPrice > finalPrice
       ? Math.round(
-          ((finalOriginalPrice -
-            finalPrice) /
+          ((finalOriginalPrice - finalPrice) /
             finalOriginalPrice) *
             100,
         )
       : 0;
 
-  const frontImg =
-    frontFailed
-      ? FALLBACK_IMAGE
-      : resolvedImages.front ||
-        FALLBACK_IMAGE;
+  const frontImg = frontFailed
+    ? "/placeholder.svg"
+    : resolvedImages.front ||
+      "/placeholder.svg";
 
   const backImg =
     !backFailed &&
@@ -831,8 +717,7 @@ export const ProductCard:
       ? resolvedImages.back
       : "";
 
-  const hasBackImage =
-    Boolean(backImg);
+  const hasBackImage = Boolean(backImg);
 
   useEffect(() => {
     setFrontFailed(false);
@@ -845,35 +730,21 @@ export const ProductCard:
   ]);
 
   useEffect(() => {
-    const syncWishlistState =
-      () => {
-        const user =
-          getStoredUser();
+    const syncWishlistState = () => {
+      const user = getStoredUser();
+      const userId = Number(user?.id || 0);
 
-        const userId =
-          Number(
-            user?.id || 0,
-          );
+      if (!userId || !wishlistVariantId) {
+        setIsWishlisted(false);
+        return;
+      }
 
-        if (
-          !userId ||
-          !wishlistVariantId
-        ) {
-          setIsWishlisted(
-            false,
-          );
+      const ids = readWishlistIds(userId);
 
-          return;
-        }
-
-        setIsWishlisted(
-          readWishlistIds(
-            userId,
-          ).includes(
-            wishlistVariantId,
-          ),
-        );
-      };
+      setIsWishlisted(
+        ids.includes(wishlistVariantId),
+      );
+    };
 
     syncWishlistState();
 
@@ -882,136 +753,153 @@ export const ProductCard:
       syncWishlistState,
     );
 
-    return () =>
+    return () => {
       window.removeEventListener(
         "wishlist-updated",
         syncWishlistState,
       );
+    };
   }, [wishlistVariantId]);
 
-  const handleWishlistToggle =
-    async (
-      event: React.MouseEvent<HTMLButtonElement>,
-    ) => {
-      event.preventDefault();
-      event.stopPropagation();
+  const handleWishlistToggle = async (
+    event: React.MouseEvent<HTMLButtonElement>,
+  ) => {
+    event.preventDefault();
+    event.stopPropagation();
 
-      const user =
-        getStoredUser();
+    const user = getStoredUser();
+    const userId = Number(user?.id || 0);
 
-      const userId =
-        Number(
-          user?.id || 0,
+    if (!userId) {
+      navigate("/auth");
+      return;
+    }
+
+    if (!wishlistVariantId) {
+      alert(
+        "This product is not linked to a backend variant id yet.",
+      );
+      return;
+    }
+
+    if (isUpdatingWishlist) {
+      return;
+    }
+
+    setIsUpdatingWishlist(true);
+
+    try {
+      if (isWishlisted) {
+        const response = await fetch(
+          `${API_BASE}/api/wishlist`,
+          {
+            method: "DELETE",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify({
+              user_id: userId,
+              product_id:
+                wishlistVariantId,
+              variant_id:
+                wishlistVariantId,
+            }),
+          },
         );
 
-      if (!userId) {
-        navigate("/auth");
-        return;
-      }
-
-      if (
-        !wishlistVariantId ||
-        isUpdatingWishlist
-      ) {
-        return;
-      }
-
-      setIsUpdatingWishlist(
-        true,
-      );
-
-      try {
-        const response =
-          await fetch(
-            `${API_BASE}/api/wishlist`,
-            {
-              method:
-                isWishlisted
-                  ? "DELETE"
-                  : "POST",
-              headers: {
-                "Content-Type":
-                  "application/json",
-              },
-              body:
-                JSON.stringify({
-                  user_id: userId,
-                  product_id:
-                    wishlistVariantId,
-                  variant_id:
-                    wishlistVariantId,
-                  actual_product_id:
-                    parentProductId,
-                }),
-            },
-          );
-
-        const data =
-          await response
-            .json()
-            .catch(() => ({}));
+        const data = await response
+          .json()
+          .catch(() => ({}));
 
         if (!response.ok) {
           throw new Error(
             data?.message ||
-              "Unable to update wishlist",
+              "Unable to remove from wishlist",
           );
         }
 
-        const ids =
-          isWishlisted
-            ? readWishlistIds(
-                userId,
-              ).filter(
-                (item) =>
-                  item !==
-                  wishlistVariantId,
-              )
-            : Array.from(
-                new Set([
-                  ...readWishlistIds(
-                    userId,
-                  ),
-                  wishlistVariantId,
-                ]),
-              );
-
-        writeWishlistIds(
+        const ids = readWishlistIds(
           userId,
-          ids,
+        ).filter(
+          (item) =>
+            item !== wishlistVariantId,
         );
 
-        setIsWishlisted(
-          !isWishlisted,
+        writeWishlistIds(userId, ids);
+        setIsWishlisted(false);
+      } else {
+        const response = await fetch(
+          `${API_BASE}/api/wishlist`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify({
+              user_id: userId,
+              product_id:
+                wishlistVariantId,
+              variant_id:
+                wishlistVariantId,
+              actual_product_id:
+                parentProductId,
+            }),
+          },
         );
-      } catch (
-        error: any
-      ) {
-        alert(
-          error?.message ||
-            "Wishlist update failed",
+
+        const data = await response
+          .json()
+          .catch(() => ({}));
+
+        if (!response.ok) {
+          throw new Error(
+            data?.message ||
+              "Unable to add to wishlist",
+          );
+        }
+
+        const ids = Array.from(
+          new Set([
+            ...readWishlistIds(userId),
+            wishlistVariantId,
+          ]),
         );
-      } finally {
-        setIsUpdatingWishlist(
-          false,
-        );
+
+        writeWishlistIds(userId, ids);
+        setIsWishlisted(true);
       }
-    };
+    } catch (error: any) {
+      alert(
+        error?.message ||
+          "Wishlist update failed",
+      );
+    } finally {
+      setIsUpdatingWishlist(false);
+    }
+  };
+
+  if (!routeId) {
+    return null;
+  }
 
   return (
     <Link
-      to={productRoute}
-      className={`w-full max-w-[400px] cursor-pointer block overflow-hidden ${
-        hasBackImage
-          ? "group"
-          : ""
+      to={`/product/${routeId}`}
+      data-design-code={
+        designCode ||
+        design_code ||
+        undefined
+      }
+      className={`block w-full max-w-[400px] cursor-pointer overflow-hidden ${
+        hasBackImage ? "group" : ""
       }`}
     >
       <div className="relative aspect-[3/4] overflow-hidden rounded-xl bg-gray-100">
-        {(isSale ||
-          discount > 0) && (
-          <div className="absolute top-0 left-3 z-20 bg-primary text-black px-3 py-0.5 h-[22px] flex items-center justify-center rounded-b-sm">
-            <span className="font-big-shoulders font-bold text-[0.82rem] leading-none uppercase">
+        {(isSale || discount > 0) && (
+          <div className="absolute left-3 top-0 z-20 flex h-[22px] items-center justify-center rounded-b-sm bg-primary px-3 py-0.5 text-black">
+            <span className="font-big-shoulders text-[0.82rem] font-bold uppercase leading-none">
               Sale
             </span>
           </div>
@@ -1019,17 +907,14 @@ export const ProductCard:
 
         <img
           src={frontImg}
-          alt={
-            displayTitle ||
-            title
-          }
+          alt={displayTitle || title}
           loading="lazy"
           onError={() =>
             setFrontFailed(true)
           }
-          className={`h-full w-full object-cover object-top transition-all duration-500 relative z-10 ${
+          className={`relative z-10 h-full w-full object-cover object-top transition-all duration-500 ${
             hasBackImage
-              ? "group-hover:opacity-0 group-hover:scale-105"
+              ? "group-hover:scale-105 group-hover:opacity-0"
               : ""
           }`}
         />
@@ -1042,19 +927,20 @@ export const ProductCard:
             onError={() =>
               setBackFailed(true)
             }
-            className="h-full w-full object-cover object-top transition-all duration-500 group-hover:scale-105 absolute inset-0 opacity-0 group-hover:opacity-100 z-10"
+            className="absolute inset-0 z-10 h-full w-full object-cover object-top opacity-0 transition-all duration-500 group-hover:scale-105 group-hover:opacity-100"
           />
         ) : null}
 
         <button
           type="button"
-          onClick={
-            handleWishlistToggle
+          onClick={handleWishlistToggle}
+          disabled={isUpdatingWishlist}
+          aria-label={
+            isWishlisted
+              ? "Remove from wishlist"
+              : "Add to wishlist"
           }
-          disabled={
-            isUpdatingWishlist
-          }
-          className="cursor-pointer hover:bg-gray-100 absolute bottom-3 right-3 z-40 bg-white rounded-full p-2.5 shadow-md transition-transform hover:scale-110 disabled:opacity-60"
+          className="absolute bottom-3 right-3 z-40 cursor-pointer rounded-full bg-white p-2.5 shadow-md transition-transform hover:scale-110 hover:bg-gray-100 disabled:opacity-60"
         >
           <Heart
             size={18}
@@ -1067,44 +953,39 @@ export const ProductCard:
         </button>
       </div>
 
-      <div className="mt-3 min-h-[86px] flex flex-col">
-        <p className="text-[0.72rem] md:text-[0.78rem] font-extrabold tracking-wide text-gray-500 font-poppins uppercase truncate leading-tight">
+      <div className="mt-3 flex flex-col">
+        <p className="truncate font-poppins text-[0.72rem] font-extrabold uppercase leading-tight tracking-wide text-gray-500 md:text-[0.78rem]">
           {displayBrand}
         </p>
 
         <h3
-          aria-label={
-            displayTitle
-          }
+          aria-label={displayTitle}
           title={displayTitle}
-          className="mt-1 text-[1.1rem] md:text-[1.2rem] font-bold tracking-tight text-black font-big-shoulders uppercase leading-[1.05] line-clamp-2 min-h-[2.35rem]"
+          className="mt-1 line-clamp-2 font-big-shoulders text-[1.1rem] font-bold uppercase leading-[1.05] tracking-tight text-black md:text-[1.2rem]"
         >
           {displayTitle}
         </h3>
 
-        <div className="mt-auto pt-2 flex items-center font-source-sans gap-2 min-h-[32px] overflow-hidden">
-          <span className="text-[1.15rem] md:text-[1.22rem] font-extrabold text-black whitespace-nowrap">
-            ₹
-            {formatPrice(
-              finalPrice,
-            )}
+        <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 overflow-hidden font-source-sans">
+          <span className="whitespace-nowrap text-[1.15rem] font-extrabold text-black md:text-[1.22rem]">
+            ₹{formatPrice(finalPrice)}
           </span>
 
           {finalOriginalPrice >
-          finalPrice ? (
+            finalPrice && (
             <>
-              <span className="text-[0.9rem] md:text-[1rem] font-medium text-gray-400 line-through whitespace-nowrap">
+              <span className="whitespace-nowrap text-[0.9rem] font-medium text-gray-400 line-through md:text-[1rem]">
                 ₹
                 {formatPrice(
                   finalOriginalPrice,
                 )}
               </span>
 
-              <span className="text-[0.72rem] md:text-[0.78rem] font-extrabold text-green-600 tracking-tight whitespace-nowrap">
+              <span className="whitespace-nowrap text-[0.72rem] font-extrabold tracking-tight text-green-600 md:text-[0.78rem]">
                 {discount}% OFF
               </span>
             </>
-          ) : null}
+          )}
         </div>
       </div>
     </Link>

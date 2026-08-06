@@ -13,35 +13,91 @@ type AuthResponseUser = {
   email?: string;
   mobile?: string;
   type?: string;
+  userType?: string;
+  user_type?: string;
+  customer_type?: string;
+  role?: string;
+  role_enum?: string;
+  gstNumber?: string;
+  gst_number?: string;
 };
 
 type AuthResponse = {
   token?: string;
+  access_token?: string;
+  accessToken?: string;
   user?: AuthResponseUser;
   message?: string;
 };
 
-const saveAuthData = (
-  token: string,
-  user: {
-    id?: number;
-    name?: string;
-    email?: string;
-    mobile?: string;
-    type?: string;
-  },
-) => {
+type StoredUser = AuthResponseUser & {
+  type: string;
+  userType: string;
+  user_type: string;
+  customer_type: string;
+};
+
+const normalizeAccountType = (user?: AuthResponseUser | null) => {
+  const value = String(
+    user?.userType ||
+      user?.user_type ||
+      user?.customer_type ||
+      user?.type ||
+      user?.role ||
+      "B2C",
+  )
+    .trim()
+    .toUpperCase();
+
+  if (["B2B", "BUSINESS", "WHOLESALE"].includes(value)) return "B2B";
+  return "B2C";
+};
+
+const getResponseToken = (data: AuthResponse) =>
+  String(data.token || data.access_token || data.accessToken || "").trim();
+
+const buildStoredUser = (
+  source: AuthResponseUser | undefined,
+  fallback: Partial<AuthResponseUser>,
+): StoredUser => {
+  const merged = { ...fallback, ...(source || {}) };
+  const accountType = normalizeAccountType(merged);
+
+  return {
+    ...merged,
+    id: merged.id,
+    name: merged.name || fallback.name || "",
+    email: merged.email || fallback.email || "",
+    mobile: merged.mobile || fallback.mobile || "",
+    type: accountType,
+    userType: accountType,
+    user_type: accountType,
+    customer_type: accountType,
+    role: merged.role || accountType,
+    role_enum: merged.role_enum || merged.role || accountType,
+    gstNumber: merged.gstNumber || merged.gst_number || "",
+    gst_number: merged.gst_number || merged.gstNumber || "",
+  };
+};
+
+const saveAuthData = (token: string, user: StoredUser) => {
   localStorage.setItem("token", token);
   sessionStorage.setItem("token", token);
+  localStorage.setItem("auth_token", token);
+  sessionStorage.setItem("auth_token", token);
   localStorage.setItem("user", JSON.stringify(user));
   sessionStorage.setItem("user", JSON.stringify(user));
+  window.dispatchEvent(new Event("userUpdated"));
 };
 
 const clearAuthData = () => {
   localStorage.removeItem("token");
   sessionStorage.removeItem("token");
+  localStorage.removeItem("auth_token");
+  sessionStorage.removeItem("auth_token");
   localStorage.removeItem("user");
   sessionStorage.removeItem("user");
+  window.dispatchEvent(new Event("userUpdated"));
 };
 
 export default function Auth() {
@@ -110,6 +166,9 @@ export default function Auth() {
       mobile: signupForm.mobile.trim(),
       password: signupForm.password.trim(),
       type: "B2C",
+      userType: "b2c",
+      user_type: "B2C",
+      customer_type: "B2C",
     };
 
     const endpoints = [
@@ -138,6 +197,10 @@ export default function Auth() {
     const { res, data } = await requestJson(`${API_BASE}/api/auth/login`, {
       email,
       password,
+      type: "B2C",
+      userType: "b2c",
+      user_type: "B2C",
+      customer_type: "B2C",
     });
 
     if (!res.ok) {
@@ -161,19 +224,18 @@ export default function Auth() {
         loginForm.password.trim(),
       );
 
-      if (!data.token) {
+      const token = getResponseToken(data);
+
+      if (!token) {
         throw new Error("Login token not received");
       }
 
-      const user = {
-        id: data.user?.id,
-        name: data.user?.name || "",
-        email: data.user?.email || loginForm.email.trim(),
-        mobile: data.user?.mobile || "",
-        type: data.user?.type || "B2C",
-      };
+      const user = buildStoredUser(data.user, {
+        email: loginForm.email.trim(),
+        type: "B2C",
+      });
 
-      saveAuthData(data.token, user);
+      saveAuthData(token, user);
       setStep("success");
       setTimeout(() => navigate("/profile"), 1000);
     } catch (err: any) {
@@ -202,19 +264,20 @@ export default function Auth() {
         signupForm.password.trim(),
       );
 
-      if (!loginData.token) {
+      const token = getResponseToken(loginData);
+
+      if (!token) {
         throw new Error("Account created, but login token not received");
       }
 
-      const user = {
-        id: loginData.user?.id,
-        name: loginData.user?.name || signupForm.name.trim(),
-        email: loginData.user?.email || signupForm.email.trim(),
-        mobile: loginData.user?.mobile || signupForm.mobile.trim(),
-        type: loginData.user?.type || "B2C",
-      };
+      const user = buildStoredUser(loginData.user, {
+        name: signupForm.name.trim(),
+        email: signupForm.email.trim(),
+        mobile: signupForm.mobile.trim(),
+        type: "B2C",
+      });
 
-      saveAuthData(loginData.token, user);
+      saveAuthData(token, user);
       setStep("success");
       setTimeout(() => navigate("/profile"), 1000);
     } catch (err: any) {

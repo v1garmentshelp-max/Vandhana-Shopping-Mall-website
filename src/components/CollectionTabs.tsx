@@ -21,25 +21,60 @@ const normalizeCategoryText = (value: any) =>
 const getProductGender = (product: any) =>
   normalizeCategoryText(product?.gender || product?.category || "");
 
-const getProductCardKey = (product: any, index: number) => {
-  return [
-    product?.variantId,
-    product?.variant_id,
-    product?.primaryVariantId,
-    product?.primary_variant_id,
-    product?.barcode,
-    product?.ean_code,
-    product?.id,
-    product?.productId,
-    product?.product_id,
-    product?.color,
-    product?.colour,
-    index,
-  ]
-    .map((item) => String(item || "").trim())
-    .filter(Boolean)
-    .join("-");
+const getProductDesignKey = (product: any) =>
+  String(
+    product?.designCode ||
+      product?.design_code ||
+      product?.routeKey ||
+      product?.route_key ||
+      product?.groupKey ||
+      product?.group_key ||
+      product?.productId ||
+      product?.product_id ||
+      product?.id ||
+      "",
+  ).trim();
+
+const getProductIdentityValues = (product: any) =>
+  Array.from(
+    new Set(
+      [
+        getProductDesignKey(product),
+        product?.designCode,
+        product?.design_code,
+        product?.routeKey,
+        product?.route_key,
+        product?.productId,
+        product?.product_id,
+        product?.id,
+        product?.variantId,
+        product?.variant_id,
+        product?.primaryVariantId,
+        product?.primary_variant_id,
+        product?.barcode,
+        product?.ean_code,
+      ]
+        .map((item) => String(item || "").trim())
+        .filter(Boolean),
+    ),
+  );
+
+const dedupeProductsByDesign = (products: Product[]) => {
+  const map = new Map<string, Product>();
+
+  products.forEach((product, index) => {
+    const key = getProductDesignKey(product) || `product-${index}`;
+
+    if (!map.has(key)) {
+      map.set(key, product);
+    }
+  });
+
+  return Array.from(map.values());
 };
+
+const getProductCardKey = (product: any, index: number) =>
+  getProductDesignKey(product) || `product-${index}`;
 
 const getParams = (search: string) => {
   const params = new URLSearchParams(search);
@@ -409,10 +444,12 @@ const CollectionTabsContent = ({ title }: { title?: string }) => {
   }, [activeTab, categories]);
 
   const currentProducts = useMemo(() => {
-    const genderProducts = products.filter(
-      (product) =>
-        getProductGender(product) ===
-        normalizeCategoryText(preferredGender),
+    const genderProducts = dedupeProductsByDesign(
+      products.filter(
+        (product) =>
+          getProductGender(product) ===
+          normalizeCategoryText(preferredGender),
+      ),
     );
 
     if (activeCategory) {
@@ -428,49 +465,36 @@ const CollectionTabsContent = ({ title }: { title?: string }) => {
     let recentlyViewedIds: string[] = [];
 
     try {
-      recentlyViewedIds = JSON.parse(
+      const stored = JSON.parse(
         localStorage.getItem("recentlyViewed") || "[]",
       );
+
+      recentlyViewedIds = Array.isArray(stored)
+        ? stored.map((item) => String(item || "").trim()).filter(Boolean)
+        : [];
     } catch {
       recentlyViewedIds = [];
     }
 
-    const recentlyViewed = genderProducts.filter(
-      (product: any) =>
-        recentlyViewedIds.includes(String(product.id)) ||
-        recentlyViewedIds.includes(String(product.variantId)) ||
-        recentlyViewedIds.includes(String(product.variant_id)) ||
-        recentlyViewedIds.includes(String(product.productId)) ||
-        recentlyViewedIds.includes(String(product.product_id)),
-    );
+    const recentPosition = (product: Product) => {
+      const positions = getProductIdentityValues(product)
+        .map((value) => recentlyViewedIds.indexOf(value))
+        .filter((position) => position >= 0);
 
-    recentlyViewed.sort(
-      (a: any, b: any) =>
-        recentlyViewedIds.indexOf(String(a.id)) -
-        recentlyViewedIds.indexOf(String(b.id)),
-    );
+      return positions.length ? Math.min(...positions) : -1;
+    };
+
+    const recentlyViewed = genderProducts
+      .filter((product) => recentPosition(product) >= 0)
+      .sort((a, b) => recentPosition(a) - recentPosition(b));
 
     const recentlyViewedKeys = new Set(
-      recentlyViewed.flatMap((product: any) => [
-        String(product.id || ""),
-        String(product.variantId || ""),
-        String(product.variant_id || ""),
-        String(product.productId || ""),
-        String(product.product_id || ""),
-      ]),
+      recentlyViewed.map(getProductDesignKey),
     );
 
-    const remaining = genderProducts.filter((product: any) => {
-      const keys = [
-        String(product.id || ""),
-        String(product.variantId || ""),
-        String(product.variant_id || ""),
-        String(product.productId || ""),
-        String(product.product_id || ""),
-      ];
-
-      return !keys.some((key) => recentlyViewedKeys.has(key));
-    });
+    const remaining = genderProducts.filter(
+      (product) => !recentlyViewedKeys.has(getProductDesignKey(product)),
+    );
 
     return [...recentlyViewed, ...remaining];
   }, [

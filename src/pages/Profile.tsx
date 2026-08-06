@@ -9,6 +9,8 @@ import {
   FiInfo,
   FiChevronRight,
 } from "react-icons/fi";
+import { fetchBranchProducts } from "../services/productsApi";
+import type { Product, ProductVariant } from "../Models/Product";
 
 const API_BASE = "https://vandhana-shopping-mall-backend.vercel.app";
 
@@ -18,6 +20,10 @@ type StoredUser = {
   email?: string;
   mobile?: string;
   type?: string;
+  userType?: string;
+  user_type?: string;
+  customer_type?: string;
+  role?: string;
 };
 
 type CustomerProfile = {
@@ -29,7 +35,11 @@ type CustomerProfile = {
 };
 
 type OrderItem = {
-  variant_id?: number;
+  product_id?: number | string | null;
+  variant_id?: number | string | null;
+  design_code?: string | null;
+  pattern_type?: string | null;
+  pattern_code?: string | null;
   qty: number;
   price: number;
   mrp?: number | null;
@@ -80,6 +90,20 @@ const getStoredUser = (): StoredUser | null => {
     return null;
   }
 };
+
+const getAccountType = (user: StoredUser | null) =>
+  String(
+    user?.userType ||
+      user?.user_type ||
+      user?.customer_type ||
+      user?.type ||
+      user?.role ||
+      "B2C",
+  )
+    .trim()
+    .toUpperCase();
+
+const text = (value: any) => String(value ?? "").trim();
 
 const getInitialEmail = () => {
   const user = getStoredUser();
@@ -144,7 +168,11 @@ const normalizeOrders = (data: any): OrderRecord[] => {
         : null,
     items: Array.isArray(order.items)
       ? order.items.map((item: any) => ({
+          product_id: item.product_id ?? item.actual_product_id ?? null,
           variant_id: item.variant_id,
+          design_code: item.design_code || item.designCode || null,
+          pattern_type: item.pattern_type || item.patternType || null,
+          pattern_code: item.pattern_code || item.patternCode || null,
           qty: Number(item.qty || 1),
           price: Number(item.price || 0),
           mrp: item.mrp != null ? Number(item.mrp) : null,
@@ -157,6 +185,118 @@ const normalizeOrders = (data: any): OrderRecord[] => {
         }))
       : [],
   }));
+};
+
+const productIdOf = (product: Product | any) =>
+  text(product?.product_id || product?.productId || product?.id);
+
+const designCodeOf = (product: Product | any) =>
+  text(product?.design_code || product?.designCode);
+
+const variantsOf = (product: Product | any): ProductVariant[] =>
+  Array.isArray(product?.variants)
+    ? product.variants
+    : Array.isArray(product?.colorVariants)
+      ? product.colorVariants
+      : Array.isArray(product?.color_variants)
+        ? product.color_variants
+        : [];
+
+const variantIdOf = (variant: ProductVariant | any) =>
+  text(variant?.variant_id || variant?.variantId || variant?.id);
+
+const imageFromValue = (value: any) => {
+  if (!value) return "";
+  if (typeof value === "string") return value.trim();
+  return text(value.image_url || value.imageUrl || value.url || value.secure_url);
+};
+
+const firstProductImage = (product: Product | any, variant: ProductVariant | any) => {
+  const variantImages = Array.isArray(variant?.images) ? variant.images : [];
+  const productImages = Array.isArray(product?.images) ? product.images : [];
+
+  return text(
+    variant?.front_image_url ||
+      variant?.frontImageUrl ||
+      variant?.image_url ||
+      variant?.imageUrl ||
+      imageFromValue(variantImages[0]) ||
+      product?.front_image_url ||
+      product?.frontImageUrl ||
+      product?.image_url ||
+      product?.imageUrl ||
+      imageFromValue(productImages[0]),
+  );
+};
+
+const enrichOrders = async (orders: OrderRecord[]): Promise<OrderRecord[]> => {
+  const variantIds = new Set(
+    orders
+      .flatMap((order) => order.items)
+      .map((item) => text(item.variant_id))
+      .filter(Boolean),
+  );
+
+  if (!variantIds.size) return orders;
+
+  try {
+    const products = await fetchBranchProducts(3);
+    const variantMap = new Map<
+      string,
+      { product: Product; variant: ProductVariant }
+    >();
+
+    products.forEach((product) => {
+      variantsOf(product).forEach((variant) => {
+        const variantId = variantIdOf(variant);
+        if (variantId) variantMap.set(variantId, { product, variant });
+      });
+    });
+
+    return orders.map((order) => ({
+      ...order,
+      items: order.items.map((item) => {
+        const match = variantMap.get(text(item.variant_id));
+        if (!match) return item;
+
+        const { product, variant } = match;
+
+        return {
+          ...item,
+          product_id: productIdOf(product) || item.product_id,
+          variant_id: variantIdOf(variant) || item.variant_id,
+          design_code: designCodeOf(product) || item.design_code,
+          pattern_type:
+            text(
+              variant?.pattern_type ||
+                variant?.patternType ||
+                product?.pattern_type ||
+                product?.patternType,
+            ) || item.pattern_type,
+          pattern_code:
+            text(
+              variant?.pattern_code ||
+                variant?.patternCode ||
+                product?.pattern_code ||
+                product?.patternCode,
+            ) || item.pattern_code,
+          size: text(variant?.size) || item.size,
+          colour: text(variant?.colour || variant?.color) || item.colour,
+          ean_code:
+            text(variant?.ean_code || variant?.eanCode || variant?.barcode) ||
+            item.ean_code,
+          image_url: firstProductImage(product, variant) || item.image_url,
+          product_name:
+            text(product?.title || product?.name || product?.product_name) ||
+            item.product_name,
+          brand_name:
+            text(product?.brand || product?.brand_name) || item.brand_name,
+        };
+      }),
+    }));
+  } catch {
+    return orders;
+  }
 };
 
 const buildAddressLabel = (address: Record<string, any>, index: number) => {
@@ -257,7 +397,10 @@ export default function Profile() {
           name: profileData.name || storedUserNameFromEmail(email),
           email: profileData.email || email,
           mobile: profileData.mobile || "",
-          type: profileData.type || "",
+          type: getAccountType({
+            ...getStoredUser(),
+            ...profileData,
+          }),
         };
       } else {
         const fallbackUser = getStoredUser();
@@ -266,7 +409,7 @@ export default function Profile() {
           name: fallbackUser?.name || storedUserNameFromEmail(email),
           email: fallbackUser?.email || email,
           mobile: fallbackUser?.mobile || "",
-          type: fallbackUser?.type || "",
+          type: getAccountType(fallbackUser),
         };
       }
 
@@ -287,7 +430,8 @@ export default function Profile() {
 
       if (ordersRes.ok) {
         const ordersData = await ordersRes.json();
-        setOrders(normalizeOrders(ordersData));
+        const normalizedOrders = normalizeOrders(ordersData);
+        setOrders(await enrichOrders(normalizedOrders));
       } else {
         setOrders([]);
       }
@@ -318,6 +462,10 @@ export default function Profile() {
       email: nextProfile.email ?? current.email,
       mobile: nextProfile.mobile ?? current.mobile,
       type: nextProfile.type ?? current.type,
+      userType: nextProfile.type ?? current.userType ?? current.type,
+      user_type: nextProfile.type ?? current.user_type ?? current.type,
+      customer_type:
+        nextProfile.type ?? current.customer_type ?? current.type,
     };
     localStorage.setItem("user", JSON.stringify(merged));
     sessionStorage.setItem("user", JSON.stringify(merged));
@@ -641,8 +789,13 @@ function OrdersTab({ orders }: { orders: OrderRecord[] }) {
                         {item.product_name || "Order Item"}
                       </p>
                       <p className="text-[13px] text-gray-500 mt-2 font-medium">
-                        Size: {item.size || "-"} | Qty: {item.qty || 1}
+                        Size: {item.size || "-"} | Color: {item.colour || "-"} | Qty: {item.qty || 1}
                       </p>
+                      {item.pattern_type ? (
+                        <p className="text-[11px] text-gray-400 mt-1 uppercase tracking-wider">
+                          {item.pattern_type}
+                        </p>
+                      ) : null}
                       <p className="text-[13px] text-gray-500 mt-1 font-medium">
                         Ordered on {formatDate(order.created_at) || "-"}
                       </p>

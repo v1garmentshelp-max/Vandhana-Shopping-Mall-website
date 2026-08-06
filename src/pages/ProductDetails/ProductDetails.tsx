@@ -30,6 +30,7 @@ import {
   FaStar,
   FaStarHalfAlt,
 } from "react-icons/fa";
+import { resolveColorStyle } from "../../utils/colorHexMap";
 
 const Carousel =
   (CarouselModule as any).default ||
@@ -44,6 +45,10 @@ type StoredUser = {
   email?: string;
   mobile?: string;
   type?: string;
+  userType?: string;
+  user_type?: string;
+  customer_type?: string;
+  role?: string;
 };
 
 type StockSource = {
@@ -55,13 +60,25 @@ type Variant = {
   id: string | number;
   variantId: string | number;
   productId: string | number;
+  designCode: string;
+  patternType: string;
+  patternCode: string;
   size: string;
   color: string;
   colorValue: string;
   barcode: string;
   mrp: number;
   salePrice: number;
+  originalPriceB2B: number;
+  finalPriceB2B: number;
   available: number;
+  imageUrl: string;
+  weight: number | null;
+  length: number | null;
+  width: number | null;
+  height: number | null;
+  hsnCode: string;
+  hsnPercentage: number | null;
   stockSources: StockSource[];
   raw: any;
 };
@@ -675,23 +692,36 @@ const getStoredUser =
 const wishlistKey = (
   userId: number,
 ) =>
+  `wishlist_variant_ids_${userId}`;
+
+const legacyWishlistKey = (
+  userId: number,
+) =>
   `wishlist_product_ids_${userId}`;
 
 const readWishlist = (
   userId: number,
 ) => {
   try {
-    const parsed =
-      JSON.parse(
-        localStorage.getItem(
-          wishlistKey(userId),
-        ) || "[]",
-      );
+    const raw =
+      localStorage.getItem(
+        wishlistKey(userId),
+      ) ||
+      localStorage.getItem(
+        legacyWishlistKey(userId),
+      ) ||
+      "[]";
+
+    const parsed = JSON.parse(raw);
 
     return Array.isArray(parsed)
       ? parsed
           .map(Number)
-          .filter(Boolean)
+          .filter(
+            (value) =>
+              Number.isInteger(value) &&
+              value > 0,
+          )
       : [];
   } catch {
     return [];
@@ -702,15 +732,47 @@ const writeWishlist = (
   userId: number,
   ids: number[],
 ) => {
+  const unique = Array.from(
+    new Set(
+      ids.filter(
+        (value) =>
+          Number.isInteger(value) &&
+          value > 0,
+      ),
+    ),
+  );
+
   localStorage.setItem(
     wishlistKey(userId),
-    JSON.stringify(ids),
+    JSON.stringify(unique),
+  );
+
+  localStorage.setItem(
+    legacyWishlistKey(userId),
+    JSON.stringify(unique),
   );
 
   window.dispatchEvent(
     new Event(
       "wishlist-updated",
     ),
+  );
+};
+
+const isBusinessUser = (
+  user: StoredUser | null,
+) => {
+  const accountType = normalizeText(
+    user?.userType ||
+      user?.user_type ||
+      user?.customer_type ||
+      user?.type ||
+      user?.role,
+  );
+
+  return (
+    accountType === "b2b" ||
+    accountType.includes("business")
   );
 };
 
@@ -904,6 +966,47 @@ const normalizeVariant = (
         )
       : directPrice;
 
+  const originalPriceB2B =
+    numberValue(
+      raw?.original_price_b2b ??
+        raw?.originalPriceB2b ??
+        raw?.cost_price ??
+        product?.original_price_b2b ??
+        product?.originalPriceB2b ??
+        product?.cost_price ??
+        mrp,
+      mrp,
+    );
+
+  const b2bDiscount =
+    firstDiscount(
+      raw?.b2b_discount_pct,
+      raw?.discount_b2b,
+      product?.b2b_discount_pct,
+      product?.discount_b2b,
+    );
+
+  const directB2BPrice =
+    numberValue(
+      raw?.final_price_b2b ??
+        raw?.finalPriceB2b ??
+        raw?.b2b_final_price ??
+        product?.final_price_b2b ??
+        product?.finalPriceB2b ??
+        product?.b2b_final_price ??
+        originalPriceB2B,
+      originalPriceB2B,
+    );
+
+  const finalPriceB2B =
+    b2bDiscount > 0 &&
+    originalPriceB2B > 0
+      ? discountedPrice(
+          originalPriceB2B,
+          b2bDiscount,
+        )
+      : directB2BPrice;
+
   const onHand =
     numberValue(
       raw?.on_hand ??
@@ -951,10 +1054,51 @@ const normalizeVariant = (
       product?.swatchColor,
   );
 
+  const imagePair = chooseImagePair([
+    ...sourceImageRecords(raw),
+    ...sourceImageRecords(product),
+  ]);
+
+  const optionalNumber = (
+    value: any,
+  ) => {
+    if (
+      value === undefined ||
+      value === null ||
+      text(value) === ""
+    ) {
+      return null;
+    }
+
+    const parsed = Number(value);
+
+    return Number.isFinite(parsed)
+      ? parsed
+      : null;
+  };
+
   return {
     id: variantId,
     variantId,
     productId,
+    designCode: text(
+      raw?.design_code ||
+        raw?.designCode ||
+        product?.design_code ||
+        product?.designCode,
+    ),
+    patternType: text(
+      raw?.pattern_type ||
+        raw?.patternType ||
+        product?.pattern_type ||
+        product?.patternType,
+    ),
+    patternCode: text(
+      raw?.pattern_code ||
+        raw?.patternCode ||
+        product?.pattern_code ||
+        product?.patternCode,
+    ),
     size,
     color,
     colorValue,
@@ -965,7 +1109,43 @@ const normalizeVariant = (
     ),
     mrp,
     salePrice,
+    originalPriceB2B,
+    finalPriceB2B,
     available,
+    imageUrl:
+      imagePair.front?.url ||
+      imagePair.back?.url ||
+      "",
+    weight: optionalNumber(
+      raw?.weight ??
+        raw?.weight_kg ??
+        product?.weight ??
+        product?.weight_kg,
+    ),
+    length: optionalNumber(
+      raw?.length ??
+        product?.length,
+    ),
+    width: optionalNumber(
+      raw?.width ??
+        product?.width,
+    ),
+    height: optionalNumber(
+      raw?.height ??
+        product?.height,
+    ),
+    hsnCode: text(
+      raw?.hsn_code ||
+        raw?.hsnCode ||
+        product?.hsn_code ||
+        product?.hsnCode,
+    ),
+    hsnPercentage: optionalNumber(
+      raw?.hsn_percentage ??
+        raw?.hsnPercentage ??
+        product?.hsn_percentage ??
+        product?.hsnPercentage,
+    ),
     stockSources:
       normalizeStockSources(
         raw,
@@ -1264,209 +1444,10 @@ const sortColors = (
   );
 };
 
-const COLOR_MAP: Record<
-  string,
-  string
-> = {
-  black: "#000000",
-  white: "#ffffff",
-  red: "#dc2626",
-  maroon: "#800000",
-  burgundy: "#800020",
-  wine: "#722f37",
-  "french wine": "#781f3d",
-  pink: "#ec4899",
-  "light pink": "#f9a8d4",
-  "baby pink": "#f4c2c2",
-  onion: "#c7789f",
-  peach: "#ffcba4",
-  orange: "#f97316",
-  rust: "#b7410e",
-  brown: "#78350f",
-  chocolate: "#7b3f00",
-  coffee: "#6f4e37",
-  tan: "#d2b48c",
-  beige: "#d8c3a5",
-  biscuit: "#d2b48c",
-  camel: "#c19a6b",
-  khaki: "#bdb76b",
-  cream: "#fffdd0",
-  ivory: "#fffff0",
-  "off white": "#faf9f6",
-  skin: "#d2a679",
-  gold: "#d4af37",
-  mustard: "#c99700",
-  silver: "#c0c0c0",
-  grey: "#6b7280",
-  gray: "#6b7280",
-  "light grey": "#d1d5db",
-  "dark grey": "#374151",
-  "ash grey": "#b2beb5",
-  "elephant grey": "#8b8c89",
-  charcoal: "#36454f",
-  stone: "#8f8f8f",
-  blue: "#2563eb",
-  "dark blue": "#1e3a8a",
-  "light blue": "#add8e6",
-  navy: "#000080",
-  "navy blue": "#000080",
-  "horizon blue": "#4f6f8f",
-  "royal blue": "#4169e1",
-  "sky blue": "#87ceeb",
-  "sea blue": "#2e8b9e",
-  "ice blue": "#d9f2ff",
-  aqua: "#00ffff",
-  aquamarine: "#7fffd4",
-  cyan: "#00bcd4",
-  turquoise: "#40e0d0",
-  teal: "#008080",
-  indigo: "#4b0082",
-  green: "#16a34a",
-  "dark green": "#14532d",
-  "light green": "#90ee90",
-  "bottle green": "#006a4e",
-  "forest green": "#228b22",
-  "peacock green": "#007f72",
-  "olive green": "#556b2f",
-  olive: "#808000",
-  "mehendi green": "#556b2f",
-  "rama green": "#008f83",
-  "light rama green": "#78d7c4",
-  mint: "#98ff98",
-  yellow: "#eab308",
-  lemon: "#fff44f",
-  purple: "#7e22ce",
-  violet: "#7f00ff",
-  lavender: "#c4a7e7",
-  mauve: "#b784a7",
-  lilac: "#c8a2c8",
-  plum: "#8e4585",
-  magenta: "#d946ef",
-};
-
 const colorBackground = (
   name: string,
   provided?: string,
-) => {
-  const supplied =
-    text(provided);
-
-  if (
-    /^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(
-      supplied,
-    ) ||
-    /^(rgb|rgba|hsl|hsla|linear-gradient|radial-gradient|conic-gradient)\(/i.test(
-      supplied,
-    )
-  ) {
-    return supplied;
-  }
-
-  const normalized =
-    normalizeColor(name);
-
-  if (
-    normalized ===
-      "multicolor" ||
-    normalized.includes(
-      "rainbow",
-    ) ||
-    normalized.includes(
-      "assorted",
-    )
-  ) {
-    return "conic-gradient(#ef4444,#f59e0b,#eab308,#22c55e,#06b6d4,#3b82f6,#8b5cf6,#ec4899,#ef4444)";
-  }
-
-  if (
-    COLOR_MAP[normalized]
-  ) {
-    return COLOR_MAP[
-      normalized
-    ];
-  }
-
-  if (
-    normalized.includes("navy")
-  ) {
-    return COLOR_MAP[
-      "navy blue"
-    ];
-  }
-
-  if (
-    normalized.includes(
-      "horizon",
-    )
-  ) {
-    return COLOR_MAP[
-      "horizon blue"
-    ];
-  }
-
-  if (
-    normalized.includes("blue")
-  ) {
-    return COLOR_MAP.blue;
-  }
-
-  if (
-    normalized.includes(
-      "green",
-    )
-  ) {
-    return COLOR_MAP.green;
-  }
-
-  if (
-    normalized.includes(
-      "black",
-    )
-  ) {
-    return COLOR_MAP.black;
-  }
-
-  if (
-    normalized.includes(
-      "white",
-    )
-  ) {
-    return COLOR_MAP.white;
-  }
-
-  if (
-    normalized.includes("red")
-  ) {
-    return COLOR_MAP.red;
-  }
-
-  if (
-    normalized.includes("pink")
-  ) {
-    return COLOR_MAP.pink;
-  }
-
-  if (
-    normalized.includes(
-      "brown",
-    )
-  ) {
-    return COLOR_MAP.brown;
-  }
-
-  if (
-    normalized.includes(
-      "grey",
-    ) ||
-    normalized.includes(
-      "gray",
-    )
-  ) {
-    return COLOR_MAP.grey;
-  }
-
-  return "#d1d5db";
-};
+) => resolveColorStyle(name, provided);
 
 const selectedImages = (
   variants: Variant[],
@@ -2035,17 +2016,7 @@ const ProductDetails:
 
   const activeVariants =
     useMemo<Variant[]>(
-      () => {
-        const stocked =
-          allVariants.filter(
-            (variant) =>
-              variant.available > 0,
-          );
-
-        return stocked.length
-          ? stocked
-          : allVariants;
-      },
+      () => allVariants,
       [allVariants],
     );
 
@@ -2159,25 +2130,72 @@ const ProductDetails:
       ],
     );
 
-  const currentPrice =
-    selectedVariant?.salePrice ||
-    numberValue(
-      (product as any)
-        ?.price,
-      0,
+  const storedUser = getStoredUser();
+  const isB2B = isBusinessUser(storedUser);
+
+  const currentPrice = isB2B
+    ? selectedVariant?.finalPriceB2B ||
+      numberValue(
+        (product as any)
+          ?.final_price_b2b ??
+          (product as any)
+            ?.finalPriceB2b ??
+          (product as any)
+            ?.price,
+        0,
+      )
+    : selectedVariant?.salePrice ||
+      numberValue(
+        (product as any)
+          ?.final_price_b2c ??
+          (product as any)
+            ?.price,
+        0,
+      );
+
+  const comparePrice = isB2B
+    ? selectedVariant?.originalPriceB2B ||
+      numberValue(
+        (product as any)
+          ?.original_price_b2b ??
+          (product as any)
+            ?.originalPriceB2b ??
+          (product as any)
+            ?.mrp ??
+          currentPrice,
+        currentPrice,
+      )
+    : selectedVariant?.mrp ||
+      numberValue(
+        (product as any)
+          ?.originalPrice ||
+          (product as any)
+            ?.mrp ||
+          (product as any)
+            ?.price,
+        currentPrice,
+      );
+
+  const selectedWishlistVariantId =
+    positiveId(
+      selectedVariant?.variantId,
     );
 
-  const comparePrice =
-    selectedVariant?.mrp ||
-    numberValue(
+  const selectedPatternType = text(
+    selectedVariant?.patternType ||
       (product as any)
-        ?.originalPrice ||
-        (product as any)
-          ?.mrp ||
-        (product as any)
-          ?.price,
-      currentPrice,
-    );
+        ?.patternType ||
+      (product as any)
+        ?.pattern_type,
+  );
+
+  const selectedDesignCode = text(
+    selectedVariant?.designCode ||
+      (product as any)
+        ?.designCode ||
+      (product as any)
+        ?.design_code,
+  );
 
   const images =
     useMemo(
@@ -2531,11 +2549,11 @@ const ProductDetails:
       setWishlisted(
         Boolean(
           userId &&
-            backendProductId &&
+            selectedWishlistVariantId &&
             readWishlist(
               userId,
             ).includes(
-              backendProductId,
+              selectedWishlistVariantId,
             ),
         ),
       );
@@ -2553,7 +2571,7 @@ const ProductDetails:
         "wishlist-updated",
         sync,
       );
-  }, [backendProductId]);
+  }, [selectedWishlistVariantId]);
 
   if (loading) {
     return (
@@ -2760,9 +2778,7 @@ const ProductDetails:
           selectedVariant
             ?.productId,
         ) ||
-        backendProductId ||
-        stockSources[0]
-          ?.variantId;
+        backendProductId;
 
       if (!realProductId) {
         setCartError(
@@ -2795,18 +2811,74 @@ const ProductDetails:
           continue;
         }
 
+        const sourceVariant =
+          selectedVariants.find(
+            (variant) =>
+              positiveId(
+                variant.variantId,
+              ) === source.variantId,
+          ) ||
+          allVariants.find(
+            (variant) =>
+              positiveId(
+                variant.variantId,
+              ) === source.variantId,
+          ) ||
+          selectedVariant;
+
+        if (!sourceVariant) {
+          continue;
+        }
+
         await addToCart({
           user_id: userId,
           product_id:
-            realProductId,
+            positiveId(
+              sourceVariant.productId,
+            ) || realProductId,
           variant_id:
             source.variantId,
+          design_code:
+            sourceVariant.designCode ||
+            selectedDesignCode ||
+            null,
+          pattern_type:
+            sourceVariant.patternType ||
+            selectedPatternType ||
+            null,
+          pattern_code:
+            sourceVariant.patternCode ||
+            null,
+          ean_code:
+            sourceVariant.barcode ||
+            null,
           selected_size:
+            sourceVariant.size ||
             selectedSize,
           selected_color:
+            sourceVariant.color ||
             selectedColor,
           quantity:
             sourceQuantity,
+          image_url:
+            sourceVariant.imageUrl ||
+            images[0] ||
+            null,
+          weight:
+            sourceVariant.weight,
+          weight_kg:
+            sourceVariant.weight,
+          length:
+            sourceVariant.length,
+          width:
+            sourceVariant.width,
+          height:
+            sourceVariant.height,
+          hsn_code:
+            sourceVariant.hsnCode ||
+            null,
+          hsn_percentage:
+            sourceVariant.hsnPercentage,
         });
 
         remaining -=
@@ -2896,7 +2968,7 @@ const ProductDetails:
       }
 
       if (
-        !backendProductId ||
+        !selectedWishlistVariantId ||
         updatingWishlist
       ) {
         return;
@@ -2908,11 +2980,7 @@ const ProductDetails:
 
       try {
         const variantId =
-          positiveId(
-            selectedVariant
-              ?.variantId,
-          ) ||
-          backendProductId;
+          selectedWishlistVariantId;
 
         const response =
           await fetch(
@@ -2931,7 +2999,7 @@ const ProductDetails:
                   user_id:
                     userId,
                   product_id:
-                    backendProductId,
+                    variantId,
                   variant_id:
                     variantId,
                   actual_product_id:
@@ -2959,14 +3027,14 @@ const ProductDetails:
               ).filter(
                 (item) =>
                   item !==
-                  backendProductId,
+                  variantId,
               )
             : Array.from(
                 new Set([
                   ...readWishlist(
                     userId,
                   ),
-                  backendProductId,
+                  variantId,
                 ]),
               );
 
@@ -3295,6 +3363,20 @@ const ProductDetails:
               }
             </p>
 
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              {selectedPatternType ? (
+                <span className="inline-flex rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-gray-600">
+                  {selectedPatternType}
+                </span>
+              ) : null}
+
+              {isB2B ? (
+                <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-bold uppercase tracking-wide text-amber-700">
+                  B2B Price
+                </span>
+              ) : null}
+            </div>
+
             {path ? (
               <p className="text-xs md:text-sm text-gray-400 mb-3">
                 {path}
@@ -3387,6 +3469,16 @@ const ProductDetails:
                             selectedColor,
                           );
 
+                        const available =
+                          allVariants.some(
+                            (item) =>
+                              sameColor(
+                                item.color,
+                                color,
+                              ) &&
+                              item.available > 0,
+                          );
+
                         return (
                           <button
                             type="button"
@@ -3398,14 +3490,19 @@ const ProductDetails:
                                 color,
                               )
                             }
+                            disabled={!available}
                             title={
-                              color
+                              available
+                                ? color
+                                : `${color} is out of stock`
                             }
                             aria-label={`Select Color ${color}`}
                             className={`w-8 h-8 rounded-full border border-gray-300 transition-all ${
                               selected
                                 ? "ring-2 ring-gray-500 ring-offset-2 scale-110"
-                                : "hover:scale-110"
+                                : available
+                                  ? "hover:scale-110"
+                                  : "cursor-not-allowed opacity-30 grayscale"
                             }`}
                             style={{
                               background:
@@ -3432,29 +3529,44 @@ const ProductDetails:
 
                   <div className="flex flex-wrap gap-3">
                     {sizes.map(
-                      (size) => (
-                        <button
-                          type="button"
-                          key={
-                            size
-                          }
-                          onClick={() =>
-                            changeSize(
-                              size,
-                            )
-                          }
-                          className={`min-w-12 px-4 py-2.5 rounded-sm text-sm font-source-sans font-bold uppercase tracking-wider transition-all border ${
-                            sameSize(
-                              size,
-                              selectedSize,
-                            )
-                              ? "bg-gray-900 text-white border-gray-900"
-                              : "bg-white text-gray-800 border-gray-300 hover:border-gray-900"
-                          }`}
-                        >
-                          {size}
-                        </button>
-                      ),
+                      (size) => {
+                        const available =
+                          matchingVariants(
+                            allVariants,
+                            size,
+                            selectedColor,
+                          ).some(
+                            (variant) =>
+                              variant.available > 0,
+                          );
+
+                        return (
+                          <button
+                            type="button"
+                            key={
+                              size
+                            }
+                            onClick={() =>
+                              changeSize(
+                                size,
+                              )
+                            }
+                            disabled={!available}
+                            className={`min-w-12 px-4 py-2.5 rounded-sm text-sm font-source-sans font-bold uppercase tracking-wider transition-all border ${
+                              sameSize(
+                                size,
+                                selectedSize,
+                              )
+                                ? "bg-gray-900 text-white border-gray-900"
+                                : available
+                                  ? "bg-white text-gray-800 border-gray-300 hover:border-gray-900"
+                                  : "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400 line-through"
+                            }`}
+                          >
+                            {size}
+                          </button>
+                        );
+                      },
                     )}
                   </div>
                 </div>

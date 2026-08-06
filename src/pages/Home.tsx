@@ -1,14 +1,17 @@
 import { Navigate } from "react-router";
 import ShopByCategory from "../components/ShopByCategory";
 
-const Home = () => {
-  const redirectUrl =
-    typeof window !== "undefined"
-      ? localStorage.getItem("preferred_gender_url")
-      : null;
+const GENDER_ROUTES = new Set(["/men", "/women", "/kids"]);
 
-  if (redirectUrl) {
-    return <Navigate to={redirectUrl} replace />;
+const Home = () => {
+  const savedRoute = String(
+    localStorage.getItem("preferred_gender_url") || "",
+  )
+    .trim()
+    .toLowerCase();
+
+  if (GENDER_ROUTES.has(savedRoute)) {
+    return <Navigate to={savedRoute} replace />;
   }
 
   return (

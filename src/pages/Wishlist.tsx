@@ -10,6 +10,10 @@ type StoredUser = {
   email?: string;
   mobile?: string;
   type?: string;
+  userType?: string;
+  user_type?: string;
+  customer_type?: string;
+  role?: string;
 };
 
 type WishlistItem = {
@@ -32,6 +36,12 @@ type WishlistItem = {
   back_image_url?: string | null;
   main_image_url?: string | null;
   ean_code?: string | null;
+  design_code?: string | null;
+  designCode?: string | null;
+  pattern_type?: string | null;
+  patternType?: string | null;
+  pattern_code?: string | null;
+  patternCode?: string | null;
 };
 
 const getStoredUser = (): StoredUser | null => {
@@ -44,6 +54,21 @@ const getStoredUser = (): StoredUser | null => {
     return null;
   }
 };
+
+const getAccountType = (user: StoredUser | null) =>
+  String(
+    user?.userType ||
+      user?.user_type ||
+      user?.customer_type ||
+      user?.type ||
+      user?.role ||
+      "B2C",
+  )
+    .trim()
+    .toUpperCase();
+
+const isBusinessAccount = (user: StoredUser | null) =>
+  ["B2B", "BUSINESS", "WHOLESALE"].includes(getAccountType(user));
 
 const getWishlistKey = (userId: number) => `wishlist_variant_ids_${userId}`;
 
@@ -71,9 +96,23 @@ const toNumberId = (value: any) => {
   return Number.isInteger(n) && n > 0 ? n : null;
 };
 
-const getVariantId = (item: WishlistItem) => {
-  return toNumberId(item.variant_id) || toNumberId(item.product_id) || toNumberId(item.id);
-};
+const getVariantId = (item: WishlistItem) =>
+  toNumberId(item.variant_id) ||
+  toNumberId(item.product_id) ||
+  toNumberId(item.id);
+
+const getProductRouteKey = (item: WishlistItem) =>
+  String(
+    item.design_code ||
+      item.designCode ||
+      item.actual_product_id ||
+      item.variant_id ||
+      item.product_id ||
+      item.id,
+  ).trim();
+
+const getPatternType = (item: WishlistItem) =>
+  String(item.pattern_type || item.patternType || "").trim();
 
 const formatCurrency = (value?: number | string | null) => {
   const amount = Number(value || 0);
@@ -99,6 +138,7 @@ export default function Wishlist() {
 
   const user = getStoredUser();
   const userId = Number(user?.id || 0);
+  const businessAccount = isBusinessAccount(user);
 
   useEffect(() => {
     if (!userId) {
@@ -237,6 +277,14 @@ export default function Wishlist() {
             <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4 md:gap-6">
               {items.map((product) => {
                 const variantId = getVariantId(product);
+                const routeKey = getProductRouteKey(product);
+                const patternType = getPatternType(product);
+                const finalPrice = businessAccount
+                  ? product.final_price_b2b
+                  : product.final_price_b2c;
+                const originalPrice = businessAccount
+                  ? product.original_price_b2b
+                  : product.original_price_b2c;
 
                 return (
                   <div
@@ -253,7 +301,7 @@ export default function Wishlist() {
                     </button>
 
                     <Link
-                      to={`/product/${encodeURIComponent(String(variantId || product.id))}`}
+                      to={`/product/${encodeURIComponent(routeKey || String(variantId || product.id))}`}
                       className="block"
                     >
                       <div className="aspect-[3/4] bg-gray-100 overflow-hidden">
@@ -275,17 +323,25 @@ export default function Wishlist() {
                         <p className="text-xs text-gray-500 mt-1">
                           {product.size ? `Size: ${product.size}` : ""}
                           {product.size && (product.color || product.colour) ? " | " : ""}
-                          {product.color || product.colour ? `Color: ${product.color || product.colour}` : ""}
+                          {product.color || product.colour
+                            ? `Color: ${product.color || product.colour}`
+                            : ""}
                         </p>
+
+                        {patternType ? (
+                          <p className="text-[10px] text-gray-400 mt-1 uppercase tracking-wider">
+                            {patternType}
+                          </p>
+                        ) : null}
 
                         <div className="mt-3 flex items-center gap-2 flex-wrap">
                           <span className="text-[16px] font-bold text-gray-900">
-                            {formatCurrency(product.final_price_b2c)}
+                            {formatCurrency(finalPrice)}
                           </span>
-                          {Number(product.original_price_b2c || 0) >
-                          Number(product.final_price_b2c || 0) ? (
+                          {Number(originalPrice || 0) >
+                          Number(finalPrice || 0) ? (
                             <span className="text-[13px] text-gray-400 line-through">
-                              {formatCurrency(product.original_price_b2c)}
+                              {formatCurrency(originalPrice)}
                             </span>
                           ) : null}
                         </div>

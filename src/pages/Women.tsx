@@ -89,6 +89,61 @@ const normalizeText = (value: any) =>
     .replace(/\s+/g, " ")
     .trim();
 
+const productDesignIdentity = (product: Product) => {
+  const designCode = String(
+    (product as any).designCode ??
+      (product as any).design_code ??
+      "",
+  )
+    .trim()
+    .toLowerCase();
+
+  if (designCode) {
+    return `design|${designCode}`;
+  }
+
+  const productId = String(
+    (product as any).productId ??
+      (product as any).product_id ??
+      product.id ??
+      "",
+  )
+    .trim()
+    .toLowerCase();
+
+  if (productId) {
+    return `product|${productId}`;
+  }
+
+  return `fallback|${normalizeText(
+    `${
+      (product as any).title ||
+      (product as any).product_name ||
+      (product as any).name ||
+      ""
+    } ${
+      (product as any).brand ||
+      (product as any).brand_name ||
+      ""
+    }`,
+  )}`;
+};
+
+const dedupeByDesign = (products: Product[]) => {
+  const seen = new Set<string>();
+
+  return products.filter((product) => {
+    const key = productDesignIdentity(product);
+
+    if (seen.has(key)) {
+      return false;
+    }
+
+    seen.add(key);
+    return true;
+  });
+};
+
 const getCategoryId = (category: any) =>
   String(category?.id || "").trim();
 
@@ -151,8 +206,10 @@ const byCategoryIds = (
     categoryIds,
   );
 
-  return products.filter((product: any) =>
-    allowedIds.has(getProductCategoryId(product)),
+  return dedupeByDesign(
+    products.filter((product: any) =>
+      allowedIds.has(getProductCategoryId(product)),
+    ),
   );
 };
 
@@ -164,15 +221,17 @@ const byName = (
     .map(normalizeText)
     .filter(Boolean);
 
-  return products.filter((product: any) => {
-    const text = normalizeText(
+  return dedupeByDesign(
+    products.filter((product: any) => {
+      const text = normalizeText(
       `${product.title || ""} ${product.product_name || ""} ${product.name || ""} ${product.categoryName || ""} ${product.category_name || ""} ${product.categoryPath || ""} ${product.category_path || ""}`,
     );
 
-    return searchWords.some((word) =>
-      text.includes(word),
-    );
-  });
+      return searchWords.some((word) =>
+        text.includes(word),
+      );
+    }),
+  );
 };
 
 const getShopCategories = (
@@ -259,9 +318,11 @@ const Women = () => {
         if (!alive) return;
 
         setTypedProducts(
-          Array.isArray(products)
-            ? products
-            : [],
+          dedupeByDesign(
+            Array.isArray(products)
+              ? products
+              : [],
+          ),
         );
 
         setPageCategories(
@@ -299,7 +360,7 @@ const Women = () => {
   );
 
   const newDrops = useMemo(
-    () => typedProducts,
+    () => dedupeByDesign(typedProducts),
     [typedProducts],
   );
 

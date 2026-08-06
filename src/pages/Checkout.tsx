@@ -12,6 +12,8 @@ import {
   fetchCart,
   type CartApiItem,
 } from "../services/cartApi";
+import { fetchBranchProducts } from "../services/productsApi";
+import type { Product, ProductVariant } from "../Models/Product";
 
 const API_BASE = "https://vandhana-shopping-mall-backend.vercel.app";
 
@@ -21,6 +23,10 @@ type StoredUser = {
   email?: string;
   mobile?: string;
   type?: string;
+  userType?: string;
+  user_type?: string;
+  customer_type?: string;
+  role?: string;
 };
 
 type CheckoutItem = {
@@ -28,6 +34,9 @@ type CheckoutItem = {
   id: string | number;
   productId?: string | number | null;
   variantId?: string | number | null;
+  designCode?: string;
+  patternType?: string;
+  patternCode?: string;
   title: string;
   brand?: string;
   price: number;
@@ -37,6 +46,13 @@ type CheckoutItem = {
   selectedSize: string;
   selectedColor: string;
   eanCode?: string | null;
+  weight?: number | null;
+  weightKg?: number | null;
+  length?: number | null;
+  width?: number | null;
+  height?: number | null;
+  hsnCode?: string;
+  hsnPercentage?: number | null;
   isCustom?: boolean;
 };
 
@@ -65,10 +81,36 @@ const getStoredUser = (): StoredUser | null => {
   }
 };
 
+const getAccountType = (user: StoredUser | null) =>
+  String(
+    user?.userType ||
+      user?.user_type ||
+      user?.customer_type ||
+      user?.type ||
+      user?.role ||
+      "B2C",
+  )
+    .trim()
+    .toUpperCase();
+
+const isBusinessAccount = (user: StoredUser | null) =>
+  ["B2B", "BUSINESS", "WHOLESALE"].includes(getAccountType(user));
+
 const getNumber = (value: any, fallback = 0) => {
   const n = Number(value);
   return Number.isFinite(n) ? n : fallback;
 };
+
+const numberOrNull = (value: any) => {
+  if (value === null || value === undefined || String(value).trim() === "") {
+    return null;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const text = (value: any) => String(value ?? "").trim();
 
 const parseImages = (value: any) => {
   if (Array.isArray(value)) return value.filter(Boolean);
@@ -83,7 +125,10 @@ const parseImages = (value: any) => {
   return [];
 };
 
-const normalizeCartItem = (item: CartApiItem): CheckoutItem => {
+const normalizeCartItem = (
+  item: CartApiItem,
+  businessAccount: boolean,
+): CheckoutItem => {
   const raw: any = item;
   const images = parseImages(raw.images);
   const fallbackImage =
@@ -92,8 +137,7 @@ const normalizeCartItem = (item: CartApiItem): CheckoutItem => {
     raw.main_image_url ||
     raw.back_image_url ||
     "/placeholder.svg";
-
-  const price = getNumber(
+  const b2cPrice = getNumber(
     raw.final_price_b2c ||
       raw.sale_price ||
       raw.price ||
@@ -102,34 +146,190 @@ const normalizeCartItem = (item: CartApiItem): CheckoutItem => {
       raw.mahaveer_price,
     0,
   );
-
-  const originalPrice = getNumber(
-    raw.original_price_b2c ||
-      raw.mrp ||
-      raw.originalPrice ||
-      raw.original_price ||
-      price,
-    price,
+  const b2bPrice = getNumber(raw.final_price_b2b, b2cPrice);
+  const b2cOriginal = getNumber(
+    raw.original_price_b2c || raw.mrp || raw.originalPrice || raw.original_price,
+    b2cPrice,
   );
+  const b2bOriginal = getNumber(raw.original_price_b2b, b2bPrice);
+  const customPayload =
+    raw.custom_payload && typeof raw.custom_payload === "object"
+      ? raw.custom_payload
+      : {};
 
   return {
     cartItemId: raw.cart_item_id,
     id: raw.id || raw.variant_id || raw.product_id || raw.cart_item_id || "",
-    productId: raw.product_id,
-    variantId: raw.variant_id || raw.id,
+    productId: raw.product_id ?? raw.productId ?? null,
+    variantId: raw.variant_id ?? raw.variantId ?? raw.id ?? null,
+    designCode: text(raw.design_code || raw.designCode),
+    patternType: text(raw.pattern_type || raw.patternType),
+    patternCode: text(raw.pattern_code || raw.patternCode),
     title: raw.product_name || raw.name || "Product",
     brand: raw.brand || raw.brand_name || "",
-    price,
-    originalPrice,
+    price: businessAccount ? b2bPrice : b2cPrice,
+    originalPrice: businessAccount ? b2bOriginal : b2cOriginal,
     image: images[0] || fallbackImage,
     quantity: Math.max(1, Number(raw.quantity || raw.qty || 1)),
-    selectedSize: String(raw.selected_size || raw.size || ""),
-    selectedColor: String(raw.selected_color || raw.color || raw.colour || ""),
-    eanCode: raw.ean_code || raw.barcode || null,
+    selectedSize: text(raw.selected_size || raw.size),
+    selectedColor: text(raw.selected_color || raw.color || raw.colour),
+    eanCode: text(raw.ean_code || raw.barcode) || null,
+    weight: numberOrNull(raw.weight ?? customPayload.weight),
+    weightKg: numberOrNull(
+      raw.weight_kg ?? customPayload.weight_kg ?? raw.weight,
+    ),
+    length: numberOrNull(raw.length ?? customPayload.length),
+    width: numberOrNull(raw.width ?? customPayload.width),
+    height: numberOrNull(raw.height ?? customPayload.height),
+    hsnCode: text(raw.hsn_code || raw.hsnCode || customPayload.hsn_code),
+    hsnPercentage: numberOrNull(
+      raw.hsn_percentage ??
+        raw.hsnPercentage ??
+        customPayload.hsn_percentage,
+    ),
     isCustom: Boolean(raw.is_custom),
   };
 };
 
+const variantIdOf = (variant: ProductVariant | any) =>
+  text(variant?.variant_id || variant?.variantId || variant?.id);
+
+const productIdOf = (product: Product | any) =>
+  text(product?.product_id || product?.productId || product?.id);
+
+const designCodeOf = (product: Product | any) =>
+  text(product?.design_code || product?.designCode);
+
+const variantsOf = (product: Product | any): ProductVariant[] =>
+  Array.isArray(product?.variants)
+    ? product.variants
+    : Array.isArray(product?.colorVariants)
+      ? product.colorVariants
+      : Array.isArray(product?.color_variants)
+        ? product.color_variants
+        : [];
+
+const enrichCheckoutItems = async (
+  items: CheckoutItem[],
+): Promise<CheckoutItem[]> => {
+  const normalItems = items.filter((item) => !item.isCustom && item.variantId);
+
+  if (!normalItems.length) {
+    return items;
+  }
+
+  try {
+    const products = await fetchBranchProducts(3);
+    const productById = new Map<string, Product>();
+    const productByDesign = new Map<string, Product>();
+    const variantMap = new Map<
+      string,
+      { product: Product; variant: ProductVariant }
+    >();
+
+    products.forEach((product) => {
+      const productId = productIdOf(product);
+      const designCode = designCodeOf(product).toLowerCase();
+
+      if (productId) productById.set(productId, product);
+      if (designCode) productByDesign.set(designCode, product);
+
+      variantsOf(product).forEach((variant) => {
+        const variantId = variantIdOf(variant);
+        if (variantId) variantMap.set(variantId, { product, variant });
+      });
+    });
+
+    return items.map((item) => {
+      if (item.isCustom) return item;
+
+      const exact = variantMap.get(text(item.variantId));
+      const product =
+        exact?.product ||
+        productById.get(text(item.productId)) ||
+        productByDesign.get(text(item.designCode).toLowerCase());
+      const variant =
+        exact?.variant ||
+        variantsOf(product).find(
+          (candidate) => variantIdOf(candidate) === text(item.variantId),
+        );
+
+      if (!product && !variant) return item;
+
+      const variantImages = parseImages(variant?.images);
+      const productImages = parseImages(product?.images);
+      const image =
+        text(
+          variant?.front_image_url ||
+            variant?.frontImageUrl ||
+            variant?.image_url ||
+            variant?.imageUrl ||
+            variantImages[0] ||
+            product?.front_image_url ||
+            product?.frontImageUrl ||
+            product?.image_url ||
+            product?.imageUrl ||
+            productImages[0],
+        ) || item.image;
+
+      return {
+        ...item,
+        productId: productIdOf(product) || item.productId,
+        variantId: variantIdOf(variant) || item.variantId,
+        designCode: designCodeOf(product) || item.designCode,
+        patternType:
+          text(
+            variant?.pattern_type ||
+              variant?.patternType ||
+              product?.pattern_type ||
+              product?.patternType,
+          ) || item.patternType,
+        patternCode:
+          text(
+            variant?.pattern_code ||
+              variant?.patternCode ||
+              product?.pattern_code ||
+              product?.patternCode,
+          ) || item.patternCode,
+        title: text(product?.title || product?.name || product?.product_name) || item.title,
+        brand: text(product?.brand || product?.brand_name) || item.brand,
+        image,
+        selectedSize: text(variant?.size) || item.selectedSize,
+        selectedColor: text(variant?.colour || variant?.color) || item.selectedColor,
+        eanCode:
+          text(variant?.ean_code || variant?.eanCode || variant?.barcode) ||
+          item.eanCode,
+        weight: numberOrNull(variant?.weight ?? product?.weight) ?? item.weight,
+        weightKg:
+          numberOrNull(
+            variant?.weight_kg ??
+              variant?.weight ??
+              product?.weight_kg ??
+              product?.weight,
+          ) ?? item.weightKg,
+        length: numberOrNull(variant?.length ?? product?.length) ?? item.length,
+        width: numberOrNull(variant?.width ?? product?.width) ?? item.width,
+        height: numberOrNull(variant?.height ?? product?.height) ?? item.height,
+        hsnCode:
+          text(
+            variant?.hsn_code ||
+              variant?.hsnCode ||
+              product?.hsn_code ||
+              product?.hsnCode,
+          ) || item.hsnCode,
+        hsnPercentage:
+          numberOrNull(
+            variant?.hsn_percentage ??
+              variant?.hsnPercentage ??
+              product?.hsn_percentage ??
+              product?.hsnPercentage,
+          ) ?? item.hsnPercentage,
+      };
+    });
+  } catch {
+    return items;
+  }
+};
 const loadRazorpayScript = () => {
   return new Promise<boolean>((resolve) => {
     if ((window as any).Razorpay) {
@@ -149,6 +349,8 @@ export default function Checkout() {
   const navigate = useNavigate();
   const user = getStoredUser();
   const userId = Number(user?.id || 0);
+  const accountType = getAccountType(user);
+  const businessAccount = isBusinessAccount(user);
 
   const [cartItems, setCartItems] = useState<CheckoutItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -182,7 +384,11 @@ export default function Checkout() {
 
       try {
         const data = await fetchCart(userId, 3);
-        if (alive) setCartItems(data.map(normalizeCartItem));
+        const normalized = data.map((item) =>
+          normalizeCartItem(item, businessAccount),
+        );
+        const enriched = await enrichCheckoutItems(normalized);
+        if (alive) setCartItems(enriched);
       } catch (err: any) {
         if (alive) {
           setError(err?.message || "Unable to load cart");
@@ -198,7 +404,7 @@ export default function Checkout() {
     return () => {
       alive = false;
     };
-  }, [userId]);
+  }, [userId, businessAccount]);
 
   const subtotal = useMemo(() => {
     return cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -211,7 +417,7 @@ export default function Checkout() {
     );
   }, [cartItems]);
 
-  const shipping = subtotal > 1000 || subtotal === 0 ? 0 : 99;
+  const shipping = subtotal >= 1000 || subtotal === 0 ? 0 : 75;
   const total = subtotal + shipping;
   const totalDiscount = Math.max(0, totalOriginalPrice - subtotal);
 
@@ -229,6 +435,13 @@ export default function Checkout() {
     if (!form.pincode.trim()) return "Please enter pincode";
     if (form.pincode.replace(/\D/g, "").length < 6) return "Please enter valid pincode";
     if (cartItems.length === 0) return "Your cart is empty";
+    if (
+      cartItems.some(
+        (item) => !item.isCustom && (!item.productId || !item.variantId),
+      )
+    ) {
+      return "One or more cart items are missing an exact product variant";
+    }
     return "";
   };
 
@@ -238,6 +451,9 @@ export default function Checkout() {
       customer_email: form.email.trim(),
       customer_mobile: form.mobile.trim(),
       login_email: form.email.trim(),
+      customer_type: accountType,
+      user_type: accountType,
+      userType: accountType,
       branch_id: 3,
       payment_method: paymentMethod,
       payment_status: paymentMethod === "COD" ? "COD" : "PENDING",
@@ -281,6 +497,17 @@ export default function Checkout() {
         selected_color: item.selectedColor,
         image_url: item.image,
         ean_code: item.eanCode,
+        barcode_value: item.eanCode,
+        design_code: item.designCode || null,
+        pattern_type: item.patternType || null,
+        pattern_code: item.patternCode || null,
+        weight: item.weight,
+        weight_kg: item.weightKg ?? item.weight,
+        length: item.length,
+        width: item.width,
+        height: item.height,
+        hsn_code: item.hsnCode || null,
+        hsn_percentage: item.hsnPercentage,
         is_custom: item.isCustom,
       })),
     };
