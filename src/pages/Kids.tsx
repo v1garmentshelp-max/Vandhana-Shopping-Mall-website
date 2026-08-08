@@ -195,8 +195,14 @@ const byName = (
   return dedupeByDesign(
     products.filter((product: any) => {
       const text = normalizeText(
-      `${product.title || ""} ${product.product_name || ""} ${product.name || ""} ${product.categoryName || ""} ${product.category_name || ""} ${product.categoryPath || ""} ${product.category_path || ""}`,
-    );
+        `${product.title || ""} ${
+          product.product_name || ""
+        } ${product.name || ""} ${
+          product.categoryName || ""
+        } ${product.category_name || ""} ${
+          product.categoryPath || ""
+        } ${product.category_path || ""}`,
+      );
 
       return searchWords.some((word) =>
         text.includes(word),
@@ -207,101 +213,223 @@ const byName = (
 
 const getKidsShopCategories = (
   categories: StorefrontCategory[],
-  products: Product[],
 ) => {
-  const categoryMap = new Map(
-    categories.map((category) => [
-      getCategoryId(category),
-      category,
-    ]),
-  );
-
-  const productCategoryIds = new Set(
-    products
-      .map((product: any) =>
-        getProductCategoryId(product),
-      )
-      .filter(Boolean),
-  );
-
-  return categories
-    .filter((category: any) => {
-      const categoryId = getCategoryId(category);
-      const parentId = getCategoryParentId(category);
-
-      if (
-        !categoryId ||
-        category?.is_active === false ||
-        !["21", "22"].includes(parentId)
-      ) {
+  const activeCategories =
+    categories.filter((category: any) => {
+      if (!getCategoryId(category)) {
         return false;
       }
 
-      const descendantIds =
-        getCategoryDescendantIds(
-          categories,
-          [categoryId],
-        );
-
-      return Array.from(descendantIds).some(
-        (id) => productCategoryIds.has(id),
-      );
-    })
-    .map((category: any) => {
-      const parent = categoryMap.get(
-        getCategoryParentId(category),
-      );
-
-      const parentName = String(
-        parent?.name || "",
-      ).trim();
-
-      const categoryName = String(
-        category?.name || "",
-      ).trim();
-
-      const displayName =
-        parentName &&
-        !normalizeText(categoryName).startsWith(
-          normalizeText(parentName),
-        )
-          ? `${parentName} ${categoryName}`
-          : categoryName;
-
-      return {
-        ...category,
-        name: displayName,
-      };
-    })
-    .sort((first: any, second: any) => {
-      const firstParent =
-        getCategoryParentId(first);
-
-      const secondParent =
-        getCategoryParentId(second);
-
-      if (firstParent !== secondParent) {
-        return firstParent === "21" ? -1 : 1;
+      if (category?.is_active === false) {
+        return false;
       }
 
-      const firstOrder = Number(
-        first.sort_order || 0,
-      );
-
-      const secondOrder = Number(
-        second.sort_order || 0,
-      );
-
-      if (firstOrder !== secondOrder) {
-        return firstOrder - secondOrder;
+      if (category?.selectable === false) {
+        return false;
       }
 
-      return String(first.name).localeCompare(
-        String(second.name),
-        undefined,
-        { numeric: true },
-      );
+      return true;
     });
+
+  const topLevelCategories =
+    activeCategories
+      .filter(
+        (category: any) =>
+          Number(category?.level) === 1,
+      )
+      .sort((first: any, second: any) => {
+        const firstOrder =
+          Number(first?.sort_order) || 0;
+
+        const secondOrder =
+          Number(second?.sort_order) || 0;
+
+        if (firstOrder !== secondOrder) {
+          return firstOrder - secondOrder;
+        }
+
+        return String(
+          first?.name || "",
+        ).localeCompare(
+          String(second?.name || ""),
+        );
+      });
+
+  const result: any[] = [];
+
+  topLevelCategories.forEach(
+    (parent: any, parentIndex) => {
+      const parentId =
+        getCategoryId(parent);
+
+      const children =
+        activeCategories
+          .filter(
+            (category: any) =>
+              getCategoryParentId(
+                category,
+              ) === parentId,
+          )
+          .sort(
+            (
+              first: any,
+              second: any,
+            ) => {
+              const firstOrder =
+                Number(
+                  first?.sort_order,
+                ) || 0;
+
+              const secondOrder =
+                Number(
+                  second?.sort_order,
+                ) || 0;
+
+              if (
+                firstOrder !==
+                secondOrder
+              ) {
+                return (
+                  firstOrder -
+                  secondOrder
+                );
+              }
+
+              return String(
+                first?.name || "",
+              ).localeCompare(
+                String(
+                  second?.name || "",
+                ),
+              );
+            },
+          );
+
+      if (children.length === 0) {
+        result.push({
+          ...parent,
+          __parentOrder: parentIndex,
+          __childOrder:
+            Number(
+              parent?.sort_order,
+            ) || 0,
+        });
+
+        return;
+      }
+
+      children.forEach(
+        (category: any) => {
+          const parentName =
+            String(
+              parent?.name || "",
+            ).trim();
+
+          const categoryName =
+            String(
+              category?.name || "",
+            ).trim();
+
+          const displayName =
+            parentName &&
+            !normalizeText(
+              categoryName,
+            ).startsWith(
+              normalizeText(
+                parentName,
+              ),
+            )
+              ? `${parentName} ${categoryName}`
+              : categoryName;
+
+          result.push({
+            ...category,
+            name: displayName,
+            __parentOrder:
+              parentIndex,
+            __childOrder:
+              Number(
+                category?.sort_order,
+              ) || 0,
+          });
+        },
+      );
+    },
+  );
+
+  const uniqueCategories = new Map<
+    string,
+    any
+  >();
+
+  result.forEach((category) => {
+    const categoryId =
+      getCategoryId(category);
+
+    if (
+      categoryId &&
+      !uniqueCategories.has(
+        categoryId,
+      )
+    ) {
+      uniqueCategories.set(
+        categoryId,
+        category,
+      );
+    }
+  });
+
+  return Array.from(
+    uniqueCategories.values(),
+  ).sort((first: any, second: any) => {
+    const firstParent =
+      Number(
+        first?.__parentOrder,
+      ) || 0;
+
+    const secondParent =
+      Number(
+        second?.__parentOrder,
+      ) || 0;
+
+    if (
+      firstParent !== secondParent
+    ) {
+      return (
+        firstParent -
+        secondParent
+      );
+    }
+
+    const firstChild =
+      Number(
+        first?.__childOrder,
+      ) || 0;
+
+    const secondChild =
+      Number(
+        second?.__childOrder,
+      ) || 0;
+
+    if (
+      firstChild !== secondChild
+    ) {
+      return (
+        firstChild -
+        secondChild
+      );
+    }
+
+    return String(
+      first?.name || "",
+    ).localeCompare(
+      String(second?.name || ""),
+      undefined,
+      {
+        numeric: true,
+      },
+    );
+  });
 };
 
 const Kids = () => {
@@ -334,7 +462,9 @@ const Kids = () => {
             fetchCategoriesByGender("Kids"),
           ]);
 
-        if (!alive) return;
+        if (!alive) {
+          return;
+        }
 
         setTypedProducts(
           dedupeByDesign(
@@ -345,16 +475,24 @@ const Kids = () => {
         );
 
         setPageCategories(
-          (Array.isArray(categories)
-            ? categories
-            : []
+          (
+            Array.isArray(categories)
+              ? categories
+              : []
           ).filter(
             (category: any) =>
               category?.is_active !== false,
           ),
         );
-      } catch {
-        if (!alive) return;
+      } catch (error) {
+        console.error(
+          "Failed to load Kids page data:",
+          error,
+        );
+
+        if (!alive) {
+          return;
+        }
 
         setTypedProducts([]);
         setPageCategories([]);
@@ -372,13 +510,15 @@ const Kids = () => {
     () =>
       getKidsShopCategories(
         pageCategories,
-        typedProducts,
       ),
-    [pageCategories, typedProducts],
+    [pageCategories],
   );
 
   const newDrops = useMemo(
-    () => dedupeByDesign(typedProducts),
+    () =>
+      dedupeByDesign(
+        typedProducts,
+      ),
     [typedProducts],
   );
 
@@ -391,9 +531,10 @@ const Kids = () => {
 
     return matched.length
       ? matched
-      : byName(typedProducts, [
-          "night dress",
-        ]);
+      : byName(
+          typedProducts,
+          ["night dress"],
+        );
   }, [typedProducts, pageCategories]);
 
   const pants = useMemo(() => {
@@ -443,13 +584,19 @@ const Kids = () => {
 
   return (
     <div className="w-full bg-white">
-      <HeroCarousel banners={HERO_BANNERS} />
+      <HeroCarousel
+        banners={HERO_BANNERS}
+      />
 
       {shopCategories.length > 0 ? (
         <CategoriesSection
-          categories={shopCategories as any}
+          categories={
+            shopCategories as any
+          }
           title="Shop by Category"
-          productData={typedProducts}
+          productData={
+            typedProducts
+          }
         />
       ) : null}
 
@@ -460,14 +607,19 @@ const Kids = () => {
       />
 
       <HeroProductSection
-        products={newDrops.slice(0, 10)}
+        products={newDrops.slice(
+          0,
+          10,
+        )}
         className="mb-4"
       />
 
       {nightDresses.length > 0 ? (
         <NamedSection
           title="NIGHT DRESSES"
-          productData={nightDresses}
+          productData={
+            nightDresses
+          }
         />
       ) : null}
 

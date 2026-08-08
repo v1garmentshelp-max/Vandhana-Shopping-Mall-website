@@ -86,18 +86,6 @@ const bannerSlides: BannerSlide[] = [
   },
 ];
 
-const MEN_SHOP_CATEGORY_IDS = [
-  "4",
-  "5",
-  "6",
-  "7",
-  "8",
-  "9",
-  "10",
-  "11",
-  "100",
-];
-
 const normalizeText = (value: any) =>
   String(value || "")
     .toLowerCase()
@@ -242,8 +230,14 @@ const byName = (
   return dedupeByDesign(
     products.filter((product: any) => {
       const text = normalizeText(
-      `${product.title || ""} ${product.product_name || ""} ${product.name || ""} ${product.categoryName || ""} ${product.category_name || ""} ${product.categoryPath || ""} ${product.category_path || ""}`,
-    );
+        `${product.title || ""} ${
+          product.product_name || ""
+        } ${product.name || ""} ${
+          product.categoryName || ""
+        } ${product.category_name || ""} ${
+          product.categoryPath || ""
+        } ${product.category_path || ""}`,
+      );
 
       return searchWords.some((word) =>
         text.includes(word),
@@ -254,53 +248,56 @@ const byName = (
 
 const getShopCategories = (
   categories: StorefrontCategory[],
-  products: Product[],
-  categoryIds: string[],
 ) => {
-  const orderMap = new Map(
-    categoryIds.map((id, index) => [
-      String(id),
-      index,
-    ]),
-  );
+  const uniqueCategories = new Map<
+    string,
+    StorefrontCategory
+  >();
 
-  const productCategoryIds = new Set(
-    products
-      .map((product: any) =>
-        getProductCategoryId(product),
-      )
-      .filter(Boolean),
-  );
+  categories.forEach((category: any) => {
+    const categoryId = getCategoryId(category);
 
-  return categories
-    .filter((category: any) => {
-      const categoryId = getCategoryId(category);
+    if (!categoryId) {
+      return;
+    }
 
-      if (
-        !categoryId ||
-        category?.is_active === false ||
-        !orderMap.has(categoryId)
-      ) {
-        return false;
-      }
+    if (category?.is_active === false) {
+      return;
+    }
 
-      const descendantIds =
-        getCategoryDescendantIds(
-          categories,
-          [categoryId],
-        );
+    if (category?.selectable === false) {
+      return;
+    }
 
-      return Array.from(descendantIds).some(
-        (id) => productCategoryIds.has(id),
+    if (Number(category?.level) !== 1) {
+      return;
+    }
+
+    if (!uniqueCategories.has(categoryId)) {
+      uniqueCategories.set(
+        categoryId,
+        category,
       );
-    })
-    .sort(
-      (first, second) =>
-        (orderMap.get(getCategoryId(first)) ??
-          Number.MAX_SAFE_INTEGER) -
-        (orderMap.get(getCategoryId(second)) ??
-          Number.MAX_SAFE_INTEGER),
+    }
+  });
+
+  return Array.from(
+    uniqueCategories.values(),
+  ).sort((first: any, second: any) => {
+    const firstOrder =
+      Number(first?.sort_order) || 0;
+
+    const secondOrder =
+      Number(second?.sort_order) || 0;
+
+    if (firstOrder !== secondOrder) {
+      return firstOrder - secondOrder;
+    }
+
+    return String(first?.name || "").localeCompare(
+      String(second?.name || ""),
     );
+  });
 };
 
 const Men = () => {
@@ -333,7 +330,9 @@ const Men = () => {
             fetchCategoriesByGender("Men"),
           ]);
 
-        if (!alive) return;
+        if (!alive) {
+          return;
+        }
 
         setTypedProducts(
           dedupeByDesign(
@@ -344,16 +343,24 @@ const Men = () => {
         );
 
         setPageCategories(
-          (Array.isArray(categories)
-            ? categories
-            : []
+          (
+            Array.isArray(categories)
+              ? categories
+              : []
           ).filter(
             (category: any) =>
               category?.is_active !== false,
           ),
         );
-      } catch {
-        if (!alive) return;
+      } catch (error) {
+        console.error(
+          "Failed to load Men page data:",
+          error,
+        );
+
+        if (!alive) {
+          return;
+        }
 
         setTypedProducts([]);
         setPageCategories([]);
@@ -371,14 +378,15 @@ const Men = () => {
     () =>
       getShopCategories(
         pageCategories,
-        typedProducts,
-        MEN_SHOP_CATEGORY_IDS,
       ),
-    [pageCategories, typedProducts],
+    [pageCategories],
   );
 
   const newDrops = useMemo(
-    () => dedupeByDesign(typedProducts),
+    () =>
+      dedupeByDesign(
+        typedProducts,
+      ),
     [typedProducts],
   );
 
@@ -408,7 +416,10 @@ const Men = () => {
 
     return matched.length
       ? matched
-      : byName(typedProducts, ["cargo"]);
+      : byName(
+          typedProducts,
+          ["cargo"],
+        );
   }, [typedProducts, pageCategories]);
 
   const pants = useMemo(() => {
@@ -420,18 +431,27 @@ const Men = () => {
 
     return matched.length
       ? matched
-      : byName(typedProducts, ["pant"]);
+      : byName(
+          typedProducts,
+          ["pant"],
+        );
   }, [typedProducts, pageCategories]);
 
   return (
     <div className="w-full bg-white">
-      <HeroCarousel banners={HERO_BANNERS} />
+      <HeroCarousel
+        banners={HERO_BANNERS}
+      />
 
       {shopCategories.length > 0 ? (
         <CategoriesSection
-          categories={shopCategories as any}
+          categories={
+            shopCategories as any
+          }
           title="Shop by Category"
-          productData={typedProducts}
+          productData={
+            typedProducts
+          }
         />
       ) : null}
 
@@ -442,7 +462,10 @@ const Men = () => {
       />
 
       <HeroProductSection
-        products={newDrops.slice(0, 10)}
+        products={newDrops.slice(
+          0,
+          10,
+        )}
         className="mb-4"
       />
 
