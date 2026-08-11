@@ -3,6 +3,8 @@ import { useNavigate, useSearchParams } from "react-router";
 import { BiGridAlt } from "react-icons/bi";
 import {
   FiBox,
+  FiClock,
+  FiGift,
   FiMapPin,
   FiUser,
   FiLogOut,
@@ -77,8 +79,44 @@ type AddressRecord = {
   address: Record<string, any>;
 };
 
+type RewardLot = {
+  id: number;
+  sourceType: string;
+  pointsGranted: number;
+  pointsRemaining: number;
+  grantedAt: string | null;
+  expiresAt: string | null;
+  daysRemaining: number | null;
+};
+
+type RewardWallet = {
+  enabled: boolean;
+  balance: number;
+  expiringSoonPoints: number;
+  nearestExpiry: string | null;
+  daysRemaining: number | null;
+  hurryUp: boolean;
+  warningDays: number;
+  validityDays: number;
+  activeLots: RewardLot[];
+};
+
+type RewardTransaction = {
+  id: number | string;
+  transactionType: string;
+  points: number;
+  saleId: string | null;
+  note: string;
+  createdAt: string | null;
+  expiresAt: string | null;
+};
+
 const getStoredToken = () =>
-  localStorage.getItem("token") || sessionStorage.getItem("token") || "";
+  localStorage.getItem("token") ||
+  sessionStorage.getItem("token") ||
+  localStorage.getItem("auth_token") ||
+  sessionStorage.getItem("auth_token") ||
+  "";
 
 const getStoredUser = (): StoredUser | null => {
   const raw =
@@ -104,6 +142,150 @@ const getAccountType = (user: StoredUser | null) =>
     .toUpperCase();
 
 const text = (value: any) => String(value ?? "").trim();
+
+const getNumber = (value: any, fallback = 0) => {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+};
+
+const numberOrNull = (value: any) => {
+  if (value === null || value === undefined || String(value).trim() === "") {
+    return null;
+  }
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+};
+
+const daysUntil = (value?: string | null) => {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return Math.max(0, Math.ceil((date.getTime() - Date.now()) / 86400000));
+};
+
+const normalizeRewardWallet = (data: any): RewardWallet => {
+  const settings = data?.settings && typeof data.settings === "object" ? data.settings : {};
+  const rawLots = Array.isArray(data?.active_lots)
+    ? data.active_lots
+    : Array.isArray(data?.lots)
+      ? data.lots
+      : [];
+
+  const activeLots: RewardLot[] = rawLots.map((lot: any) => {
+    const expiresAt = text(lot?.expires_at || lot?.expiresAt) || null;
+    const providedDays = numberOrNull(lot?.days_remaining ?? lot?.daysRemaining);
+    return {
+      id: getNumber(lot?.id),
+      sourceType: text(lot?.source_type || lot?.sourceType || "REWARD"),
+      pointsGranted: Math.max(0, getNumber(lot?.points_granted ?? lot?.pointsGranted)),
+      pointsRemaining: Math.max(
+        0,
+        getNumber(lot?.points_remaining ?? lot?.pointsRemaining ?? lot?.points),
+      ),
+      grantedAt: text(lot?.granted_at || lot?.grantedAt) || null,
+      expiresAt,
+      daysRemaining:
+        providedDays == null ? daysUntil(expiresAt) : Math.max(0, Math.ceil(providedDays)),
+    };
+  });
+
+  const calculatedBalance = activeLots.reduce(
+    (sum, lot) => sum + lot.pointsRemaining,
+    0,
+  );
+  const balance = Math.max(
+    0,
+    Math.floor(
+      getNumber(
+        data?.balance ??
+          data?.active_points ??
+          data?.available_points ??
+          data?.points ??
+          data?.total_points,
+        calculatedBalance,
+      ),
+    ),
+  );
+  const nearestExpiry =
+    text(data?.nearest_expiry || data?.nearestExpiry) ||
+    activeLots
+      .map((lot) => lot.expiresAt)
+      .filter(Boolean)
+      .sort((a, b) => new Date(a as string).getTime() - new Date(b as string).getTime())[0] ||
+    null;
+  const providedDays = numberOrNull(data?.days_remaining ?? data?.daysRemaining);
+  const daysRemaining =
+    providedDays == null ? daysUntil(nearestExpiry) : Math.max(0, Math.ceil(providedDays));
+  const warningDays = Math.max(1, Math.floor(getNumber(data?.warning_days ?? settings?.warning_days, 10)));
+  const validityDays = Math.max(1, Math.floor(getNumber(data?.validity_days ?? settings?.validity_days, 90)));
+  const expiringSoonPoints = Math.max(
+    0,
+    Math.floor(
+      getNumber(
+        data?.expiring_soon_points ?? data?.expiringSoonPoints,
+        activeLots
+          .filter(
+            (lot) =>
+              lot.daysRemaining != null && lot.daysRemaining <= warningDays,
+          )
+          .reduce((sum, lot) => sum + lot.pointsRemaining, 0),
+      ),
+    ),
+  );
+  const hurryUp = Boolean(
+    data?.hurry_up ??
+      data?.hurryUp ??
+      (daysRemaining != null && daysRemaining <= warningDays && balance > 0),
+  );
+  const enabledValue = data?.enabled ?? settings?.enabled;
+  const enabled =
+    enabledValue === undefined || enabledValue === null
+      ? true
+      : String(enabledValue).toLowerCase() !== "false";
+
+  return {
+    enabled,
+    balance,
+    expiringSoonPoints,
+    nearestExpiry,
+    daysRemaining,
+    hurryUp,
+    warningDays,
+    validityDays,
+    activeLots,
+  };
+};
+
+const normalizeRewardHistory = (data: any): RewardTransaction[] => {
+  const rows = Array.isArray(data)
+    ? data
+    : Array.isArray(data?.history)
+      ? data.history
+      : Array.isArray(data?.transactions)
+        ? data.transactions
+        : [];
+
+  return rows.map((item: any, index: number) => ({
+    id: item?.id ?? `${item?.created_at || "reward"}-${index}`,
+    transactionType: text(item?.transaction_type || item?.transactionType || item?.type || "REWARD"),
+    points: getNumber(item?.points ?? item?.amount),
+    saleId: text(item?.sale_id || item?.saleId) || null,
+    note: text(item?.note),
+    createdAt: text(item?.created_at || item?.createdAt) || null,
+    expiresAt: text(item?.expires_at || item?.expiresAt) || null,
+  }));
+};
+
+const rewardLabel = (value: string) => {
+  const type = String(value || "").toUpperCase();
+  if (type === "SIGNUP_BONUS") return "Signup Bonus";
+  if (type === "REDEEMED") return "Redeemed";
+  if (type === "EXPIRED") return "Expired";
+  if (type === "REFUNDED") return "Refunded";
+  if (type === "ADJUSTMENT_CREDIT") return "Credit";
+  if (type === "ADJUSTMENT_DEBIT") return "Debit";
+  return type.replace(/_/g, " ") || "Reward";
+};
 
 const getInitialEmail = () => {
   const user = getStoredUser();
@@ -346,6 +528,10 @@ export default function Profile() {
     newPassword: "",
   });
   const [orders, setOrders] = useState<OrderRecord[]>([]);
+  const [rewardWallet, setRewardWallet] = useState<RewardWallet | null>(null);
+  const [rewardHistory, setRewardHistory] = useState<RewardTransaction[]>([]);
+  const [rewardLoading, setRewardLoading] = useState(false);
+  const [rewardError, setRewardError] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -362,7 +548,56 @@ export default function Profile() {
       return;
     }
     void loadProfileAndOrders(storedUser.email);
+    void loadRewards();
   }, [navigate]);
+
+  const loadRewards = async () => {
+    const token = getStoredToken();
+
+    if (!token) {
+      setRewardWallet(null);
+      setRewardHistory([]);
+      return;
+    }
+
+    setRewardLoading(true);
+    setRewardError("");
+
+    try {
+      const [walletRes, historyRes] = await Promise.all([
+        fetch(`${API_BASE}/api/rewards/wallet`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }),
+        fetch(`${API_BASE}/api/rewards/history?limit=100`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }),
+      ]);
+
+      const walletData = await walletRes.json().catch(() => ({}));
+      const historyData = await historyRes.json().catch(() => ({}));
+
+      if (!walletRes.ok) {
+        throw new Error(walletData?.message || "Unable to load reward points");
+      }
+
+      setRewardWallet(normalizeRewardWallet(walletData));
+      setRewardHistory(historyRes.ok ? normalizeRewardHistory(historyData) : []);
+    } catch (err: any) {
+      setRewardWallet(null);
+      setRewardHistory([]);
+      setRewardError(err?.message || "Unable to load reward points");
+    } finally {
+      setRewardLoading(false);
+    }
+  };
 
   const loadProfileAndOrders = async (email: string) => {
     setLoading(true);
@@ -473,8 +708,10 @@ export default function Profile() {
 
   const handleLogout = () => {
     localStorage.removeItem("token");
+    localStorage.removeItem("auth_token");
     localStorage.removeItem("user");
     sessionStorage.removeItem("token");
+    sessionStorage.removeItem("auth_token");
     sessionStorage.removeItem("user");
     navigate("/auth");
   };
@@ -581,6 +818,7 @@ export default function Profile() {
   const sidebarLinks = [
     { id: "overview", icon: <BiGridAlt size={22} />, title: "Overview" },
     { id: "orders", icon: <FiBox size={22} />, title: "My Orders" },
+    { id: "rewards", icon: <FiGift size={22} />, title: "Reward Points" },
     { id: "addresses", icon: <FiMapPin size={22} />, title: "My Addresses" },
     { id: "profile", icon: <FiUser size={22} />, title: "My Profile" },
   ];
@@ -591,6 +829,14 @@ export default function Profile() {
       icon: <FiBox size={24} className="text-gray-700" />,
       title: "My Orders",
       desc: "View, modify and track orders",
+    },
+    {
+      id: "rewards",
+      icon: <FiGift size={24} className="text-gray-700" />,
+      title: "Reward Points",
+      desc: rewardWallet?.balance
+        ? `${rewardWallet.balance.toLocaleString("en-IN")} active points`
+        : "View balance, expiry and history",
     },
     {
       id: "addresses",
@@ -626,6 +872,16 @@ export default function Profile() {
         return <OrdersTab orders={orders} />;
       case "addresses":
         return <AddressesTab addresses={addresses} />;
+      case "rewards":
+        return (
+          <RewardsTab
+            wallet={rewardWallet}
+            history={rewardHistory}
+            loading={rewardLoading}
+            error={rewardError}
+            onRefresh={loadRewards}
+          />
+        );
       case "profile":
         return (
           <ProfileTab
@@ -824,6 +1080,253 @@ function OrdersTab({ orders }: { orders: OrderRecord[] }) {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+function RewardsTab({
+  wallet,
+  history,
+  loading,
+  error,
+  onRefresh,
+}: {
+  wallet: RewardWallet | null;
+  history: RewardTransaction[];
+  loading: boolean;
+  error: string;
+  onRefresh: () => Promise<void>;
+}) {
+  if (loading) {
+    return (
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 min-h-[400px] flex items-center justify-center">
+        <p className="text-gray-500 font-medium">Loading reward points...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-5 animate-in fade-in duration-300">
+      <div className="bg-[#111111] rounded-xl shadow-sm border border-black p-6 md:p-8 text-white overflow-hidden relative">
+        <div className="absolute -right-14 -top-14 w-44 h-44 rounded-full bg-[#fdd835]/10" />
+        <div className="absolute -right-5 -bottom-16 w-36 h-36 rounded-full bg-[#fdd835]/10" />
+
+        <div className="relative z-10 flex flex-col md:flex-row md:items-start md:justify-between gap-6">
+          <div>
+            <div className="flex items-center gap-2 text-[#fdd835] mb-3">
+              <FiGift size={20} />
+              <span className="text-[11px] font-bold uppercase tracking-[0.18em]">
+                Vandhana Rewards
+              </span>
+            </div>
+            <p className="text-sm text-gray-400 font-medium">Active Balance</p>
+            <div className="flex items-end gap-2 mt-1">
+              <strong className="text-4xl md:text-5xl font-black tracking-tight text-white">
+                {(wallet?.balance || 0).toLocaleString("en-IN")}
+              </strong>
+              <span className="text-sm text-[#fdd835] font-bold mb-1.5">Points</span>
+            </div>
+            <p className="text-xs text-gray-400 mt-3">
+              Signup rewards remain valid for {wallet?.validityDays || 90} days from the credited date.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => void onRefresh()}
+            className="self-start px-4 py-2.5 rounded-lg border border-[#fdd835]/40 bg-[#fdd835]/10 text-[#fdd835] text-xs font-bold hover:bg-[#fdd835]/15 transition-colors"
+          >
+            Refresh
+          </button>
+        </div>
+      </div>
+
+      {error ? (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+          {error}
+        </div>
+      ) : null}
+
+      {wallet?.hurryUp ? (
+        <div className="rounded-xl border border-orange-200 bg-orange-50 p-4 flex items-start gap-3">
+          <FiClock size={20} className="text-orange-600 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-bold text-orange-700">Hurry Up</p>
+            <p className="text-xs text-orange-700/80 mt-1">
+              {wallet.expiringSoonPoints.toLocaleString("en-IN")} points are close to expiry.
+              {wallet.daysRemaining != null
+                ? ` ${wallet.daysRemaining} day${wallet.daysRemaining === 1 ? "" : "s"} remaining for the nearest expiry.`
+                : ""}
+            </p>
+          </div>
+        </div>
+      ) : null}
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+            Valid Till
+          </span>
+          <strong className="block mt-2 text-lg text-gray-900">
+            {formatDate(wallet?.nearestExpiry) || "-"}
+          </strong>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+            Days Remaining
+          </span>
+          <strong className="block mt-2 text-lg text-gray-900">
+            {wallet?.daysRemaining == null
+              ? "-"
+              : `${wallet.daysRemaining} Day${wallet.daysRemaining === 1 ? "" : "s"}`}
+          </strong>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+            Expiring Soon
+          </span>
+          <strong className="block mt-2 text-lg text-gray-900">
+            {(wallet?.expiringSoonPoints || 0).toLocaleString("en-IN")} Points
+          </strong>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 md:p-8">
+        <div className="flex items-center justify-between gap-4 mb-5">
+          <div>
+            <h2 className="text-xl font-bold text-gray-900 tracking-tight">
+              Active Reward Lots
+            </h2>
+            <p className="text-xs text-gray-500 mt-1">
+              Each credit keeps its own expiry date.
+            </p>
+          </div>
+          <span className="text-xs font-bold text-gray-500">
+            {wallet?.activeLots.length || 0} Active
+          </span>
+        </div>
+
+        {!wallet?.activeLots.length ? (
+          <div className="rounded-lg border border-dashed border-gray-200 p-8 text-center">
+            <p className="text-sm text-gray-500 font-medium">
+              No active reward points are available.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {wallet.activeLots.map((lot) => (
+              <div
+                key={lot.id}
+                className="rounded-xl border border-[#f0e3a7] bg-[#fffdf6] p-5"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                      {rewardLabel(lot.sourceType)}
+                    </p>
+                    <strong className="block text-2xl text-gray-900 mt-1">
+                      {lot.pointsRemaining.toLocaleString("en-IN")}
+                    </strong>
+                    <span className="text-xs text-gray-500">Points remaining</span>
+                  </div>
+                  {lot.daysRemaining != null && lot.daysRemaining <= (wallet.warningDays || 10) ? (
+                    <span className="rounded-full bg-orange-100 px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider text-orange-700">
+                      Hurry Up
+                    </span>
+                  ) : null}
+                </div>
+                <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <span className="block text-gray-400 text-[9px] uppercase font-bold tracking-wider">
+                      Credited
+                    </span>
+                    <strong className="block mt-1 text-gray-700">
+                      {formatDate(lot.grantedAt) || "-"}
+                    </strong>
+                  </div>
+                  <div>
+                    <span className="block text-gray-400 text-[9px] uppercase font-bold tracking-wider">
+                      Expires
+                    </span>
+                    <strong className="block mt-1 text-gray-700">
+                      {formatDate(lot.expiresAt) || "-"}
+                    </strong>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 md:p-8">
+        <div className="mb-5">
+          <h2 className="text-xl font-bold text-gray-900 tracking-tight">
+            Reward History
+          </h2>
+          <p className="text-xs text-gray-500 mt-1">
+            Signup credits, redemptions, refunds and expiries.
+          </p>
+        </div>
+
+        {!history.length ? (
+          <div className="rounded-lg border border-dashed border-gray-200 p-8 text-center">
+            <p className="text-sm text-gray-500 font-medium">
+              No reward transactions found.
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[720px] border-collapse">
+              <thead>
+                <tr className="border-b border-gray-100">
+                  <th className="py-3 pr-4 text-left text-[10px] uppercase tracking-widest text-gray-400 font-bold">
+                    Date
+                  </th>
+                  <th className="py-3 px-4 text-left text-[10px] uppercase tracking-widest text-gray-400 font-bold">
+                    Type
+                  </th>
+                  <th className="py-3 px-4 text-left text-[10px] uppercase tracking-widest text-gray-400 font-bold">
+                    Points
+                  </th>
+                  <th className="py-3 px-4 text-left text-[10px] uppercase tracking-widest text-gray-400 font-bold">
+                    Order
+                  </th>
+                  <th className="py-3 pl-4 text-left text-[10px] uppercase tracking-widest text-gray-400 font-bold">
+                    Details
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {history.map((item) => {
+                  const credit = item.points > 0;
+                  return (
+                    <tr key={String(item.id)} className="border-b border-gray-50 last:border-b-0">
+                      <td className="py-4 pr-4 text-xs text-gray-600">
+                        {formatDate(item.createdAt) || "-"}
+                      </td>
+                      <td className="py-4 px-4">
+                        <span className="inline-flex rounded-full bg-gray-100 px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider text-gray-700">
+                          {rewardLabel(item.transactionType)}
+                        </span>
+                      </td>
+                      <td className={`py-4 px-4 text-sm font-bold ${credit ? "text-green-600" : "text-red-600"}`}>
+                        {credit ? "+" : ""}{item.points.toLocaleString("en-IN")}
+                      </td>
+                      <td className="py-4 px-4 text-xs text-gray-500">
+                        {item.saleId ? item.saleId.slice(0, 8) : "-"}
+                      </td>
+                      <td className="py-4 pl-4 text-xs text-gray-500">
+                        {item.note || (item.expiresAt ? `Valid till ${formatDate(item.expiresAt)}` : "-")}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

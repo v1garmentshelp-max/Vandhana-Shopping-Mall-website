@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import {
   FiArrowLeft,
+  FiClock,
   FiCreditCard,
+  FiGift,
   FiMapPin,
   FiTruck,
   FiUser,
@@ -70,6 +72,42 @@ type CheckoutForm = {
 
 type PaymentMethod = "COD" | "ONLINE";
 
+type RewardLot = {
+  id: number;
+  sourceType: string;
+  pointsGranted: number;
+  pointsRemaining: number;
+  grantedAt: string | null;
+  expiresAt: string | null;
+  daysRemaining: number | null;
+};
+
+type RewardWallet = {
+  enabled: boolean;
+  balance: number;
+  expiringSoonPoints: number;
+  nearestExpiry: string | null;
+  daysRemaining: number | null;
+  hurryUp: boolean;
+  warningDays: number;
+  validityDays: number;
+  activeLots: RewardLot[];
+};
+
+type RewardPreview = {
+  appliedPoints: number;
+  discount: number;
+  payable: number;
+  availablePoints: number;
+};
+
+const getStoredToken = () =>
+  localStorage.getItem("token") ||
+  sessionStorage.getItem("token") ||
+  localStorage.getItem("auth_token") ||
+  sessionStorage.getItem("auth_token") ||
+  "";
+
 const getStoredUser = (): StoredUser | null => {
   const raw =
     localStorage.getItem("user") || sessionStorage.getItem("user") || null;
@@ -111,6 +149,174 @@ const numberOrNull = (value: any) => {
 };
 
 const text = (value: any) => String(value ?? "").trim();
+
+const formatRewardDate = (value?: string | null) => {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  return date.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+};
+
+const daysUntil = (value?: string | null) => {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return Math.max(0, Math.ceil((date.getTime() - Date.now()) / 86400000));
+};
+
+const normalizeRewardWallet = (data: any): RewardWallet => {
+  const settings = data?.settings && typeof data.settings === "object" ? data.settings : {};
+  const rawLots = Array.isArray(data?.active_lots)
+    ? data.active_lots
+    : Array.isArray(data?.lots)
+      ? data.lots
+      : [];
+
+  const activeLots: RewardLot[] = rawLots.map((lot: any) => {
+    const expiresAt = text(lot?.expires_at || lot?.expiresAt) || null;
+    const providedDays = numberOrNull(lot?.days_remaining ?? lot?.daysRemaining);
+    return {
+      id: getNumber(lot?.id),
+      sourceType: text(lot?.source_type || lot?.sourceType || "REWARD"),
+      pointsGranted: Math.max(0, getNumber(lot?.points_granted ?? lot?.pointsGranted)),
+      pointsRemaining: Math.max(
+        0,
+        getNumber(lot?.points_remaining ?? lot?.pointsRemaining ?? lot?.points),
+      ),
+      grantedAt: text(lot?.granted_at || lot?.grantedAt) || null,
+      expiresAt,
+      daysRemaining:
+        providedDays == null ? daysUntil(expiresAt) : Math.max(0, Math.ceil(providedDays)),
+    };
+  });
+
+  const calculatedBalance = activeLots.reduce(
+    (sum, lot) => sum + lot.pointsRemaining,
+    0,
+  );
+  const balance = Math.max(
+    0,
+    Math.floor(
+      getNumber(
+        data?.balance ??
+          data?.active_points ??
+          data?.available_points ??
+          data?.points ??
+          data?.total_points,
+        calculatedBalance,
+      ),
+    ),
+  );
+  const nearestExpiry =
+    text(data?.nearest_expiry || data?.nearestExpiry) ||
+    activeLots
+      .map((lot) => lot.expiresAt)
+      .filter(Boolean)
+      .sort((a, b) => new Date(a as string).getTime() - new Date(b as string).getTime())[0] ||
+    null;
+  const providedDays = numberOrNull(data?.days_remaining ?? data?.daysRemaining);
+  const daysRemaining =
+    providedDays == null ? daysUntil(nearestExpiry) : Math.max(0, Math.ceil(providedDays));
+  const warningDays = Math.max(1, Math.floor(getNumber(data?.warning_days ?? settings?.warning_days, 10)));
+  const validityDays = Math.max(1, Math.floor(getNumber(data?.validity_days ?? settings?.validity_days, 90)));
+  const expiringSoonPoints = Math.max(
+    0,
+    Math.floor(
+      getNumber(
+        data?.expiring_soon_points ?? data?.expiringSoonPoints,
+        activeLots
+          .filter(
+            (lot) =>
+              lot.daysRemaining != null && lot.daysRemaining <= warningDays,
+          )
+          .reduce((sum, lot) => sum + lot.pointsRemaining, 0),
+      ),
+    ),
+  );
+  const hurryUp = Boolean(
+    data?.hurry_up ??
+      data?.hurryUp ??
+      (daysRemaining != null && daysRemaining <= warningDays && balance > 0),
+  );
+  const enabledValue = data?.enabled ?? settings?.enabled;
+  const enabled =
+    enabledValue === undefined || enabledValue === null
+      ? true
+      : String(enabledValue).toLowerCase() !== "false";
+
+  return {
+    enabled,
+    balance,
+    expiringSoonPoints,
+    nearestExpiry,
+    daysRemaining,
+    hurryUp,
+    warningDays,
+    validityDays,
+    activeLots,
+  };
+};
+
+const normalizeRewardPreview = (
+  data: any,
+  requestedPoints: number,
+  orderTotal: number,
+): RewardPreview => {
+  const appliedPoints = Math.max(
+    0,
+    Math.floor(
+      getNumber(
+        data?.applied_points ??
+          data?.reward_points_applied ??
+          data?.points_applied ??
+          data?.redeemed_points ??
+          data?.reward_points ??
+          data?.points,
+        requestedPoints,
+      ),
+    ),
+  );
+  const discount = Math.max(
+    0,
+    getNumber(
+      data?.reward_discount ??
+        data?.rewardDiscount ??
+        data?.discount_amount ??
+        data?.discount,
+      appliedPoints,
+    ),
+  );
+  const payable = Math.max(
+    0,
+    getNumber(
+      data?.payable ??
+        data?.final_payable ??
+        data?.finalPayable ??
+        data?.amount_after_reward,
+      orderTotal - discount,
+    ),
+  );
+  const availablePoints = Math.max(
+    0,
+    Math.floor(
+      getNumber(
+        data?.available_points ?? data?.balance ?? data?.active_points,
+        appliedPoints,
+      ),
+    ),
+  );
+
+  return {
+    appliedPoints,
+    discount,
+    payable,
+    availablePoints,
+  };
+};
 
 const parseImages = (value: any) => {
   if (Array.isArray(value)) return value.filter(Boolean);
@@ -357,6 +563,14 @@ export default function Checkout() {
   const [placingOrder, setPlacingOrder] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("COD");
   const [error, setError] = useState("");
+  const [rewardWallet, setRewardWallet] = useState<RewardWallet | null>(null);
+  const [rewardLoading, setRewardLoading] = useState(false);
+  const [rewardInput, setRewardInput] = useState("");
+  const [appliedRewardPoints, setAppliedRewardPoints] = useState(0);
+  const [rewardDiscount, setRewardDiscount] = useState(0);
+  const [applyingRewards, setApplyingRewards] = useState(false);
+  const [rewardMessage, setRewardMessage] = useState("");
+  const [rewardError, setRewardError] = useState("");
 
   const [form, setForm] = useState<CheckoutForm>({
     fullName: user?.name || "",
@@ -406,6 +620,59 @@ export default function Checkout() {
     };
   }, [userId, businessAccount]);
 
+  useEffect(() => {
+    if (!userId) {
+      setRewardWallet(null);
+      return;
+    }
+
+    const token = getStoredToken();
+    if (!token) {
+      setRewardWallet(null);
+      return;
+    }
+
+    let alive = true;
+
+    const loadRewards = async () => {
+      setRewardLoading(true);
+      setRewardError("");
+
+      try {
+        const res = await fetch(`${API_BASE}/api/rewards/wallet`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok) {
+          throw new Error(data?.message || "Unable to load reward points");
+        }
+
+        if (alive) {
+          setRewardWallet(normalizeRewardWallet(data));
+        }
+      } catch (err: any) {
+        if (alive) {
+          setRewardWallet(null);
+          setRewardError(err?.message || "Unable to load reward points");
+        }
+      } finally {
+        if (alive) setRewardLoading(false);
+      }
+    };
+
+    void loadRewards();
+
+    return () => {
+      alive = false;
+    };
+  }, [userId]);
+
   const subtotal = useMemo(() => {
     return cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
   }, [cartItems]);
@@ -420,6 +687,101 @@ export default function Checkout() {
   const shipping = subtotal >= 1000 || subtotal === 0 ? 0 : 75;
   const total = subtotal + shipping;
   const totalDiscount = Math.max(0, totalOriginalPrice - subtotal);
+  const payable = Math.max(0, total - rewardDiscount);
+
+  const applyRewardPoints = async () => {
+    if (applyingRewards) return;
+
+    const token = getStoredToken();
+    const requestedPoints = Math.floor(getNumber(rewardInput));
+
+    setRewardError("");
+    setRewardMessage("");
+
+    if (!token) {
+      setRewardError("Please login again to use reward points");
+      return;
+    }
+
+    if (!rewardWallet?.enabled) {
+      setRewardError("Reward points are currently unavailable");
+      return;
+    }
+
+    if (rewardWallet.balance <= 0) {
+      setRewardError("You do not have active reward points");
+      return;
+    }
+
+    if (!requestedPoints || requestedPoints <= 0) {
+      setRewardError("Enter reward points to redeem");
+      return;
+    }
+
+    if (requestedPoints > rewardWallet.balance) {
+      setRewardError(`You have ${rewardWallet.balance.toLocaleString("en-IN")} active reward points`);
+      return;
+    }
+
+    setApplyingRewards(true);
+
+    try {
+      const res = await fetch(`${API_BASE}/api/rewards/preview`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          reward_points: requestedPoints,
+          points: requestedPoints,
+          order_subtotal: subtotal,
+          subtotal,
+          payable: total,
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        throw new Error(data?.message || "Unable to apply reward points");
+      }
+
+      const preview = normalizeRewardPreview(data, requestedPoints, total);
+
+      if (preview.appliedPoints <= 0 || preview.discount <= 0) {
+        throw new Error(data?.message || "No reward points can be applied to this order");
+      }
+
+      setAppliedRewardPoints(preview.appliedPoints);
+      setRewardDiscount(Math.min(total, preview.discount));
+      setRewardInput(String(preview.appliedPoints));
+      setRewardMessage(
+        `${preview.appliedPoints.toLocaleString("en-IN")} reward points applied`,
+      );
+
+      if (preview.availablePoints > 0 && rewardWallet) {
+        setRewardWallet({
+          ...rewardWallet,
+          balance: Math.max(rewardWallet.balance, preview.availablePoints),
+        });
+      }
+    } catch (err: any) {
+      setAppliedRewardPoints(0);
+      setRewardDiscount(0);
+      setRewardError(err?.message || "Unable to apply reward points");
+    } finally {
+      setApplyingRewards(false);
+    }
+  };
+
+  const removeRewardPoints = () => {
+    setAppliedRewardPoints(0);
+    setRewardDiscount(0);
+    setRewardInput("");
+    setRewardMessage("");
+    setRewardError("");
+  };
 
   const handleChange = (field: keyof CheckoutForm, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -457,6 +819,7 @@ export default function Checkout() {
       branch_id: 3,
       payment_method: paymentMethod,
       payment_status: paymentMethod === "COD" ? "COD" : "PENDING",
+      reward_points: appliedRewardPoints,
       shipping_address: {
         line1: form.addressLine1.trim(),
         line2: form.addressLine2.trim(),
@@ -476,8 +839,13 @@ export default function Checkout() {
         giftWrap: 0,
         shipping,
         subtotal,
-        total,
-        payable: total,
+        reward_points: appliedRewardPoints,
+        rewardPoints: appliedRewardPoints,
+        reward_discount: rewardDiscount,
+        rewardDiscount,
+        total_before_rewards: total,
+        total: payable,
+        payable,
       },
       items: cartItems.map((item) => ({
         cart_item_id: item.cartItemId,
@@ -520,6 +888,7 @@ export default function Checkout() {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        Authorization: `Bearer ${getStoredToken()}`,
       },
       body: JSON.stringify(payload),
     });
@@ -543,6 +912,7 @@ export default function Checkout() {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        Authorization: `Bearer ${getStoredToken()}`,
       },
       body: JSON.stringify(payload),
     });
@@ -573,7 +943,7 @@ export default function Checkout() {
 
     const options = {
       key: data?.key_id || data?.key,
-      amount: data?.amount || total * 100,
+      amount: data?.amount || payable * 100,
       currency: data?.currency || "INR",
       name: "V1Garments",
       description: "Order Payment",
@@ -588,6 +958,7 @@ export default function Checkout() {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            Authorization: `Bearer ${getStoredToken()}`,
           },
           body: JSON.stringify({
             ...response,
@@ -915,6 +1286,119 @@ export default function Checkout() {
               ))}
             </div>
 
+            <div className="border-t border-gray-100 mt-6 pt-5">
+              <div className="rounded-xl border border-[#f0d86c] bg-[#fffbed] p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-full bg-[#fdd835] flex items-center justify-center text-black shrink-0">
+                      <FiGift size={19} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-gray-900">Reward Points</p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {rewardLoading
+                          ? "Loading your rewards..."
+                          : rewardWallet?.enabled
+                            ? `${rewardWallet.balance.toLocaleString("en-IN")} points available`
+                            : "Rewards unavailable"}
+                      </p>
+                    </div>
+                  </div>
+                  {rewardWallet?.balance ? (
+                    <span className="text-[10px] font-bold uppercase tracking-wider bg-white border border-[#ead36c] rounded-full px-2.5 py-1 text-[#8a6a00]">
+                      {rewardWallet.validityDays} Days Validity
+                    </span>
+                  ) : null}
+                </div>
+
+                {rewardWallet?.balance ? (
+                  <>
+                    <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
+                      <div className="rounded-lg bg-white border border-[#f0e3a7] p-3">
+                        <span className="block text-gray-400 font-semibold uppercase tracking-wider text-[9px]">
+                          Valid Till
+                        </span>
+                        <strong className="block text-gray-900 mt-1 text-xs">
+                          {formatRewardDate(rewardWallet.nearestExpiry)}
+                        </strong>
+                      </div>
+                      <div className="rounded-lg bg-white border border-[#f0e3a7] p-3">
+                        <span className="block text-gray-400 font-semibold uppercase tracking-wider text-[9px]">
+                          Days Remaining
+                        </span>
+                        <strong className="flex items-center gap-1.5 text-gray-900 mt-1 text-xs">
+                          <FiClock size={13} />
+                          {rewardWallet.daysRemaining == null
+                            ? "-"
+                            : `${rewardWallet.daysRemaining} Day${rewardWallet.daysRemaining === 1 ? "" : "s"}`}
+                        </strong>
+                      </div>
+                    </div>
+
+                    {rewardWallet.hurryUp ? (
+                      <div className="mt-3 rounded-lg border border-orange-200 bg-orange-50 px-3 py-2.5 text-xs text-orange-700">
+                        <strong>Hurry Up</strong>
+                        <span className="ml-1">
+                          {rewardWallet.expiringSoonPoints.toLocaleString("en-IN")} points expire soon.
+                        </span>
+                      </div>
+                    ) : null}
+
+                    <div className="mt-4 flex gap-2">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={rewardInput}
+                        disabled={appliedRewardPoints > 0 || applyingRewards}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/\D/g, "");
+                          setRewardInput(value);
+                          setRewardError("");
+                          setRewardMessage("");
+                        }}
+                        placeholder="Points to redeem"
+                        className="min-w-0 flex-1 rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-xs font-semibold outline-none focus:border-black disabled:bg-gray-50"
+                      />
+                      {appliedRewardPoints > 0 ? (
+                        <button
+                          type="button"
+                          onClick={removeRewardPoints}
+                          className="rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-xs font-bold text-gray-700 hover:border-black"
+                        >
+                          Remove
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={applyRewardPoints}
+                          disabled={applyingRewards || rewardLoading}
+                          className="rounded-lg bg-black px-4 py-2.5 text-xs font-bold text-[#fdd835] disabled:opacity-50"
+                        >
+                          {applyingRewards ? "Applying..." : "Apply"}
+                        </button>
+                      )}
+                    </div>
+                  </>
+                ) : !rewardLoading && !rewardError ? (
+                  <div className="mt-3 text-xs text-gray-500">
+                    No active reward points are available for this account.
+                  </div>
+                ) : null}
+
+                {rewardMessage ? (
+                  <div className="mt-3 rounded-lg bg-green-50 border border-green-200 px-3 py-2 text-xs font-semibold text-green-700">
+                    {rewardMessage}
+                  </div>
+                ) : null}
+
+                {rewardError ? (
+                  <div className="mt-3 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs font-semibold text-red-700">
+                    {rewardError}
+                  </div>
+                ) : null}
+              </div>
+            </div>
+
             <div className="border-t border-gray-100 mt-6 pt-5 space-y-3 text-sm">
               <div className="flex justify-between text-gray-600">
                 <span>Total MRP</span>
@@ -937,10 +1421,19 @@ export default function Checkout() {
                 </span>
               </div>
 
+              {appliedRewardPoints > 0 ? (
+                <div className="flex justify-between text-gray-600">
+                  <span>Reward Points ({appliedRewardPoints.toLocaleString("en-IN")})</span>
+                  <span className="font-medium text-green-600">
+                    -₹{rewardDiscount.toLocaleString("en-IN")}
+                  </span>
+                </div>
+              ) : null}
+
               <div className="border-t border-gray-100 pt-4 flex justify-between items-center">
                 <span className="text-lg font-bold text-gray-900">Total</span>
                 <span className="text-2xl font-black text-gray-900">
-                  ₹{total}
+                  ₹{payable.toLocaleString("en-IN")}
                 </span>
               </div>
             </div>
