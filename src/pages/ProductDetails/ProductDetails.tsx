@@ -134,7 +134,6 @@ const sortSizes = (values: string[]) =>
   uniqueStrings(values).sort((a, b) => {
     const na = normalizeSize(a);
     const nb = normalizeSize(b);
-
     const ia = SIZE_ORDER.indexOf(na);
     const ib = SIZE_ORDER.indexOf(nb);
 
@@ -336,18 +335,10 @@ const imageListFromSource = (
     source?.back_image_url,
     source?.backImageUrl,
     ...parseArray(source?.images),
-    ...parseArray(
-      source?.product_images,
-    ),
-    ...parseArray(
-      source?.productImages,
-    ),
-    ...parseArray(
-      source?.variant_images,
-    ),
-    ...parseArray(
-      source?.variantImages,
-    ),
+    ...parseArray(source?.product_images),
+    ...parseArray(source?.productImages),
+    ...parseArray(source?.variant_images),
+    ...parseArray(source?.variantImages),
   ]);
 };
 
@@ -360,9 +351,7 @@ const normalizeStockSources = (
     raw?.stock_sources,
   )
     ? raw.stock_sources
-    : Array.isArray(
-          raw?.stockSources,
-        )
+    : Array.isArray(raw?.stockSources)
       ? raw.stockSources
       : [];
 
@@ -712,7 +701,7 @@ const getVariants = (
       ),
     )
     .filter(
-      (variant) =>
+      (variant: Variant) =>
         text(
           variant.variantId,
         ) &&
@@ -835,11 +824,10 @@ const buildColorOptions = (
 };
 
 const imagesForSelection = (
-  product: any,
   colorOptions: ColorOption[],
   variants: Variant[],
   color: string,
-) => {
+): string[] => {
   const option =
     colorOptions.find(
       (item) =>
@@ -1427,7 +1415,6 @@ const ProductDetails:
     useMemo(
       () =>
         imagesForSelection(
-          product,
           colorOptions,
           selectedVariants.length
             ? selectedVariants
@@ -1439,7 +1426,6 @@ const ProductDetails:
           selectedColor,
         ),
       [
-        product,
         colorOptions,
         selectedVariants,
         selectedVariant,
