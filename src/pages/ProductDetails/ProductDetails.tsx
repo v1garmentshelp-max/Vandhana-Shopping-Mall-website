@@ -1,43 +1,18 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import {
-  useNavigate,
-  useParams,
-  useSearchParams,
-} from "react-router";
+import { useNavigate, useParams, useSearchParams } from "react-router";
 import CarouselModule from "react-multi-carousel";
 import "react-multi-carousel/lib/styles.css";
 import type { Product } from "../../Models/Product";
 import NamedSection from "../../components/NamedSection";
-import {
-  fetchProductById,
-  fetchProductsByGender,
-} from "../../services/productsApi";
+import { fetchProductById, fetchProductsByGender } from "../../services/productsApi";
 import { addToCart } from "../../services/cartApi";
-import {
-  FiChevronLeft,
-  FiChevronRight,
-  FiMinus,
-  FiPlus,
-  FiShoppingBag,
-  FiTruck,
-  FiHelpCircle,
-  FiX,
-  FiHeart,
-  FiShare2,
-} from "react-icons/fi";
-import {
-  FaRegStar,
-  FaStar,
-  FaStarHalfAlt,
-} from "react-icons/fa";
-import { resolveColorStyle } from "../../utils/colorHexMap";
+import { FiChevronLeft, FiChevronRight, FiMinus, FiPlus, FiShoppingBag, FiTruck, FiHelpCircle, FiX, FiHeart, FiShare2 } from "react-icons/fi";
+import { FaRegStar, FaStar, FaStarHalfAlt } from "react-icons/fa";
 
-const Carousel =
-  (CarouselModule as any).default ||
-  CarouselModule;
-
-const API_BASE =
-  "https://vandhana-shopping-mall-backend.vercel.app";
+const Carousel = (CarouselModule as any).default || CarouselModule;
+const API_BASE = "https://vandhana-shopping-mall-backend.vercel.app";
+const PLACEHOLDER = "/placeholder.svg";
+const SIZE_ORDER = ["XXS", "XS", "S", "M", "L", "XL", "XXL", "XXXL", "4XL", "5XL", "6XL"];
 
 type StoredUser = {
   id?: number;
@@ -65,7 +40,6 @@ type Variant = {
   patternCode: string;
   size: string;
   color: string;
-  colorValue: string;
   barcode: string;
   mrp: number;
   salePrice: number;
@@ -73,6 +47,7 @@ type Variant = {
   finalPriceB2B: number;
   available: number;
   imageUrl: string;
+  backImageUrl: string;
   weight: number | null;
   length: number | null;
   width: number | null;
@@ -83,75 +58,151 @@ type Variant = {
   raw: any;
 };
 
-type ProductImageRecord = {
-  url: string;
-  type: "front" | "back" | "";
-  productId: string;
-  variantId: string;
-  barcode: string;
+type ColorOption = {
   color: string;
+  image: string;
+  backImage: string;
+  available: boolean;
 };
 
-const text = (value: any) =>
-  String(value ?? "").trim();
+const text = (value: any) => String(value ?? "").trim();
 
-const normalizeText = (value: any) =>
-  text(value)
-    .toLowerCase()
-    .replace(/&/g, " and ")
-    .replace(/['’]/g, "")
-    .replace(/[./_-]+/g, " ")
-    .replace(/[^a-z0-9]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-
-const numberValue = (
-  value: any,
-  fallback = 0,
-) => {
+const num = (value: any, fallback = 0) => {
   const parsed = Number(value);
-
-  return Number.isFinite(parsed)
-    ? parsed
-    : fallback;
+  return Number.isFinite(parsed) ? parsed : fallback;
 };
 
 const positiveId = (value: any) => {
   const parsed = Number(text(value));
-
-  return Number.isInteger(parsed) &&
-    parsed > 0
-    ? parsed
-    : null;
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 };
 
-const uniqueStrings = (
-  values: any[],
-) => {
-  const map =
-    new Map<string, string>();
+const normalizeSize = (value: any) =>
+  text(value)
+    .toUpperCase()
+    .replace(/\s+/g, "");
 
-  values.forEach((value) => {
-    const item = text(value);
-    const key =
-      item.toLowerCase();
+const sameSize = (a: any, b: any) =>
+  normalizeSize(a) === normalizeSize(b);
 
-    if (
-      item &&
-      !map.has(key)
-    ) {
-      map.set(key, item);
+const normalizeColor = (value: any) =>
+  text(value)
+    .toLowerCase()
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const sameColor = (a: any, b: any) =>
+  normalizeColor(a) === normalizeColor(b);
+
+const uniqueStrings = (values: any[]) =>
+  Array.from(
+    new Map(
+      values
+        .map(text)
+        .filter(Boolean)
+        .map((value) => [value.toLowerCase(), value]),
+    ).values(),
+  );
+
+const uniqueImages = (values: any[]) =>
+  Array.from(
+    new Set(
+      values
+        .flatMap((value) => (Array.isArray(value) ? value : [value]))
+        .map((value: any) =>
+          typeof value === "string"
+            ? value.trim()
+            : text(
+                value?.image_url ||
+                  value?.imageUrl ||
+                  value?.url ||
+                  value?.secure_url,
+              ),
+        )
+        .filter(
+          (value) =>
+            value &&
+            value !== "[object Object]" &&
+            !value.includes("undefined") &&
+            !value.includes("null"),
+        ),
+    ),
+  );
+
+const sortSizes = (values: string[]) =>
+  uniqueStrings(values).sort((a, b) => {
+    const na = normalizeSize(a);
+    const nb = normalizeSize(b);
+
+    const ia = SIZE_ORDER.indexOf(na);
+    const ib = SIZE_ORDER.indexOf(nb);
+
+    if (ia !== -1 && ib !== -1) {
+      return ia - ib;
     }
+
+    if (ia !== -1) {
+      return -1;
+    }
+
+    if (ib !== -1) {
+      return 1;
+    }
+
+    const aa = Number(na);
+    const bb = Number(nb);
+
+    if (Number.isFinite(aa) && Number.isFinite(bb)) {
+      return aa - bb;
+    }
+
+    return na.localeCompare(nb, undefined, {
+      numeric: true,
+    });
   });
 
-  return Array.from(
-    map.values(),
+const sortColors = (values: string[]) =>
+  Array.from(
+    new Map(
+      values
+        .map(text)
+        .filter(Boolean)
+        .map((value) => [normalizeColor(value), value]),
+    ).values(),
+  ).sort((a, b) =>
+    normalizeColor(a).localeCompare(normalizeColor(b)),
   );
+
+const firstDiscount = (...values: any[]) => {
+  for (const value of values) {
+    const discount = Math.min(
+      100,
+      Math.max(0, num(value)),
+    );
+
+    if (discount > 0) {
+      return discount;
+    }
+  }
+
+  return 0;
 };
 
-const parseArray = (
-  value: any,
-): any[] => {
+const discountedPrice = (
+  price: number,
+  discount: number,
+) =>
+  Math.round(
+    (
+      price -
+      (price * discount) / 100 +
+      Number.EPSILON
+    ) *
+      100,
+  ) / 100;
+
+const parseArray = (value: any): any[] => {
   if (Array.isArray(value)) {
     return value;
   }
@@ -164,563 +215,74 @@ const parseArray = (
   }
 
   try {
-    const parsed =
-      JSON.parse(value);
+    const parsed = JSON.parse(value);
 
     return Array.isArray(parsed)
       ? parsed
       : [];
   } catch {
-    return /^https?:\/\//i.test(
-      value,
-    ) || value.startsWith("/")
-      ? [value]
-      : [];
+    return [];
   }
 };
 
-const imageValue = (
-  value: any,
-) => {
-  if (!value) {
-    return "";
-  }
+const getStoredUser = (): StoredUser | null => {
+  const raw =
+    localStorage.getItem("user") ||
+    sessionStorage.getItem("user");
 
-  if (
-    typeof value === "string"
-  ) {
-    return value.trim();
-  }
-
-  return text(
-    value.image_url ||
-      value.imageUrl ||
-      value.secure_url ||
-      value.url,
-  );
-};
-
-const validImage = (
-  value: any,
-) => {
-  const image =
-    imageValue(
-      value,
-    ).toLowerCase();
-
-  return Boolean(
-    image &&
-      image !==
-        "[object object]" &&
-      !image.includes(
-        "undefined",
-      ) &&
-      !image.includes("null") &&
-      !image.includes(
-        "placeholder.svg",
-      ),
-  );
-};
-
-const normalizeImageType = (
-  value: any,
-) =>
-  text(value)
-    .toLowerCase()
-    .replace(
-      /[^a-z0-9]+/g,
-      " ",
-    )
-    .replace(/\s+/g, " ")
-    .trim();
-
-const inferImageTypeFromText = (
-  value: any,
-): "front" | "back" | "" => {
-  const source =
-    normalizeImageType(value);
-
-  if (
-    source.includes("back") ||
-    source.includes("rear") ||
-    source.includes("reverse")
-  ) {
-    return "back";
-  }
-
-  if (
-    source.includes("front") ||
-    source.includes("primary") ||
-    source.includes("main") ||
-    source.includes("default")
-  ) {
-    return "front";
-  }
-
-  return "";
-};
-
-const inferImageType = (
-  value: any,
-): "front" | "back" | "" => {
-  const explicit =
-    inferImageTypeFromText(
-      value?.image_type ||
-        value?.imageType ||
-        value?.type ||
-        value?.label ||
-        value?.name ||
-        value?.view ||
-        value?.position,
-    );
-
-  if (explicit) {
-    return explicit;
-  }
-
-  try {
-    const filename =
-      decodeURIComponent(
-        imageValue(
-          value,
-        ).split("?")[0],
-      )
-        .split("/")
-        .pop();
-
-    return inferImageTypeFromText(
-      filename,
-    );
-  } catch {
-    return "";
-  }
-};
-
-const normalizeImageRecord = (
-  value: any,
-  source: any = {},
-  forcedType:
-    | "front"
-    | "back"
-    | "" = "",
-): ProductImageRecord | null => {
-  const url =
-    imageValue(value);
-
-  if (!validImage(url)) {
+  if (!raw) {
     return null;
   }
 
-  return {
-    url,
-    type:
-      forcedType ||
-      inferImageType(value),
-    productId: text(
-      value?.product_id ||
-        value?.productId ||
-        source?.product_id ||
-        source?.productId,
-    ),
-    variantId: text(
-      value?.variant_id ||
-        value?.variantId ||
-        source?.variant_id ||
-        source?.variantId,
-    ),
-    barcode: text(
-      value?.barcode ||
-        value?.ean_code ||
-        value?.eanCode ||
-        source?.barcode ||
-        source?.ean_code ||
-        source?.eanCode,
-    ),
-    color: text(
-      value?.colour ||
-        value?.color ||
-        source?.colour ||
-        source?.color ||
-        source?.selected_colour ||
-        source?.selectedColor ||
-        source?.selected_color,
-    ),
-  };
-};
-
-const sourceImageRecords = (
-  source: any,
-): ProductImageRecord[] => {
-  if (!source) {
-    return [];
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
   }
-
-  const records:
-    ProductImageRecord[] = [];
-
-  const add = (
-    value: any,
-    type:
-      | "front"
-      | "back"
-      | "" = "",
-  ) => {
-    const record =
-      normalizeImageRecord(
-        value,
-        source,
-        type,
-      );
-
-    if (record) {
-      records.push(record);
-    }
-  };
-
-  [
-    source?.images,
-    source?.product_images,
-    source?.productImages,
-    source?.variant_images,
-    source?.variantImages,
-  ].forEach((value) =>
-    parseArray(value).forEach(
-      (item) => add(item),
-    ),
-  );
-
-  [
-    source?.front_image_url,
-    source?.frontImageUrl,
-    source?.front_url,
-    source?.frontUrl,
-  ].forEach((value) =>
-    add(value, "front"),
-  );
-
-  [
-    source?.back_image_url,
-    source?.backImageUrl,
-    source?.back_url,
-    source?.backUrl,
-    source?.rear_image_url,
-    source?.rearImageUrl,
-  ].forEach((value) =>
-    add(value, "back"),
-  );
-
-  [
-    source?.main_image_url,
-    source?.mainImageUrl,
-    source?.image_url,
-    source?.imageUrl,
-  ].forEach((value) =>
-    add(value, "front"),
-  );
-
-  if (
-    source?.raw &&
-    source.raw !== source
-  ) {
-    records.push(
-      ...sourceImageRecords(
-        source.raw,
-      ),
-    );
-  }
-
-  return records;
 };
 
-const mergeImageRecords = (
-  records: ProductImageRecord[],
+const isBusinessUser = (
+  user: StoredUser | null,
 ) => {
-  const map =
-    new Map<
-      string,
-      ProductImageRecord
-    >();
-
-  records.forEach((record) => {
-    if (!validImage(record.url)) {
-      return;
-    }
-
-    const key =
-      record.url.toLowerCase();
-
-    const current =
-      map.get(key);
-
-    if (!current) {
-      map.set(key, record);
-      return;
-    }
-
-    map.set(key, {
-      ...record,
-      ...current,
-      type:
-        current.type ||
-        record.type,
-      productId:
-        current.productId ||
-        record.productId,
-      variantId:
-        current.variantId ||
-        record.variantId,
-      barcode:
-        current.barcode ||
-        record.barcode,
-      color:
-        current.color ||
-        record.color,
-    });
-  });
-
-  return Array.from(
-    map.values(),
+  const type = normalizeColor(
+    user?.userType ||
+      user?.user_type ||
+      user?.customer_type ||
+      user?.type ||
+      user?.role,
   );
-};
-
-const chooseImagePair = (
-  records: ProductImageRecord[],
-) => {
-  const merged =
-    mergeImageRecords(records);
-
-  const front =
-    merged.find(
-      (record) =>
-        record.type === "front",
-    ) ||
-    merged.find(
-      (record) =>
-        !record.type,
-    ) ||
-    null;
-
-  const back =
-    merged.find(
-      (record) =>
-        record.type === "back" &&
-        record.url.toLowerCase() !==
-          front?.url.toLowerCase(),
-    ) || null;
-
-  return {
-    front,
-    back,
-  };
-};
-
-const uniqueImages = (
-  values: any[],
-) => {
-  const seen =
-    new Set<string>();
-
-  return values
-    .map(imageValue)
-    .filter((image) => {
-      const key =
-        image.toLowerCase();
-
-      if (
-        !validImage(image) ||
-        seen.has(key)
-      ) {
-        return false;
-      }
-
-      seen.add(key);
-
-      return true;
-    });
-};
-
-const normalizeSize = (
-  value: any,
-) =>
-  text(value)
-    .toUpperCase()
-    .replace(/\s+/g, "");
-
-const sameSize = (
-  first: any,
-  second: any,
-) =>
-  normalizeSize(first) ===
-  normalizeSize(second);
-
-const normalizeColor = (
-  value: any,
-) => {
-  const normalized =
-    text(value)
-      .toLowerCase()
-      .replace(/[_-]+/g, " ")
-      .replace(/\s+/g, " ")
-      .trim();
-
-  const aliases: Record<
-    string,
-    string
-  > = {
-    darkblue: "dark blue",
-    "dark bblue": "dark blue",
-    "dark blu": "dark blue",
-    seablue: "sea blue",
-    "sea blu": "sea blue",
-    iceblue: "ice blue",
-    "ice blu": "ice blue",
-    navyb: "navy blue",
-    "navy b": "navy blue",
-    navyblue: "navy blue",
-    "navy blu": "navy blue",
-    horizonblue:
-      "horizon blue",
-    "horizon blu":
-      "horizon blue",
-    offwhite: "off white",
-    lightgray: "light grey",
-    "light gray":
-      "light grey",
-    darkgray: "dark grey",
-    "dark gray": "dark grey",
-    "ash gray": "ash grey",
-    "elephant gray":
-      "elephant grey",
-    "bottel green":
-      "bottle green",
-    "botal green":
-      "bottle green",
-    "mehandi green":
-      "mehendi green",
-    ston: "stone",
-    "p olive": "olive",
-    "skin colour": "skin",
-    "skin color": "skin",
-    "aqua marine":
-      "aquamarine",
-    violate: "violet",
-    onionpink: "onion",
-    "onion pink": "onion",
-    frenchwine:
-      "french wine",
-    peacockgreen:
-      "peacock green",
-    cherrybrown:
-      "cherry brown",
-    "multi colour":
-      "multicolor",
-    "multi color":
-      "multicolor",
-  };
 
   return (
-    aliases[normalized] ||
-    normalized
+    type === "b2b" ||
+    type.includes("business")
   );
 };
 
-const sameColor = (
-  first: any,
-  second: any,
-) =>
-  normalizeColor(first) ===
-  normalizeColor(second);
-
-const discountedPrice = (
-  price: number,
-  discount: number,
-) =>
-  Math.round(
-    (
-      price -
-      (price * discount) /
-        100 +
-      Number.EPSILON
-    ) * 100,
-  ) / 100;
-
-const firstDiscount = (
-  ...values: any[]
-) => {
-  for (const value of values) {
-    const discount =
-      Math.min(
-        100,
-        Math.max(
-          0,
-          numberValue(
-            value,
-            0,
-          ),
-        ),
-      );
-
-    if (discount > 0) {
-      return discount;
-    }
-  }
-
-  return 0;
-};
-
-const getStoredUser =
-  (): StoredUser | null => {
-    const raw =
-      localStorage.getItem(
-        "user",
-      ) ||
-      sessionStorage.getItem(
-        "user",
-      );
-
-    if (!raw) {
-      return null;
-    }
-
-    try {
-      return JSON.parse(raw);
-    } catch {
-      return null;
-    }
-  };
-
-const wishlistKey = (
-  userId: number,
-) =>
+const wishlistKey = (userId: number) =>
   `wishlist_variant_ids_${userId}`;
 
-const legacyWishlistKey = (
-  userId: number,
-) =>
+const legacyWishlistKey = (userId: number) =>
   `wishlist_product_ids_${userId}`;
 
-const readWishlist = (
-  userId: number,
-) => {
+const readWishlist = (userId: number) => {
   try {
-    const raw =
+    const parsed = JSON.parse(
       localStorage.getItem(
         wishlistKey(userId),
       ) ||
-      localStorage.getItem(
-        legacyWishlistKey(userId),
-      ) ||
-      "[]";
-
-    const parsed = JSON.parse(raw);
+        localStorage.getItem(
+          legacyWishlistKey(userId),
+        ) ||
+        "[]",
+    );
 
     return Array.isArray(parsed)
       ? parsed
           .map(Number)
           .filter(
-            (value) =>
-              Number.isInteger(value) &&
-              value > 0,
+            (id) =>
+              Number.isInteger(id) &&
+              id > 0,
           )
       : [];
   } catch {
@@ -732,96 +294,93 @@ const writeWishlist = (
   userId: number,
   ids: number[],
 ) => {
-  const unique = Array.from(
+  const value = Array.from(
     new Set(
       ids.filter(
-        (value) =>
-          Number.isInteger(value) &&
-          value > 0,
+        (id) =>
+          Number.isInteger(id) &&
+          id > 0,
       ),
     ),
   );
 
   localStorage.setItem(
     wishlistKey(userId),
-    JSON.stringify(unique),
+    JSON.stringify(value),
   );
 
   localStorage.setItem(
     legacyWishlistKey(userId),
-    JSON.stringify(unique),
+    JSON.stringify(value),
   );
 
   window.dispatchEvent(
-    new Event(
-      "wishlist-updated",
-    ),
+    new Event("wishlist-updated"),
   );
 };
 
-const isBusinessUser = (
-  user: StoredUser | null,
+const imageListFromSource = (
+  source: any,
 ) => {
-  const accountType = normalizeText(
-    user?.userType ||
-      user?.user_type ||
-      user?.customer_type ||
-      user?.type ||
-      user?.role,
-  );
+  if (!source) {
+    return [];
+  }
 
-  return (
-    accountType === "b2b" ||
-    accountType.includes("business")
-  );
+  return uniqueImages([
+    source?.front_image_url,
+    source?.frontImageUrl,
+    source?.main_image_url,
+    source?.mainImageUrl,
+    source?.image_url,
+    source?.imageUrl,
+    source?.back_image_url,
+    source?.backImageUrl,
+    ...parseArray(source?.images),
+    ...parseArray(
+      source?.product_images,
+    ),
+    ...parseArray(
+      source?.productImages,
+    ),
+    ...parseArray(
+      source?.variant_images,
+    ),
+    ...parseArray(
+      source?.variantImages,
+    ),
+  ]);
 };
-
-const productBackendId = (
-  product: any,
-) =>
-  positiveId(
-    product?.productId ||
-      product?.product_id ||
-      product?.id,
-  );
 
 const normalizeStockSources = (
   raw: any,
   variantId: any,
   available: number,
-) => {
-  const values =
-    Array.isArray(
-      raw?.stock_sources,
-    )
-      ? raw.stock_sources
-      : Array.isArray(
-            raw?.stockSources,
-          )
-        ? raw.stockSources
-        : [];
+): StockSource[] => {
+  const values = Array.isArray(
+    raw?.stock_sources,
+  )
+    ? raw.stock_sources
+    : Array.isArray(
+          raw?.stockSources,
+        )
+      ? raw.stockSources
+      : [];
 
-  const sources =
-    values.length
-      ? values
-      : variantId
-        ? [
-            {
-              variant_id:
-                variantId,
-              available_qty:
-                available,
-            },
-          ]
-        : [];
+  const sourceValues = values.length
+    ? values
+    : variantId
+      ? [
+          {
+            variant_id: variantId,
+            available_qty: available,
+          },
+        ]
+      : [];
 
   const grouped =
-    new Map<
-      number,
-      number
-    >();
+    new Map<number, number>();
 
-  sources.forEach(
+  sourceValues.forEach(
     (source: any) => {
       const id = positiveId(
         source?.variant_id ||
@@ -832,27 +391,23 @@ const normalizeStockSources = (
         return;
       }
 
-      const stock =
-        Math.max(
-          0,
-          numberValue(
-            source?.available_qty ??
-              source?.availableQty ??
-              Math.max(
-                0,
-                numberValue(
-                  source?.on_hand ??
-                    source?.onHand,
-                  0,
-                ) -
-                  numberValue(
-                    source?.reserved,
-                    0,
-                  ),
-              ),
-            0,
-          ),
-        );
+      const stock = Math.max(
+        0,
+        num(
+          source?.available_qty ??
+            source?.availableQty ??
+            Math.max(
+              0,
+              num(
+                source?.on_hand ??
+                  source?.onHand,
+              ) -
+                num(
+                  source?.reserved,
+                ),
+            ),
+        ),
+      );
 
       grouped.set(
         id,
@@ -870,17 +425,18 @@ const normalizeStockSources = (
     .map(
       ([
         variantIdValue,
-        stock,
+        availableValue,
       ]) => ({
         variantId:
           variantIdValue,
-        available: stock,
+        available:
+          availableValue,
       }),
     )
     .sort(
-      (first, second) =>
-        second.available -
-        first.available,
+      (a, b) =>
+        b.available -
+        a.available,
     );
 };
 
@@ -915,17 +471,15 @@ const normalizeVariant = (
       raw?.selected_color,
   );
 
-  const mrp =
-    numberValue(
-      raw?.original_price_b2c ??
-        raw?.mrp ??
-        raw?.original_price ??
-        product?.original_price_b2c ??
-        product?.originalPrice ??
-        product?.mrp ??
-        product?.price,
-      0,
-    );
+  const mrp = num(
+    raw?.original_price_b2c ??
+      raw?.mrp ??
+      raw?.original_price ??
+      product?.original_price_b2c ??
+      product?.originalPrice ??
+      product?.mrp ??
+      product?.price,
+  );
 
   const discount =
     firstDiscount(
@@ -941,21 +495,20 @@ const normalizeVariant = (
       product?.discount,
     );
 
-  const directPrice =
-    numberValue(
-      raw?.final_price_b2c ??
-        raw?.b2c_final_price ??
-        raw?.sale_price ??
-        raw?.price ??
-        raw?.selling_price ??
-        raw?.discounted_price ??
-        raw?.mahaveer_price ??
-        product?.final_price_b2c ??
-        product?.salePrice ??
-        product?.sale_price ??
-        product?.price,
-      mrp,
-    );
+  const directPrice = num(
+    raw?.final_price_b2c ??
+      raw?.b2c_final_price ??
+      raw?.sale_price ??
+      raw?.price ??
+      raw?.selling_price ??
+      raw?.discounted_price ??
+      raw?.mahaveer_price ??
+      product?.final_price_b2c ??
+      product?.salePrice ??
+      product?.sale_price ??
+      product?.price,
+    mrp,
+  );
 
   const salePrice =
     discount > 0 &&
@@ -966,17 +519,16 @@ const normalizeVariant = (
         )
       : directPrice;
 
-  const originalPriceB2B =
-    numberValue(
-      raw?.original_price_b2b ??
-        raw?.originalPriceB2b ??
-        raw?.cost_price ??
-        product?.original_price_b2b ??
-        product?.originalPriceB2b ??
-        product?.cost_price ??
-        mrp,
+  const originalPriceB2B = num(
+    raw?.original_price_b2b ??
+      raw?.originalPriceB2b ??
+      raw?.cost_price ??
+      product?.original_price_b2b ??
+      product?.originalPriceB2b ??
+      product?.cost_price ??
       mrp,
-    );
+    mrp,
+  );
 
   const b2bDiscount =
     firstDiscount(
@@ -986,17 +538,16 @@ const normalizeVariant = (
       product?.discount_b2b,
     );
 
-  const directB2BPrice =
-    numberValue(
-      raw?.final_price_b2b ??
-        raw?.finalPriceB2b ??
-        raw?.b2b_final_price ??
-        product?.final_price_b2b ??
-        product?.finalPriceB2b ??
-        product?.b2b_final_price ??
-        originalPriceB2B,
+  const directB2B = num(
+    raw?.final_price_b2b ??
+      raw?.finalPriceB2b ??
+      raw?.b2b_final_price ??
+      product?.final_price_b2b ??
+      product?.finalPriceB2b ??
+      product?.b2b_final_price ??
       originalPriceB2B,
-    );
+    originalPriceB2B,
+  );
 
   const finalPriceB2B =
     b2bDiscount > 0 &&
@@ -1005,77 +556,61 @@ const normalizeVariant = (
           originalPriceB2B,
           b2bDiscount,
         )
-      : directB2BPrice;
+      : directB2B;
 
-  const onHand =
-    numberValue(
-      raw?.on_hand ??
-        raw?.onHand,
-      0,
-    );
+  const onHand = num(
+    raw?.on_hand ??
+      raw?.onHand,
+  );
 
-  const reserved =
-    numberValue(
-      raw?.reserved ??
-        raw?.reserved_qty ??
-        raw?.reservedQty,
-      0,
-    );
+  const reserved = num(
+    raw?.reserved ??
+      raw?.reserved_qty ??
+      raw?.reservedQty,
+  );
 
-  const available =
-    Math.max(
-      0,
-      numberValue(
-        raw?.available_qty ??
-          raw?.availableQty ??
-          Math.max(
-            0,
-            onHand - reserved,
-          ),
+  const available = Math.max(
+    0,
+    num(
+      raw?.available_qty ??
+        raw?.availableQty ??
         Math.max(
           0,
           onHand - reserved,
         ),
+      Math.max(
+        0,
+        onHand - reserved,
       ),
-    );
-
-  const colorValue = text(
-    raw?.colour_hex ||
-      raw?.color_hex ||
-      raw?.colourHex ||
-      raw?.colorHex ||
-      raw?.swatch_color ||
-      raw?.swatchColor ||
-      product?.colour_hex ||
-      product?.color_hex ||
-      product?.colourHex ||
-      product?.colorHex ||
-      product?.swatch_color ||
-      product?.swatchColor,
+    ),
   );
 
-  const imagePair = chooseImagePair([
-    ...sourceImageRecords(raw),
-    ...sourceImageRecords(product),
-  ]);
+  const images =
+    imageListFromSource(raw);
+
+  const productImages =
+    imageListFromSource(product);
+
+  const imageUrl =
+    images[0] ||
+    productImages[0] ||
+    "";
+
+  const backImageUrl =
+    images[1] || "";
 
   const optionalNumber = (
     value: any,
-  ) => {
-    if (
-      value === undefined ||
-      value === null ||
-      text(value) === ""
-    ) {
-      return null;
-    }
-
-    const parsed = Number(value);
-
-    return Number.isFinite(parsed)
-      ? parsed
-      : null;
-  };
+  ) =>
+    value === undefined ||
+    value === null ||
+    text(value) === ""
+      ? null
+      : Number.isFinite(
+            Number(value),
+          )
+        ? Number(value)
+        : null;
 
   return {
     id: variantId,
@@ -1101,7 +636,6 @@ const normalizeVariant = (
     ),
     size,
     color,
-    colorValue,
     barcode: text(
       raw?.barcode ||
         raw?.ean_code ||
@@ -1112,10 +646,8 @@ const normalizeVariant = (
     originalPriceB2B,
     finalPriceB2B,
     available,
-    imageUrl:
-      imagePair.front?.url ||
-      imagePair.back?.url ||
-      "",
+    imageUrl,
+    backImageUrl,
     weight: optionalNumber(
       raw?.weight ??
         raw?.weight_kg ??
@@ -1140,12 +672,13 @@ const normalizeVariant = (
         product?.hsn_code ||
         product?.hsnCode,
     ),
-    hsnPercentage: optionalNumber(
-      raw?.hsn_percentage ??
-        raw?.hsnPercentage ??
-        product?.hsn_percentage ??
-        product?.hsnPercentage,
-    ),
+    hsnPercentage:
+      optionalNumber(
+        raw?.hsn_percentage ??
+          raw?.hsnPercentage ??
+          product?.hsn_percentage ??
+          product?.hsnPercentage,
+      ),
     stockSources:
       normalizeStockSources(
         raw,
@@ -1163,23 +696,23 @@ const getVariants = (
     return [];
   }
 
-  const rawVariants =
+  const rows =
     Array.isArray(
-      product.variants,
+      product?.variants,
     ) &&
     product.variants.length
       ? product.variants
       : [product];
 
-  return rawVariants
-    .map((raw: any) =>
+  return rows
+    .map((row: any) =>
       normalizeVariant(
-        raw,
+        row,
         product,
       ),
     )
     .filter(
-      (variant: Variant) =>
+      (variant) =>
         text(
           variant.variantId,
         ) &&
@@ -1190,24 +723,164 @@ const getVariants = (
     );
 };
 
-const routeVariant = (
-  variants: Variant[],
-  routeId: any,
+const rawColorOptions = (
+  product: any,
 ) => {
-  const target = text(routeId);
+  const options =
+    product?.colorOptions ||
+    product?.colourOptions ||
+    product?.color_options ||
+    product?.colour_options ||
+    [];
 
-  return (
-    variants.find(
+  return Array.isArray(options)
+    ? options
+    : [];
+};
+
+const buildColorOptions = (
+  product: any,
+  variants: Variant[],
+): ColorOption[] => {
+  const provided =
+    rawColorOptions(product);
+
+  const colors = sortColors([
+    ...variants.map(
       (variant) =>
-        [
-          variant.variantId,
-          variant.id,
-          variant.barcode,
-        ]
-          .map(text)
-          .includes(target),
-    ) || null
+        variant.color,
+    ),
+    ...provided.map(
+      (option: any) =>
+        option?.color ||
+        option?.colour,
+    ),
+  ]);
+
+  return colors.map(
+    (color) => {
+      const colorVariants =
+        variants.filter(
+          (variant) =>
+            sameColor(
+              variant.color,
+              color,
+            ),
+        );
+
+      const option =
+        provided.find(
+          (item: any) =>
+            sameColor(
+              item?.color ||
+                item?.colour,
+              color,
+            ),
+        );
+
+      const available =
+        colorVariants.length
+          ? colorVariants.some(
+              (variant) =>
+                variant.available >
+                0,
+            )
+          : Boolean(
+              option?.available ??
+                option?.inStock ??
+                option?.in_stock,
+            );
+
+      const variantImages =
+        uniqueImages(
+          colorVariants.flatMap(
+            (variant) => [
+              variant.imageUrl,
+              variant.backImageUrl,
+              ...imageListFromSource(
+                variant.raw,
+              ),
+            ],
+          ),
+        );
+
+      const image =
+        uniqueImages([
+          option?.image,
+          option?.imageUrl,
+          option?.image_url,
+          option?.frontImageUrl,
+          option?.front_image_url,
+          option?.mainImageUrl,
+          option?.main_image_url,
+          ...variantImages,
+        ])[0] ||
+        PLACEHOLDER;
+
+      const backImage =
+        uniqueImages([
+          option?.backImageUrl,
+          option?.back_image_url,
+          ...variantImages.slice(1),
+        ])[0] || "";
+
+      return {
+        color,
+        image,
+        backImage,
+        available,
+      };
+    },
   );
+};
+
+const imagesForSelection = (
+  product: any,
+  colorOptions: ColorOption[],
+  variants: Variant[],
+  color: string,
+) => {
+  const option =
+    colorOptions.find(
+      (item) =>
+        sameColor(
+          item.color,
+          color,
+        ),
+    );
+
+  const selected =
+    variants.filter(
+      (variant) =>
+        !color ||
+        sameColor(
+          variant.color,
+          color,
+        ),
+    );
+
+  const values =
+    uniqueImages([
+      option?.image,
+      ...selected.flatMap(
+        (variant) => [
+          variant.imageUrl,
+          ...imageListFromSource(
+            variant.raw,
+          ),
+        ],
+      ),
+      option?.backImage,
+      ...selected.flatMap(
+        (variant) => [
+          variant.backImageUrl,
+        ],
+      ),
+    ]).slice(0, 2);
+
+  return values.length
+    ? values
+    : [PLACEHOLDER];
 };
 
 const matchingVariants = (
@@ -1237,10 +910,7 @@ const aggregateSources = (
   variants: Variant[],
 ) => {
   const grouped =
-    new Map<
-      number,
-      number
-    >();
+    new Map<number, number>();
 
   variants.forEach(
     (variant) => {
@@ -1250,8 +920,7 @@ const aggregateSources = (
         );
 
       const sources =
-        variant.stockSources
-          .length
+        variant.stockSources.length
           ? variant.stockSources
           : fallbackId
             ? [
@@ -1296,9 +965,9 @@ const aggregateSources = (
         source.available > 0,
     )
     .sort(
-      (first, second) =>
-        second.available -
-        first.available,
+      (a, b) =>
+        b.available -
+        a.available,
     );
 };
 
@@ -1309,514 +978,131 @@ const aggregateStock = (
     variants,
   ).reduce(
     (sum, source) =>
-      sum + source.available,
+      sum +
+      source.available,
     0,
   );
 
-const SIZE_ORDER = [
-  "XXS",
-  "XS",
-  "S",
-  "M",
-  "L",
-  "XL",
-  "XXL",
-  "XXXL",
-  "4XL",
-  "5XL",
-  "6XL",
-];
-
-const sortSizes = (
-  values: string[],
+const productBackendId = (
+  product: any,
 ) =>
-  uniqueStrings(values).sort(
-    (
-      firstValue,
-      secondValue,
-    ) => {
-      const first =
-        normalizeSize(
-          firstValue,
-        );
-
-      const second =
-        normalizeSize(
-          secondValue,
-        );
-
-      const firstIndex =
-        SIZE_ORDER.indexOf(
-          first,
-        );
-
-      const secondIndex =
-        SIZE_ORDER.indexOf(
-          second,
-        );
-
-      if (
-        firstIndex !== -1 &&
-        secondIndex !== -1
-      ) {
-        return (
-          firstIndex -
-          secondIndex
-        );
-      }
-
-      if (
-        firstIndex !== -1
-      ) {
-        return -1;
-      }
-
-      if (
-        secondIndex !== -1
-      ) {
-        return 1;
-      }
-
-      const firstNumber =
-        Number(first);
-
-      const secondNumber =
-        Number(second);
-
-      if (
-        Number.isFinite(
-          firstNumber,
-        ) &&
-        Number.isFinite(
-          secondNumber,
-        )
-      ) {
-        return (
-          firstNumber -
-          secondNumber
-        );
-      }
-
-      return first.localeCompare(
-        second,
-        undefined,
-        {
-          numeric: true,
-        },
-      );
-    },
-  );
-
-const sortColors = (
-  values: string[],
-) => {
-  const map =
-    new Map<
-      string,
-      string
-    >();
-
-  values.forEach((value) => {
-    const item = text(value);
-
-    const key =
-      normalizeColor(item);
-
-    if (
-      item &&
-      key &&
-      !map.has(key)
-    ) {
-      map.set(key, item);
-    }
-  });
-
-  return Array.from(
-    map.values(),
-  ).sort((first, second) =>
-    normalizeColor(
-      first,
-    ).localeCompare(
-      normalizeColor(
-        second,
-      ),
-    ),
-  );
-};
-
-const colorBackground = (
-  name: string,
-  provided?: string,
-) => resolveColorStyle(name, provided);
-
-const selectedImages = (
-  variants: Variant[],
-  product: any,
-  color: string,
-) => {
-  const allVariants =
-    getVariants(product);
-
-  const selectedProductId =
-    text(
-      variants[0]?.productId ||
-        variants[0]?.raw
-          ?.product_id ||
-        variants[0]?.raw
-          ?.productId ||
-        product?.product_id ||
-        product?.productId,
-    );
-
-  const selectedVariantIds =
-    new Set(
-      variants
-        .flatMap((variant) => [
-          text(
-            variant.variantId,
-          ),
-          text(variant.id),
-          text(
-            variant.barcode,
-          ),
-        ])
-        .filter(Boolean),
-    );
-
-  const candidates =
-    new Map<
-      string,
-      Variant
-    >();
-
-  const addVariant = (
-    variant: Variant,
-  ) => {
-    const key = text(
-      variant.variantId ||
-        variant.id ||
-        variant.barcode ||
-        `${variant.productId}|${variant.color}|${variant.size}`,
-    );
-
-    if (
-      key &&
-      !candidates.has(key)
-    ) {
-      candidates.set(
-        key,
-        variant,
-      );
-    }
-  };
-
-  variants.forEach(
-    addVariant,
-  );
-
-  allVariants
-    .filter((variant) => {
-      const productMatches =
-        !selectedProductId ||
-        text(
-          variant.productId,
-        ) === selectedProductId;
-
-      const colorMatches =
-        !color ||
-        sameColor(
-          variant.color,
-          color,
-        );
-
-      return (
-        productMatches &&
-        colorMatches
-      );
-    })
-    .forEach(addVariant);
-
-  const records:
-    ProductImageRecord[] = [];
-
-  Array.from(
-    candidates.values(),
-  ).forEach((variant) => {
-    sourceImageRecords(
-      variant.raw,
-    ).forEach((record) => {
-      const productMatches =
-        !selectedProductId ||
-        !record.productId ||
-        record.productId ===
-          selectedProductId;
-
-      const variantMatches =
-        !record.variantId ||
-        !selectedVariantIds.size ||
-        selectedVariantIds.has(
-          record.variantId,
-        ) ||
-        sameColor(
-          record.color,
-          color,
-        );
-
-      const colorMatches =
-        !color ||
-        !record.color ||
-        sameColor(
-          record.color,
-          color,
-        );
-
-      if (
-        productMatches &&
-        variantMatches &&
-        colorMatches
-      ) {
-        records.push(record);
-      }
-    });
-  });
-
-  sourceImageRecords(
-    product,
-  ).forEach((record) => {
-    const productMatches =
-      !selectedProductId ||
-      !record.productId ||
-      record.productId ===
-        selectedProductId;
-
-    const colorMatches =
-      !color ||
-      !record.color ||
-      sameColor(
-        record.color,
-        color,
-      );
-
-    if (
-      productMatches &&
-      colorMatches
-    ) {
-      records.push(record);
-    }
-  });
-
-  const pair =
-    chooseImagePair(records);
-
-  const images =
-    uniqueImages([
-      pair.front?.url,
-      pair.back?.url,
-    ]).slice(0, 2);
-
-  return images.length
-    ? images
-    : ["/placeholder.svg"];
-};
-
-const productCategoryIdentity = (
-  product: any,
-) => {
-  const categoryId =
-    normalizeText(
-      product?.categoryId ||
-        product?.category_id,
-    );
-
-  if (categoryId) {
-    return categoryId;
-  }
-
-  return normalizeText(
-    product?.categoryName ||
-      product?.category_name ||
-      product?.categorySlug ||
-      product?.category_slug,
-  );
-};
-
-const productRecommendationIdentity = (
-  product: any,
-) => {
-  const designKey = text(
-    product?.designKey ||
-      product?.design_key,
-  );
-
-  if (designKey) {
-    return `design|${designKey}`;
-  }
-
-  const gender =
-    normalizeText(
-      product?.gender ||
-        product?.category,
-    );
-
-  const category =
-    productCategoryIdentity(
-      product,
-    );
-
-  const brand =
-    normalizeText(
-      product?.brand ||
-        product?.brand_name ||
-        product?.brandName,
-    );
-
-  const productId = text(
+  positiveId(
     product?.productId ||
       product?.product_id ||
       product?.id,
   );
 
-  if (productId) {
-    return [
-      "product",
-      productId,
-      category || "none",
-    ].join("|");
-  }
+const routeVariant = (
+  variants: Variant[],
+  routeId: any,
+) => {
+  const target =
+    text(routeId);
 
-  const variantId = text(
-    product?.variantId ||
-      product?.variant_id ||
-      product?.primaryVariantId ||
-      product?.primary_variant_id,
+  return (
+    variants.find(
+      (variant) =>
+        [
+          variant.variantId,
+          variant.id,
+          variant.barcode,
+        ]
+          .map(text)
+          .includes(target),
+    ) || null
   );
-
-  if (variantId) {
-    return `variant|${variantId}`;
-  }
-
-  return [
-    "details",
-    gender || "none",
-    category || "none",
-    brand || "none",
-    normalizeText(
-      product?.title ||
-        product?.name ||
-        product?.product_name,
-    ),
-    normalizeText(
-      product?.selectedColor ||
-        product?.selected_color ||
-        product?.colour ||
-        product?.color,
-    ),
-  ].join("|");
 };
 
-const sameProduct = (
-  first: any,
-  second: any,
+const productIdentity = (
+  product: any,
 ) =>
-  productRecommendationIdentity(
-    first,
-  ) ===
-  productRecommendationIdentity(
-    second,
+  text(
+    product?.designKey ||
+      product?.design_key ||
+      product?.routeKey ||
+      product?.route_key ||
+      product?.designCode ||
+      product?.design_code ||
+      product?.productId ||
+      product?.product_id ||
+      product?.id,
+  );
+
+const productCategoryIdentity = (
+  product: any,
+) =>
+  text(
+    product?.categoryId ||
+      product?.category_id ||
+      product?.categoryName ||
+      product?.category_name ||
+      product?.categorySlug ||
+      product?.category_slug,
   );
 
 const buildRecommendations = (
-  currentProduct: Product,
+  current: Product,
   products: Product[],
-) => {
-  const currentCategory =
-    productCategoryIdentity(
-      currentProduct,
-    );
-
-  const unique =
-    new Map<
-      string,
-      Product
-    >();
-
-  products.forEach((item) => {
-    if (
-      sameProduct(
-        currentProduct,
-        item,
-      )
-    ) {
-      return;
-    }
-
-    const key =
-      productRecommendationIdentity(
-        item,
-      );
-
-    if (!unique.has(key)) {
-      unique.set(key, item);
-    }
-  });
-
-  return Array.from(
-    unique.values(),
+) =>
+  Array.from(
+    new Map(
+      products
+        .filter(
+          (item) =>
+            productIdentity(item) !==
+            productIdentity(
+              current,
+            ),
+        )
+        .map((item) => [
+          productIdentity(item),
+          item,
+        ]),
+    ).values(),
   )
-    .sort(
-      (first, second) => {
-        const firstSameCategory =
-          currentCategory &&
-          productCategoryIdentity(
-            first,
-          ) === currentCategory
-            ? 1
-            : 0;
+    .sort((a, b) => {
+      const ac =
+        productCategoryIdentity(
+          a,
+        ) ===
+        productCategoryIdentity(
+          current,
+        )
+          ? 1
+          : 0;
 
-        const secondSameCategory =
-          currentCategory &&
-          productCategoryIdentity(
-            second,
-          ) === currentCategory
-            ? 1
-            : 0;
+      const bc =
+        productCategoryIdentity(
+          b,
+        ) ===
+        productCategoryIdentity(
+          current,
+        )
+          ? 1
+          : 0;
 
-        if (
-          firstSameCategory !==
-          secondSameCategory
-        ) {
-          return (
-            secondSameCategory -
-            firstSameCategory
-          );
-        }
+      if (ac !== bc) {
+        return bc - ac;
+      }
 
-        const firstCreated =
-          new Date(
-            (first as any)
-              .createdAt ||
-              (first as any)
-                .created_at ||
-              0,
-          ).getTime();
-
-        const secondCreated =
-          new Date(
-            (second as any)
-              .createdAt ||
-              (second as any)
-                .created_at ||
-              0,
-          ).getTime();
-
-        return (
-          secondCreated -
-          firstCreated
-        );
-      },
-    )
+      return (
+        new Date(
+          (b as any)
+            ?.createdAt ||
+            (b as any)
+              ?.created_at ||
+            0,
+        ).getTime() -
+        new Date(
+          (a as any)
+            ?.createdAt ||
+            (a as any)
+              ?.created_at ||
+            0,
+        ).getTime()
+      );
+    })
     .slice(0, 10);
-};
 
 const CustomLeftArrow = ({
   onClick,
@@ -1925,72 +1211,86 @@ const ProductDetails:
   const [
     recommended,
     setRecommended,
-  ] = useState<Product[]>([]);
+  ] =
+    useState<Product[]>([]);
 
   const [
     loading,
     setLoading,
-  ] = useState(true);
+  ] =
+    useState(true);
 
   const [
     loadError,
     setLoadError,
-  ] = useState("");
+  ] =
+    useState("");
 
   const [
     selectedColor,
     setSelectedColor,
-  ] = useState("");
+  ] =
+    useState("");
 
   const [
     selectedSize,
     setSelectedSize,
-  ] = useState("");
+  ] =
+    useState("");
 
   const [
     quantity,
     setQuantity,
-  ] = useState(1);
+  ] =
+    useState(1);
 
   const [
     selectedImage,
     setSelectedImage,
-  ] = useState(0);
+  ] =
+    useState(0);
 
   const [
     lightboxImage,
     setLightboxImage,
-  ] = useState(0);
+  ] =
+    useState(0);
 
   const [
     lightboxOpen,
     setLightboxOpen,
-  ] = useState(false);
+  ] =
+    useState(false);
 
   const [
     adding,
     setAdding,
-  ] = useState(false);
+  ] =
+    useState(false);
 
   const [
     cartError,
     setCartError,
-  ] = useState("");
+  ] =
+    useState("");
 
   const [
     cartMessage,
     setCartMessage,
-  ] = useState("");
+  ] =
+    useState("");
 
   const [
     wishlisted,
     setWishlisted,
-  ] = useState(false);
+  ] =
+    useState(false);
 
   const [
     updatingWishlist,
     setUpdatingWishlist,
-  ] = useState(false);
+  ] =
+    useState(false);
 
   const mainCarouselRef =
     useRef<any>(null);
@@ -1998,75 +1298,68 @@ const ProductDetails:
   const lightboxCarouselRef =
     useRef<any>(null);
 
-  const backendProductId =
+  const variants =
     useMemo(
-      () =>
-        productBackendId(
-          product,
-        ),
-      [product],
-    );
-
-  const allVariants =
-    useMemo<Variant[]>(
       () =>
         getVariants(product),
       [product],
     );
 
-  const activeVariants =
-    useMemo<Variant[]>(
-      () => allVariants,
-      [allVariants],
+  const colorOptions =
+    useMemo(
+      () =>
+        buildColorOptions(
+          product,
+          variants,
+        ),
+      [product, variants],
     );
 
-  const colors = useMemo(
-    () =>
-      sortColors(
-        activeVariants.map(
-          (variant) =>
-            variant.color,
+  const colors =
+    useMemo(
+      () =>
+        colorOptions.map(
+          (option) =>
+            option.color,
         ),
-      ),
-    [activeVariants],
-  );
+      [colorOptions],
+    );
 
-  const sizes = useMemo(
-    () => {
-      const filtered =
-        selectedColor
-          ? activeVariants.filter(
-              (variant) =>
-                sameColor(
-                  variant.color,
-                  selectedColor,
-                ),
-            )
-          : activeVariants;
-
-      return sortSizes(
-        filtered.map(
-          (variant) =>
-            variant.size,
+  const sizes =
+    useMemo(
+      () =>
+        sortSizes(
+          (
+            selectedColor
+              ? variants.filter(
+                  (variant) =>
+                    sameColor(
+                      variant.color,
+                      selectedColor,
+                    ),
+                )
+              : variants
+          ).map(
+            (variant) =>
+              variant.size,
+          ),
         ),
-      );
-    },
-    [
-      activeVariants,
-      selectedColor,
-    ],
-  );
+      [
+        variants,
+        selectedColor,
+      ],
+    );
 
   const selectedVariants =
     useMemo(
       () =>
         matchingVariants(
-          activeVariants,
+          variants,
           selectedSize,
           selectedColor,
         ),
       [
-        activeVariants,
+        variants,
         selectedSize,
         selectedColor,
       ],
@@ -2074,7 +1367,7 @@ const ProductDetails:
 
   const selectedVariant =
     selectedVariants[0] ||
-    activeVariants.find(
+    variants.find(
       (variant) =>
         (
           !selectedColor ||
@@ -2091,7 +1384,7 @@ const ProductDetails:
           )
         ),
     ) ||
-    activeVariants[0] ||
+    variants[0] ||
     null;
 
   const stockSources =
@@ -2130,77 +1423,12 @@ const ProductDetails:
       ],
     );
 
-  const storedUser = getStoredUser();
-  const isB2B = isBusinessUser(storedUser);
-
-  const currentPrice = isB2B
-    ? selectedVariant?.finalPriceB2B ||
-      numberValue(
-        (product as any)
-          ?.final_price_b2b ??
-          (product as any)
-            ?.finalPriceB2b ??
-          (product as any)
-            ?.price,
-        0,
-      )
-    : selectedVariant?.salePrice ||
-      numberValue(
-        (product as any)
-          ?.final_price_b2c ??
-          (product as any)
-            ?.price,
-        0,
-      );
-
-  const comparePrice = isB2B
-    ? selectedVariant?.originalPriceB2B ||
-      numberValue(
-        (product as any)
-          ?.original_price_b2b ??
-          (product as any)
-            ?.originalPriceB2b ??
-          (product as any)
-            ?.mrp ??
-          currentPrice,
-        currentPrice,
-      )
-    : selectedVariant?.mrp ||
-      numberValue(
-        (product as any)
-          ?.originalPrice ||
-          (product as any)
-            ?.mrp ||
-          (product as any)
-            ?.price,
-        currentPrice,
-      );
-
-  const selectedWishlistVariantId =
-    positiveId(
-      selectedVariant?.variantId,
-    );
-
-  const selectedPatternType = text(
-    selectedVariant?.patternType ||
-      (product as any)
-        ?.patternType ||
-      (product as any)
-        ?.pattern_type,
-  );
-
-  const selectedDesignCode = text(
-    selectedVariant?.designCode ||
-      (product as any)
-        ?.designCode ||
-      (product as any)
-        ?.design_code,
-  );
-
   const images =
     useMemo(
       () =>
-        selectedImages(
+        imagesForSelection(
+          product,
+          colorOptions,
           selectedVariants.length
             ? selectedVariants
             : selectedVariant
@@ -2208,15 +1436,106 @@ const ProductDetails:
                   selectedVariant,
                 ]
               : [],
-          product,
           selectedColor,
-        ).slice(0, 2),
+        ),
       [
+        product,
+        colorOptions,
         selectedVariants,
         selectedVariant,
-        product,
         selectedColor,
       ],
+    );
+
+  const backendProductId =
+    useMemo(
+      () =>
+        productBackendId(
+          product,
+        ),
+      [product],
+    );
+
+  const storedUser =
+    getStoredUser();
+
+  const isB2B =
+    isBusinessUser(
+      storedUser,
+    );
+
+  const currentPrice =
+    isB2B
+      ? selectedVariant
+          ?.finalPriceB2B ||
+        num(
+          (product as any)
+            ?.final_price_b2b ??
+            (product as any)
+              ?.finalPriceB2b ??
+            (product as any)
+              ?.price,
+        )
+      : selectedVariant
+          ?.salePrice ||
+        num(
+          (product as any)
+            ?.final_price_b2c ??
+            (product as any)
+              ?.price,
+        );
+
+  const comparePrice =
+    isB2B
+      ? selectedVariant
+          ?.originalPriceB2B ||
+        num(
+          (product as any)
+            ?.original_price_b2b ??
+            (product as any)
+              ?.originalPriceB2b ??
+            (product as any)
+              ?.mrp ??
+            currentPrice,
+          currentPrice,
+        )
+      : selectedVariant
+          ?.mrp ||
+        num(
+          (product as any)
+            ?.originalPrice ??
+            (product as any)
+              ?.mrp ??
+            (product as any)
+              ?.price ??
+            currentPrice,
+          currentPrice,
+        );
+
+  const selectedWishlistVariantId =
+    positiveId(
+      selectedVariant
+        ?.variantId,
+    );
+
+  const selectedPatternType =
+    text(
+      selectedVariant
+        ?.patternType ||
+        (product as any)
+          ?.patternType ||
+        (product as any)
+          ?.pattern_type,
+    );
+
+  const selectedDesignCode =
+    text(
+      selectedVariant
+        ?.designCode ||
+        (product as any)
+          ?.designCode ||
+        (product as any)
+          ?.design_code,
     );
 
   const path = text(
@@ -2264,27 +1583,26 @@ const ProductDetails:
 
         if (!found) {
           setProduct(null);
-
           setLoadError(
             "Product not found",
           );
-
           return;
         }
 
-        const variants =
+        const rows =
           getVariants(found);
 
         const available =
-          variants.filter(
+          rows.filter(
             (variant) =>
-              variant.available > 0,
+              variant.available >
+              0,
           );
 
         const usable =
           available.length
             ? available
-            : variants;
+            : rows;
 
         const routed =
           requestedVariantId
@@ -2293,7 +1611,7 @@ const ProductDetails:
                 requestedVariantId,
               ) ||
               routeVariant(
-                variants,
+                rows,
                 requestedVariantId,
               )
             : null;
@@ -2301,31 +1619,31 @@ const ProductDetails:
         const productColor =
           text(
             (found as any)
-              .selectedColor ||
+              ?.selectedColor ||
               (found as any)
-                .selected_colour ||
+                ?.selected_colour ||
               (found as any)
-                .displayColor ||
+                ?.displayColor ||
               (found as any)
-                .display_color ||
+                ?.display_color ||
               (found as any)
-                .color ||
+                ?.color ||
               (found as any)
-                .colour,
+                ?.colour,
           );
 
         const productSize =
           text(
             (found as any)
-              .selectedSize ||
+              ?.selectedSize ||
               (found as any)
-                .selected_size ||
+                ?.selected_size ||
               (found as any)
-                .displaySize ||
+                ?.displaySize ||
               (found as any)
-                .display_size ||
+                ?.display_size ||
               (found as any)
-                .size,
+                ?.size,
           );
 
         const first =
@@ -2348,7 +1666,7 @@ const ProductDetails:
               ),
           ) ||
           usable[0] ||
-          variants[0];
+          rows[0];
 
         setProduct(found);
 
@@ -2357,7 +1675,7 @@ const ProductDetails:
             productColor ||
             text(
               (found as any)
-                .colors?.[0],
+                ?.colors?.[0],
             ),
         );
 
@@ -2366,7 +1684,7 @@ const ProductDetails:
             productSize ||
             text(
               (found as any)
-                .sizes?.[0],
+                ?.sizes?.[0],
             ),
         );
 
@@ -2404,15 +1722,13 @@ const ProductDetails:
   ]);
 
   useEffect(() => {
-    if (
-      !activeVariants.length
-    ) {
+    if (!variants.length) {
       return;
     }
 
     if (
       matchingVariants(
-        activeVariants,
+        variants,
         selectedSize,
         selectedColor,
       ).length
@@ -2421,7 +1737,7 @@ const ProductDetails:
     }
 
     const next =
-      activeVariants.find(
+      variants.find(
         (variant) =>
           selectedColor &&
           sameColor(
@@ -2429,7 +1745,7 @@ const ProductDetails:
             selectedColor,
           ),
       ) ||
-      activeVariants.find(
+      variants.find(
         (variant) =>
           selectedSize &&
           sameSize(
@@ -2437,7 +1753,7 @@ const ProductDetails:
             selectedSize,
           ),
       ) ||
-      activeVariants[0];
+      variants[0];
 
     if (next) {
       setSelectedColor(
@@ -2449,7 +1765,7 @@ const ProductDetails:
       );
     }
   }, [
-    activeVariants,
+    variants,
     selectedColor,
     selectedSize,
   ]);
@@ -2463,11 +1779,12 @@ const ProductDetails:
     }
 
     if (
-      !sizes.some((size) =>
-        sameSize(
-          size,
-          selectedSize,
-        ),
+      !sizes.some(
+        (size) =>
+          sameSize(
+            size,
+            selectedSize,
+          ),
       )
     ) {
       setSelectedSize(
@@ -2487,7 +1804,8 @@ const ProductDetails:
 
     setTimeout(
       () =>
-        mainCarouselRef.current
+        mainCarouselRef
+          .current
           ?.goToSlide?.(2),
       0,
     );
@@ -2499,37 +1817,36 @@ const ProductDetails:
   useEffect(() => {
     let alive = true;
 
-    const loadRecommended =
-      async () => {
-        if (!product) {
+    const load = async () => {
+      if (!product) {
+        setRecommended([]);
+        return;
+      }
+
+      try {
+        const products =
+          await fetchProductsByGender(
+            (product as any)
+              ?.gender,
+            3,
+          );
+
+        if (alive) {
+          setRecommended(
+            buildRecommendations(
+              product,
+              products,
+            ),
+          );
+        }
+      } catch {
+        if (alive) {
           setRecommended([]);
-          return;
         }
+      }
+    };
 
-        try {
-          const products =
-            await fetchProductsByGender(
-              (product as any)
-                .gender,
-              3,
-            );
-
-          if (alive) {
-            setRecommended(
-              buildRecommendations(
-                product,
-                products,
-              ),
-            );
-          }
-        } catch {
-          if (alive) {
-            setRecommended([]);
-          }
-        }
-      };
-
-    void loadRecommended();
+    void load();
 
     return () => {
       alive = false;
@@ -2571,7 +1888,9 @@ const ProductDetails:
         "wishlist-updated",
         sync,
       );
-  }, [selectedWishlistVariantId]);
+  }, [
+    selectedWishlistVariantId,
+  ]);
 
   if (loading) {
     return (
@@ -2627,28 +1946,42 @@ const ProductDetails:
     setCartMessage("");
     setSelectedColor(color);
 
+    const colorVariants =
+      variants.filter(
+        (variant) =>
+          sameColor(
+            variant.color,
+            color,
+          ),
+      );
+
+    const availableVariants =
+      colorVariants.filter(
+        (variant) =>
+          variant.available > 0,
+      );
+
+    const usable =
+      availableVariants.length
+        ? availableVariants
+        : colorVariants;
+
     const validSizes =
       sortSizes(
-        activeVariants
-          .filter((variant) =>
-            sameColor(
-              variant.color,
-              color,
-            ),
-          )
-          .map(
-            (variant) =>
-              variant.size,
-          ),
+        usable.map(
+          (variant) =>
+            variant.size,
+        ),
       );
 
     if (
       validSizes.length &&
-      !validSizes.some((size) =>
-        sameSize(
-          size,
-          selectedSize,
-        ),
+      !validSizes.some(
+        (size) =>
+          sameSize(
+            size,
+            selectedSize,
+          ),
       )
     ) {
       setSelectedSize(
@@ -2664,19 +1997,32 @@ const ProductDetails:
     setCartMessage("");
     setSelectedSize(size);
 
+    const sizeVariants =
+      variants.filter(
+        (variant) =>
+          sameSize(
+            variant.size,
+            size,
+          ),
+      );
+
+    const availableVariants =
+      sizeVariants.filter(
+        (variant) =>
+          variant.available > 0,
+      );
+
+    const usable =
+      availableVariants.length
+        ? availableVariants
+        : sizeVariants;
+
     const validColors =
       sortColors(
-        activeVariants
-          .filter((variant) =>
-            sameSize(
-              variant.size,
-              size,
-            ),
-          )
-          .map(
-            (variant) =>
-              variant.color,
-          ),
+        usable.map(
+          (variant) =>
+            variant.color,
+        ),
       );
 
     if (
@@ -2700,18 +2046,19 @@ const ProductDetails:
       | "plus"
       | "minus",
   ) =>
-    setQuantity((current) =>
-      type === "minus"
-        ? Math.max(
-            1,
-            current - 1,
-          )
-        : availableStock > 0
-          ? Math.min(
-              availableStock,
-              current + 1,
+    setQuantity(
+      (current) =>
+        type === "minus"
+          ? Math.max(
+              1,
+              current - 1,
             )
-          : current + 1,
+          : availableStock > 0
+            ? Math.min(
+                availableStock,
+                current + 1,
+              )
+            : current + 1,
     );
 
   const addProductToCart =
@@ -2736,7 +2083,6 @@ const ProductDetails:
         setCartError(
           "Please select size.",
         );
-
         return false;
       }
 
@@ -2747,7 +2093,6 @@ const ProductDetails:
         setCartError(
           "Please select color.",
         );
-
         return false;
       }
 
@@ -2758,7 +2103,6 @@ const ProductDetails:
         setCartError(
           "Selected size and color combination is not available.",
         );
-
         return false;
       }
 
@@ -2769,7 +2113,6 @@ const ProductDetails:
         setCartError(
           `Only ${availableStock} stock available.`,
         );
-
         return false;
       }
 
@@ -2784,7 +2127,6 @@ const ProductDetails:
         setCartError(
           "Product id not found.",
         );
-
         return false;
       }
 
@@ -2816,13 +2158,15 @@ const ProductDetails:
             (variant) =>
               positiveId(
                 variant.variantId,
-              ) === source.variantId,
+              ) ===
+              source.variantId,
           ) ||
-          allVariants.find(
+          variants.find(
             (variant) =>
               positiveId(
                 variant.variantId,
-              ) === source.variantId,
+              ) ===
+              source.variantId,
           ) ||
           selectedVariant;
 
@@ -2834,23 +2178,29 @@ const ProductDetails:
           user_id: userId,
           product_id:
             positiveId(
-              sourceVariant.productId,
-            ) || realProductId,
+              sourceVariant
+                .productId,
+            ) ||
+            realProductId,
           variant_id:
             source.variantId,
           design_code:
-            sourceVariant.designCode ||
+            sourceVariant
+              .designCode ||
             selectedDesignCode ||
             null,
           pattern_type:
-            sourceVariant.patternType ||
+            sourceVariant
+              .patternType ||
             selectedPatternType ||
             null,
           pattern_code:
-            sourceVariant.patternCode ||
+            sourceVariant
+              .patternCode ||
             null,
           ean_code:
-            sourceVariant.barcode ||
+            sourceVariant
+              .barcode ||
             null,
           selected_size:
             sourceVariant.size ||
@@ -2861,7 +2211,8 @@ const ProductDetails:
           quantity:
             sourceQuantity,
           image_url:
-            sourceVariant.imageUrl ||
+            sourceVariant
+              .imageUrl ||
             images[0] ||
             null,
           weight:
@@ -2875,10 +2226,12 @@ const ProductDetails:
           height:
             sourceVariant.height,
           hsn_code:
-            sourceVariant.hsnCode ||
+            sourceVariant
+              .hsnCode ||
             null,
           hsn_percentage:
-            sourceVariant.hsnPercentage,
+            sourceVariant
+              .hsnPercentage,
         });
 
         remaining -=
@@ -2979,9 +2332,6 @@ const ProductDetails:
       );
 
       try {
-        const variantId =
-          selectedWishlistVariantId;
-
         const response =
           await fetch(
             `${API_BASE}/api/wishlist`,
@@ -2999,9 +2349,9 @@ const ProductDetails:
                   user_id:
                     userId,
                   product_id:
-                    variantId,
+                    selectedWishlistVariantId,
                   variant_id:
-                    variantId,
+                    selectedWishlistVariantId,
                   actual_product_id:
                     backendProductId,
                 }),
@@ -3027,14 +2377,14 @@ const ProductDetails:
               ).filter(
                 (item) =>
                   item !==
-                  variantId,
+                  selectedWishlistVariantId,
               )
             : Array.from(
                 new Set([
                   ...readWishlist(
                     userId,
                   ),
-                  variantId,
+                  selectedWishlistVariantId,
                 ]),
               );
 
@@ -3059,15 +2409,18 @@ const ProductDetails:
         await navigator.share({
           title:
             (product as any)
-              .title,
-          text: `Check out ${(product as any).title}`,
+              ?.title,
+          text:
+            `Check out ${(product as any)?.title}`,
           url:
             window.location.href,
         });
       } else {
-        await navigator.clipboard.writeText(
-          window.location.href,
-        );
+        await navigator
+          .clipboard
+          .writeText(
+            window.location.href,
+          );
 
         alert(
           "Link copied to clipboard!",
@@ -3103,7 +2456,8 @@ const ProductDetails:
     setSelectedImage(index);
 
     if (hasMultipleImages) {
-      mainCarouselRef.current
+      mainCarouselRef
+        .current
         ?.goToSlide?.(
           index + 2,
         );
@@ -3146,7 +2500,7 @@ const ProductDetails:
                           event,
                         ) => {
                           event.currentTarget.src =
-                            "/placeholder.svg";
+                            PLACEHOLDER;
                         }}
                       />
                     </button>
@@ -3208,7 +2562,8 @@ const ProductDetails:
 
                           setTimeout(
                             () =>
-                              lightboxCarouselRef.current
+                              lightboxCarouselRef
+                                .current
                                 ?.goToSlide?.(
                                   index +
                                     2,
@@ -3219,7 +2574,7 @@ const ProductDetails:
                       >
                         <img
                           src={src}
-                          alt={`${(product as any).title} - Image ${index + 1}`}
+                          alt={`${(product as any)?.title} - Image ${index + 1}`}
                           loading={
                             index === 0
                               ? "eager"
@@ -3230,7 +2585,7 @@ const ProductDetails:
                             event,
                           ) => {
                             event.currentTarget.src =
-                              "/placeholder.svg";
+                              PLACEHOLDER;
                           }}
                         />
                       </button>
@@ -3245,7 +2600,6 @@ const ProductDetails:
                     setLightboxImage(
                       0,
                     );
-
                     setLightboxOpen(
                       true,
                     );
@@ -3255,7 +2609,7 @@ const ProductDetails:
                     src={images[0]}
                     alt={
                       (product as any)
-                        .title
+                        ?.title
                     }
                     loading="eager"
                     className="absolute inset-0 w-full h-full object-cover object-top rounded-2xl"
@@ -3263,7 +2617,7 @@ const ProductDetails:
                       event,
                     ) => {
                       event.currentTarget.src =
-                        "/placeholder.svg";
+                        PLACEHOLDER;
                     }}
                   />
                 </button>
@@ -3338,7 +2692,7 @@ const ProductDetails:
                           event,
                         ) => {
                           event.currentTarget.src =
-                            "/placeholder.svg";
+                            PLACEHOLDER;
                         }}
                       />
                     </button>
@@ -3352,14 +2706,14 @@ const ProductDetails:
             <h1 className="text-2xl lg:text-3xl font-semibold text-gray-900 mb-2">
               {
                 (product as any)
-                  .title
+                  ?.title
               }
             </h1>
 
             <p className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">
               {
                 (product as any)
-                  .brand
+                  ?.brand
               }
             </p>
 
@@ -3401,9 +2755,13 @@ const ProductDetails:
 
                   <span className="text-base font-bold text-green-600 tracking-tight">
                     {Math.round(
-                      ((comparePrice -
-                        currentPrice) /
-                        comparePrice) *
+                      (
+                        (
+                          comparePrice -
+                          currentPrice
+                        ) /
+                        comparePrice
+                      ) *
                         100,
                     )}
                     % OFF
@@ -3419,7 +2777,7 @@ const ProductDetails:
                 <RatingStars
                   rating={
                     (product as any)
-                      .ratings
+                      ?.ratings
                       ?.average || 0
                   }
                 />
@@ -3427,7 +2785,7 @@ const ProductDetails:
                 <span className="text-gray-500 text-sm ml-2 font-medium">
                   (
                   {(product as any)
-                    .ratings?.count ||
+                    ?.ratings?.count ||
                     0}{" "}
                   reviews)
                 </span>
@@ -3439,84 +2797,109 @@ const ProductDetails:
               dangerouslySetInnerHTML={{
                 __html:
                   (product as any)
-                    .description ||
+                    ?.description ||
                   "",
               }}
             />
 
             <div className="flex flex-col gap-6 mb-6">
-              {colors.length ? (
+              {colorOptions.length ? (
                 <div className="flex flex-col gap-3">
-                  <span className="text-sm font-bold text-gray-900 uppercase tracking-widest">
-                    Color
-                  </span>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <span className="text-sm font-bold text-gray-900 uppercase tracking-widest">
+                      Color
+                    </span>
 
-                  <div className="flex flex-wrap gap-3">
-                    {colors.map(
-                      (color) => {
-                        const variant =
-                          activeVariants.find(
-                            (item) =>
-                              sameColor(
-                                item.color,
-                                color,
-                              ),
+                    {selectedColor ? (
+                      <span className="text-sm font-semibold text-gray-600">
+                        {selectedColor}
+                      </span>
+                    ) : null}
+                  </div>
+
+                  <div className="-mx-1 overflow-x-auto pb-1 scrollbar-none md:overflow-visible">
+                    <div className="flex w-max min-w-full gap-3 px-1 pb-2 md:w-auto md:flex-wrap">
+                      {colorOptions.map(
+                        (option) => {
+                          const selected =
+                            sameColor(
+                              option.color,
+                              selectedColor,
+                            );
+
+                          return (
+                            <button
+                              type="button"
+                              key={
+                                option.color
+                              }
+                              onClick={() =>
+                                changeColor(
+                                  option.color,
+                                )
+                              }
+                              disabled={
+                                !option.available
+                              }
+                              title={
+                                option.available
+                                  ? option.color
+                                  : `${option.color} is out of stock`
+                              }
+                              aria-label={`Select Color ${option.color}`}
+                              className={`group w-[78px] shrink-0 text-center transition-all sm:w-[88px] ${
+                                option.available
+                                  ? "cursor-pointer"
+                                  : "cursor-not-allowed"
+                              }`}
+                            >
+                              <span
+                                className={`relative block aspect-[3/4] overflow-hidden rounded-lg bg-gray-50 transition-all ${
+                                  selected
+                                    ? "border-2 border-gray-900 p-[2px] shadow-sm"
+                                    : option.available
+                                      ? "border border-gray-200 group-hover:border-gray-500"
+                                      : "border border-gray-200 opacity-45 grayscale"
+                                }`}
+                              >
+                                <img
+                                  src={
+                                    option.image
+                                  }
+                                  alt={`${(product as any)?.title} - ${option.color}`}
+                                  loading="lazy"
+                                  className="h-full w-full rounded-[5px] object-cover object-top bg-gray-50"
+                                  onError={(
+                                    event,
+                                  ) => {
+                                    event.currentTarget.src =
+                                      PLACEHOLDER;
+                                  }}
+                                />
+
+                                {!option.available ? (
+                                  <span className="absolute inset-x-1 bottom-1 rounded bg-white/90 px-1 py-0.5 text-[9px] font-bold uppercase tracking-wide text-gray-600">
+                                    Out of stock
+                                  </span>
+                                ) : null}
+                              </span>
+
+                              <span
+                                className={`mt-2 block min-h-[32px] text-[11px] font-semibold leading-4 sm:text-xs ${
+                                  selected
+                                    ? "text-gray-900"
+                                    : option.available
+                                      ? "text-gray-600 group-hover:text-gray-900"
+                                      : "text-gray-400"
+                                }`}
+                              >
+                                {option.color}
+                              </span>
+                            </button>
                           );
-
-                        const selected =
-                          sameColor(
-                            color,
-                            selectedColor,
-                          );
-
-                        const available =
-                          allVariants.some(
-                            (item) =>
-                              sameColor(
-                                item.color,
-                                color,
-                              ) &&
-                              item.available > 0,
-                          );
-
-                        return (
-                          <button
-                            type="button"
-                            key={
-                              color
-                            }
-                            onClick={() =>
-                              changeColor(
-                                color,
-                              )
-                            }
-                            disabled={!available}
-                            title={
-                              available
-                                ? color
-                                : `${color} is out of stock`
-                            }
-                            aria-label={`Select Color ${color}`}
-                            className={`w-8 h-8 rounded-full border border-gray-300 transition-all ${
-                              selected
-                                ? "ring-2 ring-gray-500 ring-offset-2 scale-110"
-                                : available
-                                  ? "hover:scale-110"
-                                  : "cursor-not-allowed opacity-30 grayscale"
-                            }`}
-                            style={{
-                              background:
-                                colorBackground(
-                                  color,
-                                  variant?.colorValue,
-                                ),
-                              boxShadow:
-                                "inset 0 0 0 1px rgba(0,0,0,0.08)",
-                            }}
-                          />
-                        );
-                      },
-                    )}
+                        },
+                      )}
+                    </div>
                   </div>
                 </div>
               ) : null}
@@ -3532,26 +2915,27 @@ const ProductDetails:
                       (size) => {
                         const available =
                           matchingVariants(
-                            allVariants,
+                            variants,
                             size,
                             selectedColor,
                           ).some(
                             (variant) =>
-                              variant.available > 0,
+                              variant.available >
+                              0,
                           );
 
                         return (
                           <button
                             type="button"
-                            key={
-                              size
-                            }
+                            key={size}
                             onClick={() =>
                               changeSize(
                                 size,
                               )
                             }
-                            disabled={!available}
+                            disabled={
+                              !available
+                            }
                             className={`min-w-12 px-4 py-2.5 rounded-sm text-sm font-source-sans font-bold uppercase tracking-wider transition-all border ${
                               sameSize(
                                 size,
@@ -3796,7 +3180,9 @@ const ProductDetails:
           }
           className="absolute top-4 right-4 md:top-6 md:right-6 p-2 bg-gray-400 hover:bg-gray-500 rounded-full text-white transition z-10 cursor-pointer shadow-sm"
         >
-          <FiX size={24} />
+          <FiX
+            size={24}
+          />
         </button>
 
         <div className="flex-1 w-full max-w-5xl flex items-center justify-center relative mb-6 overflow-hidden">
@@ -3850,7 +3236,7 @@ const ProductDetails:
                         event,
                       ) => {
                         event.currentTarget.src =
-                          "/placeholder.svg";
+                          PLACEHOLDER;
                       }}
                     />
                   </div>
@@ -3864,13 +3250,13 @@ const ProductDetails:
               className="max-w-full max-h-full object-contain"
               alt={
                 (product as any)
-                  .title
+                  ?.title
               }
               onError={(
                 event,
               ) => {
                 event.currentTarget.src =
-                  "/placeholder.svg";
+                  PLACEHOLDER;
               }}
             />
           )}
@@ -3891,10 +3277,10 @@ const ProductDetails:
                       index,
                     );
 
-                    lightboxCarouselRef.current
+                    lightboxCarouselRef
+                      .current
                       ?.goToSlide?.(
-                        index +
-                          2,
+                        index + 2,
                       );
                   }}
                   className={`h-full aspect-3/4 shrink-0 cursor-pointer border-2 transition-all ${
@@ -3912,7 +3298,7 @@ const ProductDetails:
                       event,
                     ) => {
                       event.currentTarget.src =
-                        "/placeholder.svg";
+                        PLACEHOLDER;
                     }}
                   />
                 </button>
