@@ -437,7 +437,11 @@ export const ProductCardSkeleton: React.FC = () => {
   );
 };
 
-export const ProductCard: React.FC<Product> = (
+export type ProductCardProps = Product & {
+  showBrand?: boolean;
+};
+
+export const ProductCard: React.FC<ProductCardProps> = (
   props: any,
 ) => {
   const {
@@ -474,6 +478,7 @@ export const ProductCard: React.FC<Product> = (
     eanCode,
     barcodes,
     ean_codes,
+    showBrand = true,
   } = props;
 
   const navigate = useNavigate();
@@ -954,14 +959,16 @@ export const ProductCard: React.FC<Product> = (
       </div>
 
       <div className="mt-3 flex flex-col">
-        <p className="truncate font-poppins text-[0.72rem] font-extrabold uppercase leading-tight tracking-wide text-gray-500 md:text-[0.78rem]">
-          {displayBrand}
-        </p>
+        {showBrand ? (
+          <p className="truncate font-poppins text-[0.72rem] font-extrabold uppercase leading-tight tracking-wide text-gray-500 md:text-[0.78rem]">
+            {displayBrand}
+          </p>
+        ) : null}
 
         <h3
           aria-label={displayTitle}
           title={displayTitle}
-          className="mt-1 line-clamp-2 font-big-shoulders text-[1.1rem] font-bold uppercase leading-[1.05] tracking-tight text-black md:text-[1.2rem]"
+          className={`${showBrand ? "mt-1" : ""} line-clamp-2 font-big-shoulders text-[1.1rem] font-bold uppercase leading-[1.05] tracking-tight text-black md:text-[1.2rem]`}
         >
           {displayTitle}
         </h3>

@@ -18,7 +18,7 @@ import poster4 from "../assets/hero-poster-4.jpeg";
 import poster5 from "../assets/hero-poster-5.jpeg";
 import poster6 from "../assets/hero-poster-6.jpeg";
 import { CollectionTabs } from "../components/CollectionTabs";
-import { fetchHomepageImageMap, type HomepageImageMap } from "../services/homepageImagesApi";
+import { fetchHomepageConfiguration, type HomepageImageMap, type HomepageSectionSettingsMap } from "../services/homepageImagesApi";
 import { fetchCategoriesByGender, fetchProductsByGender, type StorefrontCategory } from "../services/productsApi";
 
 const normalizeText = (value: any) => String(value || "").toLowerCase().replace(/-/g, " ").replace(/&/g, " and ").replace(/[^a-z0-9]+/g, " ").replace(/\s+/g, " ").trim();
@@ -94,6 +94,8 @@ const Men = () => {
   const [typedProducts, setTypedProducts] = useState<Product[]>([]);
   const [pageCategories, setPageCategories] = useState<StorefrontCategory[]>([]);
   const [posterMap, setPosterMap] = useState<HomepageImageMap>({});
+  const [posterSettings, setPosterSettings] = useState<HomepageSectionSettingsMap>({});
+  const [postersLoaded, setPostersLoaded] = useState(false);
 
   useEffect(() => {
     localStorage.setItem("preferred_gender", "Men");
@@ -123,12 +125,20 @@ const Men = () => {
 
   useEffect(() => {
     let alive = true;
-    fetchHomepageImageMap("men")
+    fetchHomepageConfiguration("men")
       .then(data => {
-        if (alive) setPosterMap(data);
+        if (alive) {
+          setPosterMap(data.images);
+          setPosterSettings(data.settings);
+          setPostersLoaded(true);
+        }
       })
       .catch(() => {
-        if (alive) setPosterMap({});
+        if (alive) {
+          setPosterMap({});
+          setPosterSettings({});
+          setPostersLoaded(true);
+        }
       });
     return () => {
       alive = false;
@@ -171,12 +181,12 @@ const Men = () => {
 
   return (
     <div className="w-full bg-white">
-      <HeroCarousel banners={heroBanners} />
+      {postersLoaded ? <HeroCarousel banners={heroBanners} /> : <div className="w-full aspect-[16/6] bg-neutral-100 animate-pulse" />}
       {shopCategories.length > 0 ? <CategoriesSection categories={shopCategories as any} title="Shop by Category" productData={typedProducts} /> : null}
       <NamedSection title="NEW DROPS" productData={newDrops} autoplay={false} />
       <HeroProductSection products={newDrops.slice(0, 10)} className="mb-4" />
       {tshirts.length > 0 ? <NamedSection title="T-SHIRTS & POLO" productData={tshirts} /> : null}
-      <BannerSlider title="Latest Offers" slides={bannerSlides} className="py-4! md:py-8! md:pb-0!" />
+      {postersLoaded && posterSettings["men.offer"] !== false ? <BannerSlider title="Latest Offers" slides={bannerSlides} className="py-4! md:py-8! md:pb-0!" /> : null}
       {cargos.length > 0 ? <NamedSection title="CARGO PANTS" productData={cargos} /> : null}
       {pants.length > 0 ? <NamedSection title="PANTS" productData={pants} /> : null}
       <CollectionTabs />

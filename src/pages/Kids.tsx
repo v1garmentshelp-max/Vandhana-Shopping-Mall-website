@@ -12,7 +12,7 @@ import NamedSection from "../components/NamedSection";
 import HeroProductSection from "../components/HeroProductSection";
 import FeaturesSection from "../components/FeaturesSection";
 import { CollectionTabs } from "../components/CollectionTabs";
-import { fetchHomepageImageMap, type HomepageImageMap } from "../services/homepageImagesApi";
+import { fetchHomepageConfiguration, type HomepageImageMap } from "../services/homepageImagesApi";
 import { fetchCategoriesByGender, fetchProductsByGender, type StorefrontCategory } from "../services/productsApi";
 
 const normalizeText = (value: any) => String(value || "").toLowerCase().replace(/-/g, " ").replace(/&/g, " and ").replace(/[^a-z0-9]+/g, " ").replace(/\s+/g, " ").trim();
@@ -67,6 +67,39 @@ const byName = (products: Product[], words: string[]) => {
     const text = normalizeText(`${product.title || ""} ${product.product_name || ""} ${product.name || ""} ${product.categoryName || ""} ${product.category_name || ""} ${product.categoryPath || ""} ${product.category_path || ""}`);
     return searchWords.some(word => text.includes(word));
   }));
+};
+
+type KidsAudience = "boys" | "girls";
+
+const getCategorySearchText = (category: any) => normalizeText(
+  `${category?.name || ""} ${category?.categoryName || ""} ${category?.category_name || ""} ${category?.categoryPath || ""} ${category?.category_path || ""} ${category?.slug || ""}`,
+);
+
+const getAudienceCategoryIds = (categories: StorefrontCategory[], audience: KidsAudience) => {
+  const audienceWords = audience === "boys" ? ["boy", "boys"] : ["girl", "girls"];
+  const rootIds = categories
+    .filter(category => {
+      const text = getCategorySearchText(category);
+      return audienceWords.some(word => text.split(" ").includes(word));
+    })
+    .map(getCategoryId)
+    .filter(Boolean);
+
+  return getCategoryDescendantIds(categories, rootIds);
+};
+
+const filterProductsByAudience = (products: Product[], categories: StorefrontCategory[], audience: KidsAudience) => {
+  const categoryIds = getAudienceCategoryIds(categories, audience);
+  const categoryMatches = dedupeByDesign(
+    products.filter((product: any) => categoryIds.has(getProductCategoryId(product))),
+  );
+
+  if (categoryMatches.length > 0) return categoryMatches;
+
+  return byName(
+    products,
+    audience === "boys" ? ["boy", "boys", "kids boy"] : ["girl", "girls", "kids girl"],
+  );
 };
 
 const getKidsShopCategories = (categories: StorefrontCategory[]) => {
@@ -134,6 +167,8 @@ const Kids = () => {
   const [typedProducts, setTypedProducts] = useState<Product[]>([]);
   const [pageCategories, setPageCategories] = useState<StorefrontCategory[]>([]);
   const [posterMap, setPosterMap] = useState<HomepageImageMap>({});
+  const [postersLoaded, setPostersLoaded] = useState(false);
+  const [activeAudience, setActiveAudience] = useState<KidsAudience>("boys");
 
   useEffect(() => {
     localStorage.setItem("preferred_gender", "Kids");
@@ -163,12 +198,18 @@ const Kids = () => {
 
   useEffect(() => {
     let alive = true;
-    fetchHomepageImageMap("kids")
+    fetchHomepageConfiguration("kids")
       .then(data => {
-        if (alive) setPosterMap(data);
+        if (alive) {
+          setPosterMap(data.images);
+          setPostersLoaded(true);
+        }
       })
       .catch(() => {
-        if (alive) setPosterMap({});
+        if (alive) {
+          setPosterMap({});
+          setPostersLoaded(true);
+        }
       });
     return () => {
       alive = false;
@@ -183,28 +224,63 @@ const Kids = () => {
     { id: 4, image: posterMap["kids.hero.5"]?.imageUrl || poster4, alt: posterMap["kids.hero.5"]?.altText || "Kids Fashion", link: posterMap["kids.hero.5"]?.link || "/collections?gender=Kids" }
   ], [posterMap]);
 
-  const shopCategories = useMemo(() => getKidsShopCategories(pageCategories), [pageCategories]);
-  const newDrops = useMemo(() => dedupeByDesign(typedProducts), [typedProducts]);
+  const audienceCategoryIds = useMemo(
+    () => getAudienceCategoryIds(pageCategories, activeAudience),
+    [pageCategories, activeAudience],
+  );
+
+  const audienceCategories = useMemo(
+    () => pageCategories.filter(category => audienceCategoryIds.has(getCategoryId(category))),
+    [pageCategories, audienceCategoryIds],
+  );
+
+  const audienceProducts = useMemo(
+    () => filterProductsByAudience(typedProducts, pageCategories, activeAudience),
+    [typedProducts, pageCategories, activeAudience],
+  );
+
+  const shopCategories = useMemo(
+    () => getKidsShopCategories(audienceCategories),
+    [audienceCategories],
+  );
+
+  const newDrops = useMemo(() => dedupeByDesign(audienceProducts), [audienceProducts]);
 
   const nightDresses = useMemo(() => {
-    const matched = byCategoryIds(typedProducts, pageCategories, ["24", "36"]);
-    return matched.length ? matched : byName(typedProducts, ["night dress"]);
-  }, [typedProducts, pageCategories]);
+    const matched = byCategoryIds(audienceProducts, pageCategories, ["24", "36"]);
+    return matched.length ? matched : byName(audienceProducts, ["night dress"]);
+  }, [audienceProducts, pageCategories]);
 
   const pants = useMemo(() => {
-    const matched = byCategoryIds(typedProducts, pageCategories, ["25", "26", "27", "28", "29", "35", "37", "38"]);
-    return matched.length ? matched : byName(typedProducts, ["pant", "bagge", "baggy", "jean", "cargo", "jogger", "short"]);
-  }, [typedProducts, pageCategories]);
+    const matched = byCategoryIds(audienceProducts, pageCategories, ["25", "26", "27", "28", "29", "35", "37", "38"]);
+    return matched.length ? matched : byName(audienceProducts, ["pant", "bagge", "baggy", "jean", "cargo", "jogger", "short"]);
+  }, [audienceProducts, pageCategories]);
 
   const frocks = useMemo(() => {
-    const matched = byCategoryIds(typedProducts, pageCategories, ["30", "32", "39", "108"]);
-    return matched.length ? matched : byName(typedProducts, ["frock", "dress", "western wear"]);
-  }, [typedProducts, pageCategories]);
+    const matched = byCategoryIds(audienceProducts, pageCategories, ["30", "32", "39", "108"]);
+    return matched.length ? matched : byName(audienceProducts, ["frock", "dress", "western wear"]);
+  }, [audienceProducts, pageCategories]);
 
   return (
     <div className="w-full bg-white">
-      <HeroCarousel banners={heroBanners} />
-      {shopCategories.length > 0 ? <CategoriesSection categories={shopCategories as any} title="Shop by Category" productData={typedProducts} /> : null}
+      {postersLoaded ? <HeroCarousel banners={heroBanners} /> : <div className="w-full aspect-[16/6] bg-neutral-100 animate-pulse" />}
+      <div className="flex justify-center gap-3 px-4 py-5">
+        <button
+          type="button"
+          onClick={() => setActiveAudience("boys")}
+          className={`min-w-32 rounded-full border px-6 py-3 text-sm font-semibold transition-colors ${activeAudience === "boys" ? "border-secondary bg-secondary text-white" : "border-neutral-300 bg-white text-neutral-800 hover:border-secondary"}`}
+        >
+          Kids-Boys
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveAudience("girls")}
+          className={`min-w-32 rounded-full border px-6 py-3 text-sm font-semibold transition-colors ${activeAudience === "girls" ? "border-secondary bg-secondary text-white" : "border-neutral-300 bg-white text-neutral-800 hover:border-secondary"}`}
+        >
+          Kids-Girls
+        </button>
+      </div>
+      {shopCategories.length > 0 ? <CategoriesSection categories={shopCategories as any} title="Shop by Category" productData={audienceProducts} /> : null}
       <NamedSection title="NEW DROPS" productData={newDrops} autoplay={false} />
       <HeroProductSection products={newDrops.slice(0, 10)} className="mb-4" />
       {nightDresses.length > 0 ? <NamedSection title="NIGHT DRESSES" productData={nightDresses} /> : null}

@@ -121,7 +121,7 @@ const NamedSection = ({
                 key={getProductKey(product, index)}
                 className="flex-[0_0_46%] min-w-0 pl-2 sm:flex-[0_0_45%] md:flex-[0_0_28%] lg:flex-[0_0_21%]"
               >
-                <ProductCard {...product} />
+                <ProductCard {...product} showBrand={false} />
               </div>
             ))}
           </div>

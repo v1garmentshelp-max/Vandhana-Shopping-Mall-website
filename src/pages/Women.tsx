@@ -14,7 +14,7 @@ import banner1 from "../assets/offers-poster-5.jpeg";
 import banner2 from "../assets/offers-poster-6.jpeg";
 import FeaturesSection from "../components/FeaturesSection";
 import { CollectionTabs } from "../components/CollectionTabs";
-import { fetchHomepageImageMap, type HomepageImageMap } from "../services/homepageImagesApi";
+import { fetchHomepageConfiguration, type HomepageImageMap, type HomepageSectionSettingsMap } from "../services/homepageImagesApi";
 import { fetchCategoriesByGender, fetchProductsByGender, type StorefrontCategory } from "../services/productsApi";
 
 const normalizeText = (value: any) => String(value || "").toLowerCase().replace(/-/g, " ").replace(/&/g, " and ").replace(/[^a-z0-9]+/g, " ").replace(/\s+/g, " ").trim();
@@ -90,6 +90,8 @@ const Women = () => {
   const [typedProducts, setTypedProducts] = useState<Product[]>([]);
   const [pageCategories, setPageCategories] = useState<StorefrontCategory[]>([]);
   const [posterMap, setPosterMap] = useState<HomepageImageMap>({});
+  const [posterSettings, setPosterSettings] = useState<HomepageSectionSettingsMap>({});
+  const [postersLoaded, setPostersLoaded] = useState(false);
 
   useEffect(() => {
     localStorage.setItem("preferred_gender", "Women");
@@ -119,12 +121,20 @@ const Women = () => {
 
   useEffect(() => {
     let alive = true;
-    fetchHomepageImageMap("women")
+    fetchHomepageConfiguration("women")
       .then(data => {
-        if (alive) setPosterMap(data);
+        if (alive) {
+          setPosterMap(data.images);
+          setPosterSettings(data.settings);
+          setPostersLoaded(true);
+        }
       })
       .catch(() => {
-        if (alive) setPosterMap({});
+        if (alive) {
+          setPosterMap({});
+          setPosterSettings({});
+          setPostersLoaded(true);
+        }
       });
     return () => {
       alive = false;
@@ -146,22 +156,18 @@ const Women = () => {
 
   const shopCategories = useMemo(() => getShopCategories(pageCategories), [pageCategories]);
   const newDrops = useMemo(() => dedupeByDesign(typedProducts), [typedProducts]);
-
   const kurthiPantSets = useMemo(() => {
     const matched = byCategoryIds(typedProducts, pageCategories, ["15"]);
     return matched.length ? matched : byName(typedProducts, ["kurti pant set", "kurthi pant set", "kurti", "kurthi"]);
   }, [typedProducts, pageCategories]);
-
   const tops = useMemo(() => {
     const matched = byCategoryIds(typedProducts, pageCategories, ["12", "13"]);
     return matched.length ? matched : byName(typedProducts, ["top", "t shirt", "oversized", "round neck"]);
   }, [typedProducts, pageCategories]);
-
   const pants = useMemo(() => {
     const matched = byCategoryIds(typedProducts, pageCategories, ["17", "18"]);
     return matched.length ? matched : byName(typedProducts, ["ladies pant", "pant", "cargo"]);
   }, [typedProducts, pageCategories]);
-
   const jeans = useMemo(() => {
     const matched = byCategoryIds(typedProducts, pageCategories, ["16"]);
     return matched.length ? matched : byName(typedProducts, ["jean", "denim", "beggi", "baggy"]);
@@ -169,13 +175,13 @@ const Women = () => {
 
   return (
     <div className="w-full bg-white">
-      <HeroCarousel banners={heroBanners} />
+      {postersLoaded ? <HeroCarousel banners={heroBanners} /> : <div className="w-full aspect-[16/6] bg-neutral-100 animate-pulse" />}
       {shopCategories.length > 0 ? <CategoriesSection categories={shopCategories as any} title="Shop by Category" productData={typedProducts} /> : null}
       <NamedSection title="NEW DROPS" productData={newDrops} autoplay={false} />
       <HeroProductSection products={newDrops.slice(0, 10)} className="mb-4" />
       {kurthiPantSets.length > 0 ? <NamedSection title="KURTHI PANT SETS" productData={kurthiPantSets} /> : null}
       {tops.length > 0 ? <NamedSection title="TOPWEAR" productData={tops} /> : null}
-      <BannerSlider title="Latest Offers" slides={bannerSlides} className="py-4! md:py-8! md:pb-0!" />
+      {postersLoaded && posterSettings["women.offer"] !== false ? <BannerSlider title="Latest Offers" slides={bannerSlides} className="py-4! md:py-8! md:pb-0!" /> : null}
       {pants.length > 0 ? <NamedSection title="PANTS" productData={pants} /> : null}
       {jeans.length > 0 ? <NamedSection title="JEANS" productData={jeans} /> : null}
       <CollectionTabs />
