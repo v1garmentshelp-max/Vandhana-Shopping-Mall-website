@@ -864,10 +864,13 @@ export default function Collection() {
         categories,
         selectedGender,
       ).map((category) => ({
-        label: categoryLabel(
-          category,
-          selectedGender,
-        ),
+        label: String(
+          category.name ||
+            categoryLabel(
+              category,
+              selectedGender,
+            ),
+        ).trim(),
         value:
           categoryId(category),
         levelOne:
