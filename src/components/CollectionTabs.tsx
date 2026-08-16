@@ -3,11 +3,7 @@ import { useLocation } from "react-router";
 import { ProductCard, ProductCardSkeleton } from "./ProductCard";
 import { MdOutlineSearchOff } from "react-icons/md";
 import type { Product, ProductGender } from "../Models/Product";
-import {
-  fetchCategoriesByGender,
-  fetchProductsByGender,
-  type StorefrontCategory,
-} from "../services/productsApi";
+import { fetchCategoriesByGender, fetchProductsByGender, type StorefrontCategory } from "../services/productsApi";
 
 const normalizeCategoryText = (value: any) =>
   String(value || "")
@@ -380,10 +376,12 @@ const CollectionTabsContent = ({ title }: { title?: string }) => {
         id: "ALL",
         label: "ALL",
       },
-      ...categories.map((category) => ({
-        id: String(category.id),
-        label: getCategoryLabel(category, preferredGender),
-      })),
+      ...categories
+        .filter((category: any) => Number(category?.level || 0) === 1)
+        .map((category) => ({
+          id: String(category.id),
+          label: getCategoryLabel(category, preferredGender),
+        })),
     ],
     [categories, preferredGender],
   );
@@ -640,7 +638,7 @@ const CollectionTabsContent = ({ title }: { title?: string }) => {
                   key={getProductCardKey(product, index)}
                   className="min-w-0"
                 >
-                  <ProductCard {...product} showBrand={false} />
+                  <ProductCard {...product} />
                 </div>
               ))}
 
