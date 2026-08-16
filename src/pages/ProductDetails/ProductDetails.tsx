@@ -2626,6 +2626,42 @@ const ProductDetails:
                         ) : null}
 
                         <div className="group flex-1 relative bg-white h-[430px] sm:h-[480px] lg:h-[500px] xl:h-[540px] overflow-hidden min-w-0 z-0">
+                            <button
+                                type="button"
+                                className="lg:hidden relative flex h-full w-full items-center justify-center overflow-hidden rounded-2xl bg-white cursor-pointer"
+                                onClick={() => {
+                                    setLightboxImage(
+                                        Math.min(
+                                            selectedImage,
+                                            images.length - 1,
+                                        ),
+                                    );
+
+                                    setLightboxOpen(
+                                        true,
+                                    );
+                                }}
+                            >
+                                <img
+                                    key={`${images[selectedImage] || images[0]}-${selectedImage}`}
+                                    src={
+                                        images[selectedImage] ||
+                                        images[0] ||
+                                        PLACEHOLDER
+                                    }
+                                    alt={`${(product as any)?.title} - Image ${selectedImage + 1}`}
+                                    loading="eager"
+                                    className="block h-full w-full rounded-2xl bg-white object-contain object-center"
+                                    onError={(
+                                        event,
+                                    ) => {
+                                        event.currentTarget.src =
+                                            PLACEHOLDER;
+                                    }}
+                                />
+                            </button>
+
+                            <div className="hidden lg:block h-full w-full">
                             {hasMultipleImages ? (
                                 <Carousel
                                     ref={
@@ -2738,6 +2774,7 @@ const ProductDetails:
                                     />
                                 </button>
                             )}
+                            </div>
 
                             <div className="absolute top-3 right-3 md:top-4 md:right-4 flex flex-col gap-3 z-10">
                                 <button
