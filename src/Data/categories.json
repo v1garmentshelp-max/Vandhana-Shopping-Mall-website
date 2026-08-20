@@ -682,5 +682,25 @@
     "parentId": "22",
     "level": 2,
     "gender": "KIDS"
+  },
+  {
+    "id": "164",
+    "name": "Inner Wear",
+    "slug": "inner-wear",
+    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1787122786/products/8901326445112__front__1787122794022_brbrb2.jpg",
+    "parentId": "2",
+    "level": 1,
+    "gender": "MEN",
+    "is_active": true
+  },
+  {
+    "id": "166",
+    "name": "Inner Wear",
+    "slug": "inner-wear",
+    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1787200846/products/8901326331095__front__1787200856614_idxe1q.jpg",
+    "parentId": "3",
+    "level": 1,
+    "gender": "WOMEN",
+    "is_active": true
   }
 ]
