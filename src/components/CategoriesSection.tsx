@@ -134,6 +134,24 @@ const categoryRecordMap = new Map<string, CategoryRecord>(
   ]),
 );
 
+const namedCategoryImageMap = new Map<string, string>([
+  [
+    "MEN|inner wear",
+    "https://res.cloudinary.com/digu2krba/image/upload/v1782591204/products/11882654__front__1782591192923_vrmz7v.jpg",
+  ],
+  [
+    "WOMEN|inner wear",
+    "https://res.cloudinary.com/digu2krba/image/upload/v1782590959/products/11882868__front__1782590947683_kimyi5.jpg",
+  ],
+]);
+
+const getNamedCategoryImage = (category: any) => {
+  const gender = String(category?.gender || "").trim().toUpperCase();
+  const name = String(category?.name || "").trim().toLowerCase();
+
+  return namedCategoryImageMap.get(`${gender}|${name}`) || "";
+};
+
 const categoryChildrenMap = new Map<string, string[]>();
 
 categoryRecords.forEach((category) => {
@@ -247,6 +265,12 @@ const getCategoryImage = (
     return String(category.image);
   }
 
+  const namedImage = getNamedCategoryImage(category);
+
+  if (isGoodImage(namedImage)) {
+    return namedImage;
+  }
+
   return "/placeholder.svg";
 };
 
@@ -349,7 +373,9 @@ const CategoriesSection = ({
               const categoryId = normalizeCategoryId(category.id);
               const image = getCategoryImage(category, productData);
               const fallbackImage =
-                categoryImageMap.get(categoryId) || "/placeholder.svg";
+                categoryImageMap.get(categoryId) ||
+                getNamedCategoryImage(category) ||
+                "/placeholder.svg";
 
               return (
                 <Link

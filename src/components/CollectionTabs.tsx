@@ -638,7 +638,7 @@ const CollectionTabsContent = ({ title }: { title?: string }) => {
                   key={getProductCardKey(product, index)}
                   className="min-w-0"
                 >
-                  <ProductCard {...product} />
+                  <ProductCard {...product} showBrand={false} />
                 </div>
               ))}
 
