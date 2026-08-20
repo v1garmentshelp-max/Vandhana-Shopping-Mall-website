@@ -230,6 +230,12 @@ const getCategoryImage = (
   category: any,
   productData: Product[],
 ) => {
+  const namedImage = getNamedCategoryImage(category);
+
+  if (isGoodImage(namedImage)) {
+    return namedImage;
+  }
+
   const exactProducts = getExactCategoryProducts(category, productData);
 
   for (const product of exactProducts) {
@@ -263,12 +269,6 @@ const getCategoryImage = (
 
   if (isGoodImage(category?.image)) {
     return String(category.image);
-  }
-
-  const namedImage = getNamedCategoryImage(category);
-
-  if (isGoodImage(namedImage)) {
-    return namedImage;
   }
 
   return "/placeholder.svg";
@@ -373,8 +373,8 @@ const CategoriesSection = ({
               const categoryId = normalizeCategoryId(category.id);
               const image = getCategoryImage(category, productData);
               const fallbackImage =
-                categoryImageMap.get(categoryId) ||
                 getNamedCategoryImage(category) ||
+                categoryImageMap.get(categoryId) ||
                 "/placeholder.svg";
 
               return (
