@@ -702,5 +702,15 @@
     "level": 1,
     "gender": "WOMEN",
     "is_active": true
+  },
+  {
+    "id": "bottom-wear-fallback",
+    "name": "Bottom Wear",
+    "slug": "bottom-wear",
+    "image": "https://images.bewakoof.com/t640/men-s-black-go-rogue-color-block-oversized-track-pants-666391-1754630922-1.jpg",
+    "parentId": "2",
+    "level": 1,
+    "gender": "MEN",
+    "is_active": true
   }
 ]

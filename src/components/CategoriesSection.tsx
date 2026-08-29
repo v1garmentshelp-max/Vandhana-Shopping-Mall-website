@@ -41,7 +41,8 @@ const imageFromValue = (value: any) => {
   }
 
   return String(
-    value.image_url ||
+    value.image ||
+      value.image_url ||
       value.imageUrl ||
       value.front_image_url ||
       value.frontImageUrl ||
@@ -126,6 +127,48 @@ const categoryImageMap = new Map<string, string>(
     String(category.image || ""),
   ]),
 );
+
+const normalizeCategoryName = (value: unknown) =>
+  String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+
+const categoryNameImageMap = new Map<string, string>();
+
+categoryRecords.forEach((category) => {
+  const name = normalizeCategoryName(category.name || category.slug);
+  const image = imageFromValue(category);
+
+  if (name && isGoodImage(image) && !categoryNameImageMap.has(name)) {
+    categoryNameImageMap.set(name, image);
+  }
+});
+
+const getConfiguredCategoryImage = (category: any) => {
+  const categoryId = normalizeCategoryId(category?.id);
+  const categoryName = normalizeCategoryName(category?.name || category?.slug);
+  const idImage = categoryImageMap.get(categoryId);
+
+  if (isGoodImage(idImage)) {
+    return idImage as string;
+  }
+
+  const nameImage = categoryNameImageMap.get(categoryName);
+
+  if (isGoodImage(nameImage)) {
+    return nameImage as string;
+  }
+
+  const suppliedImage = imageFromValue(category);
+
+  if (isGoodImage(suppliedImage)) {
+    return suppliedImage;
+  }
+
+  return "";
+};
 
 const categoryRecordMap = new Map<string, CategoryRecord>(
   categoryRecords.map((category) => [
@@ -235,16 +278,10 @@ const getCategoryImage = (
     }
   }
 
-  const mappedImage = categoryImageMap.get(
-    normalizeCategoryId(category?.id),
-  );
+  const mappedImage = getConfiguredCategoryImage(category);
 
   if (isGoodImage(mappedImage)) {
     return mappedImage as string;
-  }
-
-  if (isGoodImage(category?.image)) {
-    return String(category.image);
   }
 
   return "/placeholder.svg";
@@ -349,7 +386,7 @@ const CategoriesSection = ({
               const categoryId = normalizeCategoryId(category.id);
               const image = getCategoryImage(category, productData);
               const fallbackImage =
-                categoryImageMap.get(categoryId) || "/placeholder.svg";
+                getConfiguredCategoryImage(category) || "/placeholder.svg";
 
               return (
                 <Link

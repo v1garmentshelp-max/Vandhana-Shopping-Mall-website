@@ -8,7 +8,7 @@ import {
   Truck,
   LogOut,
 } from "lucide-react";
-import logo from "../assets/logo.svg";
+import logoVideo from "../assets/logo-video.mp4";
 import Wrapper from "./Wrapper";
 import { Link, useLocation, useNavigate } from "react-router";
 import { SearchOverlay } from "./SearchOverlay";
@@ -177,10 +177,15 @@ const Header: React.FC = () => {
                 to="/"
                 className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 lg:static lg:left-0 lg:translate-x-0 lg:top-0 lg:translate-y-0 shrink-0 flex items-center gap-2"
               >
-                <img
-                  src={logo}
-                  alt="logo"
-                  className="w-[5rem] lg:w-16 h-auto"
+                <video
+                  src={logoVideo}
+                  aria-label="V1Garments logo"
+                  className="w-[5rem] lg:w-16 h-auto object-contain"
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                  preload="auto"
                 />
                 <h1 className="text-3xl hidden lg:flex font-bold tracking-normal text-black">
                   V1Garments
