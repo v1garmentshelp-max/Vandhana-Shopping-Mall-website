@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router";
-import logoVideo from "../assets/logo-video.mp4";
+import logo from "../assets/logo.png";
 import FacebookIcon from "../assets/icons/FacebookIcon";
 import LinkedinIcon from "../assets/icons/LinkedinIcon";
 import InstagramIcon from "../assets/icons/InstagramIcon";
@@ -52,19 +52,11 @@ const Footer: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-12 gap-12 mb-16">
           <div className="md:col-span-5">
             <Link to="/" className="shrink-0 flex flex-col gap-2 mb-2 w-fit items-center">
-              <video
-                src={logoVideo}
-                aria-label="V1Garments logo"
+              <img
+                src={logo}
+                alt="V1Garments logo"
                 className="w-24 h-auto object-contain"
-                autoPlay
-                muted
-                loop
-                playsInline
-                preload="auto"
               />
-              <h1 className="text-3xl font-bold tracking-normal text-white">
-                V1Garments
-              </h1>
             </Link>
 
             <h3 className="text-xl font-semibold mb-4 text-white/60">
