@@ -135,11 +135,39 @@ const normalizeCategoryName = (value: unknown) =>
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
 
+const normalizeGender = (value: unknown) =>
+  String(value ?? "").trim().toUpperCase();
+
+const getCategoryGender = (category: any) =>
+  normalizeGender(category?.gender || category?.category_gender);
+
+const getGenderCategoryKey = (gender: unknown, name: unknown) => {
+  const normalizedGender = normalizeGender(gender);
+  const normalizedName = normalizeCategoryName(name);
+
+  return normalizedGender && normalizedName
+    ? `${normalizedGender}:${normalizedName}`
+    : "";
+};
+
+const categoryGenderNameImageMap = new Map<string, string>();
 const categoryNameImageMap = new Map<string, string>();
 
 categoryRecords.forEach((category) => {
   const name = normalizeCategoryName(category.name || category.slug);
+  const genderNameKey = getGenderCategoryKey(
+    category.gender,
+    category.name || category.slug,
+  );
   const image = imageFromValue(category);
+
+  if (
+    genderNameKey &&
+    isGoodImage(image) &&
+    !categoryGenderNameImageMap.has(genderNameKey)
+  ) {
+    categoryGenderNameImageMap.set(genderNameKey, image);
+  }
 
   if (name && isGoodImage(image) && !categoryNameImageMap.has(name)) {
     categoryNameImageMap.set(name, image);
@@ -153,6 +181,16 @@ const getConfiguredCategoryImage = (category: any) => {
 
   if (isGoodImage(idImage)) {
     return idImage as string;
+  }
+
+  const genderNameKey = getGenderCategoryKey(
+    getCategoryGender(category),
+    category?.name || category?.slug,
+  );
+  const genderNameImage = categoryGenderNameImageMap.get(genderNameKey);
+
+  if (isGoodImage(genderNameImage)) {
+    return genderNameImage as string;
   }
 
   const nameImage = categoryNameImageMap.get(categoryName);

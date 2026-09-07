@@ -712,5 +712,25 @@
     "level": 1,
     "gender": "MEN",
     "is_active": true
+  },
+  {
+    "id": "women-party-wear-fallback",
+    "name": "Party Wear",
+    "slug": "party-wear",
+    "image": "https://images.unsplash.com/photo-1566174053879-31528523f8ae?auto=format&fit=crop&w=900&q=85",
+    "parentId": "3",
+    "level": 1,
+    "gender": "WOMEN",
+    "is_active": true
+  },
+  {
+    "id": "women-bottom-wear-fallback",
+    "name": "Bottom Wear",
+    "slug": "bottom-wear",
+    "image": "https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?auto=format&fit=crop&w=900&q=85",
+    "parentId": "3",
+    "level": 1,
+    "gender": "WOMEN",
+    "is_active": true
   }
 ]
