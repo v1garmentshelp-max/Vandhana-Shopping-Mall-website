@@ -277,7 +277,7 @@ const Kids = () => {
           Kids-Girls
         </button>
       </div>
-      {shopCategories.length > 0 ? <CategoriesSection categories={shopCategories as any} title="Shop by Category" productData={audienceProducts} /> : null}
+      {shopCategories.length > 0 ? <CategoriesSection categories={shopCategories as any} title="Shop by Category" productData={audienceProducts} categoryTree={pageCategories as any} /> : null}
       <NamedSection title="NEW DROPS" productData={newDrops} autoplay={false} />
       <HeroProductSection products={newDrops.slice(0, 10)} className="mb-4" />
       {nightDresses.length > 0 ? <NamedSection title="NIGHT DRESSES" productData={nightDresses} /> : null}

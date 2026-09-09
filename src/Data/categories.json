@@ -324,376 +324,6 @@
     "gender": "WOMEN"
   },
   {
-    "id": "1",
-    "name": "Kids",
-    "slug": "kids",
-    "image": "https://images.unsplash.com/photo-1519238263530-99bdd11df2ea?auto=format&fit=crop&w=1170&q=80",
-    "parentId": null,
-    "level": 0,
-    "gender": "KIDS"
-  },
-  {
-    "id": "21",
-    "name": "Boys",
-    "slug": "boys",
-    "image": "https://images.unsplash.com/photo-1519238263530-99bdd11df2ea?auto=format&fit=crop&w=640&q=75",
-    "parentId": "1",
-    "level": 1,
-    "gender": "KIDS"
-  },
-  {
-    "id": "31",
-    "name": "T-Shirts",
-    "slug": "t-shirts",
-    "image": "https://unsplash.com/photos/AGGA9LH3FLo/download?force=true&w=640",
-    "parentId": "21",
-    "level": 2,
-    "gender": "KIDS"
-  },
-  {
-    "id": "134",
-    "name": "Oversized",
-    "slug": "oversized",
-    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1784359771/products/11894819__front__1784359769621_wp1a4p.jpg",
-    "parentId": "31",
-    "level": 3,
-    "gender": "KIDS"
-  },
-  {
-    "id": "135",
-    "name": "Half Sleeve",
-    "slug": "half-sleeve",
-    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1784359771/products/11894819__front__1784359769621_wp1a4p.jpg",
-    "parentId": "134",
-    "level": 4,
-    "gender": "KIDS"
-  },
-  {
-    "id": "136",
-    "name": "Round Neck",
-    "slug": "round-neck",
-    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1784359771/products/11894819__front__1784359769621_wp1a4p.jpg",
-    "parentId": "31",
-    "level": 3,
-    "gender": "KIDS"
-  },
-  {
-    "id": "137",
-    "name": "Half Sleeve",
-    "slug": "half-sleeve",
-    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1784359771/products/11894819__front__1784359769621_wp1a4p.jpg",
-    "parentId": "136",
-    "level": 4,
-    "gender": "KIDS"
-  },
-  {
-    "id": "138",
-    "name": "Full Sleeve",
-    "slug": "full-sleeve",
-    "image": "https://images.unsplash.com/photo-1519238263530-99bdd11df2ea?auto=format&fit=crop&w=900&q=80",
-    "parentId": "136",
-    "level": 4,
-    "gender": "KIDS"
-  },
-  {
-    "id": "139",
-    "name": "Polo",
-    "slug": "polo",
-    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1784359771/products/11894819__front__1784359769621_wp1a4p.jpg",
-    "parentId": "31",
-    "level": 3,
-    "gender": "KIDS"
-  },
-  {
-    "id": "140",
-    "name": "Half Sleeve",
-    "slug": "half-sleeve",
-    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1784359771/products/11894819__front__1784359769621_wp1a4p.jpg",
-    "parentId": "139",
-    "level": 4,
-    "gender": "KIDS"
-  },
-  {
-    "id": "141",
-    "name": "Full Sleeve",
-    "slug": "full-sleeve",
-    "image": "https://images.unsplash.com/photo-1519238263530-99bdd11df2ea?auto=format&fit=crop&w=900&q=80",
-    "parentId": "139",
-    "level": 4,
-    "gender": "KIDS"
-  },
-  {
-    "id": "133",
-    "name": "Shirts",
-    "slug": "shirts",
-    "image": "https://images.unsplash.com/photo-1519238263530-99bdd11df2ea?auto=format&fit=crop&w=900&q=80",
-    "parentId": "21",
-    "level": 2,
-    "gender": "KIDS"
-  },
-  {
-    "id": "142",
-    "name": "Check Shirts",
-    "slug": "check-shirts",
-    "image": "https://images.unsplash.com/photo-1519238263530-99bdd11df2ea?auto=format&fit=crop&w=900&q=80",
-    "parentId": "133",
-    "level": 3,
-    "gender": "KIDS"
-  },
-  {
-    "id": "143",
-    "name": "Half Sleeve",
-    "slug": "half-sleeve",
-    "image": "https://images.unsplash.com/photo-1519238263530-99bdd11df2ea?auto=format&fit=crop&w=900&q=80",
-    "parentId": "142",
-    "level": 4,
-    "gender": "KIDS"
-  },
-  {
-    "id": "144",
-    "name": "Full Sleeve",
-    "slug": "full-sleeve",
-    "image": "https://images.unsplash.com/photo-1519238263530-99bdd11df2ea?auto=format&fit=crop&w=900&q=80",
-    "parentId": "142",
-    "level": 4,
-    "gender": "KIDS"
-  },
-  {
-    "id": "146",
-    "name": "Printed Shirts",
-    "slug": "printed-shirts",
-    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1784359771/products/11894819__front__1784359769621_wp1a4p.jpg",
-    "parentId": "133",
-    "level": 3,
-    "gender": "KIDS"
-  },
-  {
-    "id": "147",
-    "name": "Half Sleeve",
-    "slug": "half-sleeve",
-    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1784359771/products/11894819__front__1784359769621_wp1a4p.jpg",
-    "parentId": "146",
-    "level": 4,
-    "gender": "KIDS"
-  },
-  {
-    "id": "149",
-    "name": "Full Sleeve",
-    "slug": "full-sleeve",
-    "image": "https://images.unsplash.com/photo-1519238263530-99bdd11df2ea?auto=format&fit=crop&w=900&q=80",
-    "parentId": "146",
-    "level": 4,
-    "gender": "KIDS"
-  },
-  {
-    "id": "150",
-    "name": "Plain Shirts",
-    "slug": "plain-shirts",
-    "image": "https://images.unsplash.com/photo-1519238263530-99bdd11df2ea?auto=format&fit=crop&w=900&q=80",
-    "parentId": "133",
-    "level": 3,
-    "gender": "KIDS"
-  },
-  {
-    "id": "151",
-    "name": "Half Sleeve",
-    "slug": "half-sleeve",
-    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1784359771/products/11894819__front__1784359769621_wp1a4p.jpg",
-    "parentId": "150",
-    "level": 4,
-    "gender": "KIDS"
-  },
-  {
-    "id": "152",
-    "name": "Full Sleeve",
-    "slug": "full-sleeve",
-    "image": "https://images.unsplash.com/photo-1519238263530-99bdd11df2ea?auto=format&fit=crop&w=900&q=80",
-    "parentId": "150",
-    "level": 4,
-    "gender": "KIDS"
-  },
-  {
-    "id": "23",
-    "name": "Baba Suits",
-    "slug": "baba-suits",
-    "image": "https://images.unsplash.com/photo-1596870230751-ebdfce98ec42?auto=format&fit=crop&w=900&q=80",
-    "parentId": "21",
-    "level": 2,
-    "gender": "KIDS"
-  },
-  {
-    "id": "24",
-    "name": "Night Dress",
-    "slug": "night-dress",
-    "image": "https://images.unsplash.com/photo-1519238263530-99bdd11df2ea?auto=format&fit=crop&w=900&q=80",
-    "parentId": "21",
-    "level": 2,
-    "gender": "KIDS"
-  },
-  {
-    "id": "27",
-    "name": "Jeans",
-    "slug": "jeans",
-    "image": "https://images.unsplash.com/photo-1519238263530-99bdd11df2ea?auto=format&fit=crop&w=900&q=85",
-    "parentId": "21",
-    "level": 2,
-    "gender": "KIDS"
-  },
-  {
-    "id": "103",
-    "name": "Daily Wear",
-    "slug": "daily-wear",
-    "image": "https://unsplash.com/photos/SS9xo2JMNLM/download?force=true&w=640",
-    "parentId": "21",
-    "level": 2,
-    "gender": "KIDS"
-  },
-  {
-    "id": "188",
-    "name": "Bottom Wear",
-    "slug": "bottom-wear",
-    "image": "https://unsplash.com/photos/MbRK-Vy5GzQ/download?force=true&w=640",
-    "parentId": "21",
-    "level": 2,
-    "gender": "KIDS",
-    "is_active": true
-  },
-  {
-    "id": "22",
-    "name": "Girls",
-    "slug": "girls",
-    "image": "https://images.unsplash.com/photo-1518831959646-742c3a14ebf7?auto=format&fit=crop&w=900&q=80",
-    "parentId": "1",
-    "level": 1,
-    "gender": "KIDS"
-  },
-  {
-    "id": "34",
-    "name": "T-Shirts",
-    "slug": "t-shirts",
-    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1784359771/products/11894819__front__1784359769621_wp1a4p.jpg",
-    "parentId": "22",
-    "level": 2,
-    "gender": "KIDS"
-  },
-  {
-    "id": "153",
-    "name": "Oversized",
-    "slug": "oversized",
-    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1784359771/products/11894819__front__1784359769621_wp1a4p.jpg",
-    "parentId": "34",
-    "level": 3,
-    "gender": "KIDS"
-  },
-  {
-    "id": "154",
-    "name": "Half Sleeve",
-    "slug": "half-sleeve",
-    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1784359771/products/11894819__front__1784359769621_wp1a4p.jpg",
-    "parentId": "153",
-    "level": 4,
-    "gender": "KIDS"
-  },
-  {
-    "id": "155",
-    "name": "Round Neck",
-    "slug": "round-neck",
-    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1784359771/products/11894819__front__1784359769621_wp1a4p.jpg",
-    "parentId": "34",
-    "level": 3,
-    "gender": "KIDS"
-  },
-  {
-    "id": "156",
-    "name": "Half Sleeve",
-    "slug": "half-sleeve",
-    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1784359771/products/11894819__front__1784359769621_wp1a4p.jpg",
-    "parentId": "155",
-    "level": 4,
-    "gender": "KIDS"
-  },
-  {
-    "id": "157",
-    "name": "Full Sleeve",
-    "slug": "full-sleeve",
-    "image": "https://images.unsplash.com/photo-1518831959646-742c3a14ebf7?auto=format&fit=crop&w=900&q=80",
-    "parentId": "155",
-    "level": 4,
-    "gender": "KIDS"
-  },
-  {
-    "id": "33",
-    "name": "Tops",
-    "slug": "tops",
-    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1784359771/products/11894819__front__1784359769621_wp1a4p.jpg",
-    "parentId": "22",
-    "level": 2,
-    "gender": "KIDS"
-  },
-  {
-    "id": "35",
-    "name": "Jeans",
-    "slug": "jeans",
-    "image": "https://images.unsplash.com/photo-1519238263530-99bdd11df2ea?auto=format&fit=crop&w=900&q=85",
-    "parentId": "22",
-    "level": 2,
-    "gender": "KIDS"
-  },
-  {
-    "id": "36",
-    "name": "Girls Night Dress",
-    "slug": "girls-night-dress",
-    "image": "https://images.unsplash.com/photo-1518831959646-742c3a14ebf7?auto=format&fit=crop&w=900&q=80",
-    "parentId": "22",
-    "level": 2,
-    "gender": "KIDS"
-  },
-  {
-    "id": "106",
-    "name": "Daily Wear",
-    "slug": "daily-wear",
-    "image": "https://images.unsplash.com/photo-1518831959646-742c3a14ebf7?auto=format&fit=crop&w=900&q=80",
-    "parentId": "22",
-    "level": 2,
-    "gender": "KIDS"
-  },
-  {
-    "id": "107",
-    "name": "Half Saree",
-    "slug": "half-saree",
-    "image": "https://images.unsplash.com/photo-1583391733956-6c78276477e2?auto=format&fit=crop&w=900&q=80",
-    "parentId": "22",
-    "level": 2,
-    "gender": "KIDS"
-  },
-  {
-    "id": "108",
-    "name": "Frocks",
-    "slug": "frocks",
-    "image": "https://images.unsplash.com/photo-1607453998774-d533f65dac99?auto=format&fit=crop&w=900&q=80",
-    "parentId": "22",
-    "level": 2,
-    "gender": "KIDS"
-  },
-  {
-    "id": "109",
-    "name": "Skirts",
-    "slug": "skirts",
-    "image": "https://images.unsplash.com/photo-1518831959646-742c3a14ebf7?auto=format&fit=crop&w=900&q=80",
-    "parentId": "22",
-    "level": 2,
-    "gender": "KIDS"
-  },
-  {
-    "id": "110",
-    "name": "Middies",
-    "slug": "middies",
-    "image": "https://images.unsplash.com/photo-1607453998774-d533f65dac99?auto=format&fit=crop&w=900&q=80",
-    "parentId": "22",
-    "level": 2,
-    "gender": "KIDS"
-  },
-  {
     "id": "164",
     "name": "Inner Wear",
     "slug": "inner-wear",
@@ -744,36 +374,263 @@
     "is_active": true
   },
   {
-    "id": "kids-boys-t-shirts-fallback",
-    "name": "T-Shirts",
-    "slug": "t-shirts",
-    "image": "https://unsplash.com/photos/AGGA9LH3FLo/download?force=true&w=640",
+    "id": "1",
+    "name": "Kids",
+    "slug": "kids",
+    "image": "",
+    "parentId": null,
+    "level": 0,
+    "gender": "KIDS",
+    "is_active": true
+  },
+  {
+    "id": "21",
+    "name": "Boys",
+    "slug": "boys",
+    "image": "",
+    "parentId": "1",
+    "level": 1,
+    "gender": "KIDS",
+    "is_active": true
+  },
+  {
+    "id": "23",
+    "name": "Baba Suits",
+    "slug": "baba-suits",
+    "image": "",
     "parentId": "21",
     "level": 2,
     "gender": "KIDS",
-    "is_active": true,
-    "selectable": false
+    "is_active": true
   },
   {
-    "id": "kids-boys-bottom-wear-fallback",
+    "id": "188",
     "name": "Bottom Wear",
     "slug": "bottom-wear",
-    "image": "https://unsplash.com/photos/MbRK-Vy5GzQ/download?force=true&w=640",
+    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1788773620/products/11911190__front__1788773621159_i6d4b6.jpg",
     "parentId": "21",
     "level": 2,
     "gender": "KIDS",
-    "is_active": true,
-    "selectable": false
+    "is_active": true
   },
   {
-    "id": "kids-girls-party-wear-fallback",
-    "name": "Party Wear",
-    "slug": "party-wear",
-    "image": "https://unsplash.com/photos/1PM-8r74IUg/download?force=true&w=640",
+    "id": "189",
+    "name": "Cargo Pants",
+    "slug": "cargo-pants",
+    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1788773620/products/11911190__front__1788773621159_i6d4b6.jpg",
+    "parentId": "188",
+    "level": 3,
+    "gender": "KIDS",
+    "is_active": true
+  },
+  {
+    "id": "103",
+    "name": "Daily Wear",
+    "slug": "daily-wear",
+    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1784128217/products/11892877__front__1784128224075_zo8qr8.jpg",
+    "parentId": "21",
+    "level": 2,
+    "gender": "KIDS",
+    "is_active": true
+  },
+  {
+    "id": "24",
+    "name": "Night Dress",
+    "slug": "night-dress",
+    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1786886007/products/11881156__front__1786886016663_n8ssbc.jpg",
+    "parentId": "21",
+    "level": 2,
+    "gender": "KIDS",
+    "is_active": true
+  },
+  {
+    "id": "133",
+    "name": "Shirts",
+    "slug": "shirts",
+    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1784901001/products/11893474__front__1784901002702_bdjqk3.jpg",
+    "parentId": "21",
+    "level": 2,
+    "gender": "KIDS",
+    "is_active": true
+  },
+  {
+    "id": "171",
+    "name": "Half Sleeve",
+    "slug": "half-sleeve",
+    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1784901001/products/11893474__front__1784901002702_bdjqk3.jpg",
+    "parentId": "133",
+    "level": 3,
+    "gender": "KIDS",
+    "is_active": true
+  },
+  {
+    "id": "172",
+    "name": "Full Sleeve",
+    "slug": "full-sleeve",
+    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1784901001/products/11893474__front__1784901002702_bdjqk3.jpg",
+    "parentId": "133",
+    "level": 3,
+    "gender": "KIDS",
+    "is_active": true
+  },
+  {
+    "id": "31",
+    "name": "T-Shirts",
+    "slug": "t-shirts",
+    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1784895429/products/11880674__front__1784895420816_i7bscp.jpg",
+    "parentId": "21",
+    "level": 2,
+    "gender": "KIDS",
+    "is_active": true
+  },
+  {
+    "id": "104",
+    "name": "Half Sleeve",
+    "slug": "half-sleeve",
+    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1784895429/products/11880674__front__1784895420816_i7bscp.jpg",
+    "parentId": "31",
+    "level": 3,
+    "gender": "KIDS",
+    "is_active": true
+  },
+  {
+    "id": "105",
+    "name": "Full Sleeve",
+    "slug": "full-sleeve",
+    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1784895429/products/11880674__front__1784895420816_i7bscp.jpg",
+    "parentId": "31",
+    "level": 3,
+    "gender": "KIDS",
+    "is_active": true
+  },
+  {
+    "id": "22",
+    "name": "Girls",
+    "slug": "girls",
+    "image": "",
+    "parentId": "1",
+    "level": 1,
+    "gender": "KIDS",
+    "is_active": true
+  },
+  {
+    "id": "106",
+    "name": "Daily Wear",
+    "slug": "daily-wear",
+    "image": "",
     "parentId": "22",
     "level": 2,
     "gender": "KIDS",
-    "is_active": true,
-    "selectable": false
+    "is_active": true
+  },
+  {
+    "id": "108",
+    "name": "Frocks",
+    "slug": "frocks",
+    "image": "",
+    "parentId": "22",
+    "level": 2,
+    "gender": "KIDS",
+    "is_active": true
+  },
+  {
+    "id": "107",
+    "name": "Half Saree",
+    "slug": "half-saree",
+    "image": "",
+    "parentId": "22",
+    "level": 2,
+    "gender": "KIDS",
+    "is_active": true
+  },
+  {
+    "id": "35",
+    "name": "Jeans",
+    "slug": "jeans",
+    "image": "",
+    "parentId": "22",
+    "level": 2,
+    "gender": "KIDS",
+    "is_active": true
+  },
+  {
+    "id": "110",
+    "name": "Middies",
+    "slug": "middies",
+    "image": "",
+    "parentId": "22",
+    "level": 2,
+    "gender": "KIDS",
+    "is_active": true
+  },
+  {
+    "id": "36",
+    "name": "Night Dress",
+    "slug": "night-dress",
+    "image": "",
+    "parentId": "22",
+    "level": 2,
+    "gender": "KIDS",
+    "is_active": true
+  },
+  {
+    "id": "190",
+    "name": "Party Wear",
+    "slug": "party-wear",
+    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1788940348/products/11911496__front__1788940349639_zvp49f.jpg",
+    "parentId": "22",
+    "level": 2,
+    "gender": "KIDS",
+    "is_active": true
+  },
+  {
+    "id": "191",
+    "name": "Crop Top",
+    "slug": "crop-top",
+    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1788940348/products/11911496__front__1788940349639_zvp49f.jpg",
+    "parentId": "190",
+    "level": 3,
+    "gender": "KIDS",
+    "is_active": true
+  },
+  {
+    "id": "192",
+    "name": "Sharara",
+    "slug": "sharara",
+    "image": "",
+    "parentId": "190",
+    "level": 3,
+    "gender": "KIDS",
+    "is_active": true
+  },
+  {
+    "id": "34",
+    "name": "T-Shirts",
+    "slug": "t-shirts",
+    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1784359771/products/11894819__front__1784359769621_wp1a4p.jpg",
+    "parentId": "22",
+    "level": 2,
+    "gender": "KIDS",
+    "is_active": true
+  },
+  {
+    "id": "155",
+    "name": "Round Neck",
+    "slug": "round-neck",
+    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1784359771/products/11894819__front__1784359769621_wp1a4p.jpg",
+    "parentId": "34",
+    "level": 3,
+    "gender": "KIDS",
+    "is_active": true
+  },
+  {
+    "id": "156",
+    "name": "Half Sleeve",
+    "slug": "half-sleeve",
+    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1784359771/products/11894819__front__1784359769621_wp1a4p.jpg",
+    "parentId": "155",
+    "level": 4,
+    "gender": "KIDS",
+    "is_active": true
   }
 ]

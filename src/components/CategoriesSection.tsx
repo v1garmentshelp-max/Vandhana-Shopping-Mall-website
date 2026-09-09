@@ -259,27 +259,31 @@ const categoryRecordMap = new Map<string, CategoryRecord>(
   ]),
 );
 
-const categoryChildrenMap = new Map<string, string[]>();
-
-categoryRecords.forEach((category) => {
-  const id = normalizeCategoryId(category.id);
-  const parentId = getCategoryParentId(category);
-
-  if (!id || !parentId) return;
-
-  const children = categoryChildrenMap.get(parentId) || [];
-
-  children.push(id);
-  categoryChildrenMap.set(parentId, children);
-});
-
-const getDescendantCategoryIds = (categoryId: unknown) => {
+const getDescendantCategoryIds = (
+  categoryId: unknown,
+  categories: CategoryRecord[] = categoryRecords,
+) => {
   const rootId = normalizeCategoryId(categoryId);
   const categoryIds = new Set<string>();
 
   if (!rootId) {
     return categoryIds;
   }
+
+  const childrenMap = new Map<string, string[]>();
+
+  categories.forEach((category) => {
+    if (category?.is_active === false) return;
+
+    const id = normalizeCategoryId(category.id);
+    const parentId = getCategoryParentId(category);
+
+    if (!id || !parentId) return;
+
+    const children = childrenMap.get(parentId) || [];
+    children.push(id);
+    childrenMap.set(parentId, children);
+  });
 
   const pending = [rootId];
 
@@ -292,7 +296,7 @@ const getDescendantCategoryIds = (categoryId: unknown) => {
 
     categoryIds.add(currentId);
 
-    const children = categoryChildrenMap.get(currentId) || [];
+    const children = childrenMap.get(currentId) || [];
 
     children.forEach((childId) => {
       if (!categoryIds.has(childId)) {
@@ -323,8 +327,9 @@ const getExactCategoryProducts = (
 const getCategoryAndDescendantProducts = (
   category: any,
   productData: Product[],
+  categoryTree: CategoryRecord[] = categoryRecords,
 ) => {
-  const categoryIds = getDescendantCategoryIds(category?.id);
+  const categoryIds = getDescendantCategoryIds(category?.id, categoryTree);
 
   if (!categoryIds.size) return [];
 
@@ -336,13 +341,8 @@ const getCategoryAndDescendantProducts = (
 const getCategoryImage = (
   category: any,
   productData: Product[],
+  categoryTree: CategoryRecord[],
 ) => {
-  const mappedImage = getConfiguredCategoryImage(category);
-
-  if (isGoodImage(mappedImage)) {
-    return mappedImage as string;
-  }
-
   const exactProducts = getExactCategoryProducts(category, productData);
 
   for (const product of exactProducts) {
@@ -356,6 +356,7 @@ const getCategoryImage = (
   const descendantProducts = getCategoryAndDescendantProducts(
     category,
     productData,
+    categoryTree,
   );
 
   for (const product of descendantProducts) {
@@ -364,6 +365,12 @@ const getCategoryImage = (
     if (images.length) {
       return images[0];
     }
+  }
+
+  const mappedImage = getConfiguredCategoryImage(category);
+
+  if (isGoodImage(mappedImage)) {
+    return mappedImage as string;
   }
 
   return "/placeholder.svg";
@@ -431,10 +438,12 @@ const CategoriesSection = ({
   categories,
   title,
   productData = [],
+  categoryTree = categoryRecords,
 }: {
   categories: Category[];
   title?: string;
   productData?: Product[];
+  categoryTree?: CategoryRecord[];
 }) => {
   const [emblaRef] = useEmblaCarousel({
     dragFree: true,
@@ -483,7 +492,9 @@ const CategoriesSection = ({
           <div className="flex flex-col flex-wrap h-[440px] lg:h-auto lg:flex-row lg:grid lg:grid-cols-5 gap-2 lg:gap-4">
             {visibleCategories.map((category: any, index) => {
               const categoryId = normalizeCategoryId(category.id);
-              const image = optimizeImage(getCategoryImage(category, productData));
+              const image = optimizeImage(
+                getCategoryImage(category, productData, categoryTree),
+              );
               const fallbackImage =
                 optimizeImage(getConfiguredCategoryImage(category)) || "/placeholder.svg";
 
