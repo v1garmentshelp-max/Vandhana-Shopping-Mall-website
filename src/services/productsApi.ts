@@ -3401,8 +3401,8 @@ const fetchRows = async (
     }
 
     params.set(
-        "all",
-        "true"
+        "limit",
+        "5000"
     );
 
     params.set(
@@ -3410,19 +3410,19 @@ const fetchRows = async (
         "color"
     );
 
+    const productParams = new URLSearchParams(params);
+    productParams.set("branch_id", String(branchId));
+
     try {
         return rowsFrom(
             await fetchJson(
-                `${API_BASE}/api/branch/${encodeURIComponent(branchId)}/stock?${params.toString()}`
+                `${API_BASE}/api/products?${productParams.toString()}`
             )
         );
     } catch {
-        const fallbackParams = new URLSearchParams(params);
-        fallbackParams.set("branch_id", String(branchId));
-
         return rowsFrom(
             await fetchJson(
-                `${API_BASE}/api/products?${fallbackParams.toString()}`
+                `${API_BASE}/api/branch/${encodeURIComponent(branchId)}/stock?${params.toString()}`
             )
         );
     }
