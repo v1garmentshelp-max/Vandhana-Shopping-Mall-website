@@ -5,6 +5,16 @@ import categoriesJson from "../Data/categories.json";
 const API_BASE = "https://vandhana-shopping-mall-backend.vercel.app";
 const DEFAULT_BRANCH_ID = 3;
 const FALLBACK_IMAGE = "data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='900' height='1200' viewBox='0 0 900 1200'%3E%3Crect width='900' height='1200' fill='%23f3f4f6'/%3E%3Cpath d='M315 540h270v120H315z' fill='%23e5e7eb'/%3E%3C/svg%3E";
+const PRODUCT_CACHE_MS = 60_000;
+const CATEGORY_CACHE_MS = 10 * 60_000;
+
+type ResponseCacheEntry = {
+    data: any;
+    expiresAt: number;
+};
+
+const responseCache = new Map<string, ResponseCacheEntry>();
+const pendingRequests = new Map<string, Promise<any>>();
 
 type Row = Record<string, any>;
 type ImageKind = "front" | "back" | "";
@@ -155,16 +165,35 @@ const parseArray = (value: any): any[] => {
     }
 };
 
+const optimizeImageUrl = (value: string) => {
+    const url = String(value || "").trim();
+
+    if (!url.includes("res.cloudinary.com") || !url.includes("/image/upload/")) {
+        return url;
+    }
+
+    if (/\/image\/upload\/(?:[^/]*,)?(?:f_auto|q_auto|w_)/.test(url)) {
+        return url;
+    }
+
+    return url.replace(
+        "/image/upload/",
+        "/image/upload/f_auto,q_auto:eco,w_900,c_limit/"
+    );
+};
+
 const imageUrl = (value: any) => {
     if (!value) {
         return "";
     }
 
     if (typeof value === "string") {
-        return value.trim();
+        return optimizeImageUrl(value);
     }
 
-    return clean(value.image_url || value.imageUrl || value.secure_url || value.url || "");
+    return optimizeImageUrl(
+        clean(value.image_url || value.imageUrl || value.secure_url || value.url || "")
+    );
 };
 
 const validImage = (value: any) => {
@@ -3126,37 +3155,50 @@ const flatTree = (
 
 const fetchJson = async (
     url: string,
+    ttl = PRODUCT_CACHE_MS,
 ) => {
-    const response =
-        await fetch(
-            url,
-            {
-                method:
-                    "GET",
-                headers: {
-                    "Content-Type":
-                        "application/json",
-                },
-                cache:
-                    "no-store",
-            }
-        );
+    const cached = responseCache.get(url);
 
-    const data =
-        await response
-            .json()
-            .catch(
-                () => []
-            );
-
-    if (!response.ok) {
-        throw new Error(
-            data?.message ||
-            `Request failed with status ${response.status}`
-        );
+    if (cached && cached.expiresAt > Date.now()) {
+        return cached.data;
     }
 
-    return data;
+    const pending = pendingRequests.get(url);
+
+    if (pending) {
+        return pending;
+    }
+
+    const request = fetch(url, {
+        method: "GET",
+        headers: {
+            Accept: "application/json",
+        },
+        cache: "default",
+    })
+        .then(async (response) => {
+            const data = await response.json().catch(() => []);
+
+            if (!response.ok) {
+                throw new Error(
+                    data?.message ||
+                    `Request failed with status ${response.status}`
+                );
+            }
+
+            responseCache.set(url, {
+                data,
+                expiresAt: Date.now() + ttl,
+            });
+
+            return data;
+        })
+        .finally(() => {
+            pendingRequests.delete(url);
+        });
+
+    pendingRequests.set(url, request);
+    return request;
 };
 
 const rowsFrom = (
@@ -3258,8 +3300,9 @@ export const fetchCategoriesTree =
             const data =
                 await fetchJson(
                     backendGender
-                        ? `${API_BASE}/api/categories/tree?gender=${encodeURIComponent(backendGender)}&_ts=${Date.now()}`
-                        : `${API_BASE}/api/categories/tree?_ts=${Date.now()}`
+                        ? `${API_BASE}/api/categories/tree?gender=${encodeURIComponent(backendGender)}`
+                        : `${API_BASE}/api/categories/tree`,
+                    CATEGORY_CACHE_MS
                 );
 
             return Array.isArray(
@@ -3363,13 +3406,6 @@ const fetchRows = async (
     );
 
     params.set(
-        "_ts",
-        String(
-            Date.now()
-        )
-    );
-
-    params.set(
         "group_by",
         "color"
     );
@@ -3381,9 +3417,12 @@ const fetchRows = async (
             )
         );
     } catch {
+        const fallbackParams = new URLSearchParams(params);
+        fallbackParams.set("branch_id", String(branchId));
+
         return rowsFrom(
             await fetchJson(
-                `${API_BASE}/api/products?branch_id=${encodeURIComponent(branchId)}&all=true&group_by=color&_ts=${Date.now()}`
+                `${API_BASE}/api/products?${fallbackParams.toString()}`
             )
         );
     }

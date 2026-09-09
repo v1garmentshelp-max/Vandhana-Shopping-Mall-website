@@ -336,7 +336,7 @@
     "id": "21",
     "name": "Boys",
     "slug": "boys",
-    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1784359771/products/11894819__front__1784359769621_wp1a4p.jpg",
+    "image": "https://images.unsplash.com/photo-1519238263530-99bdd11df2ea?auto=format&fit=crop&w=640&q=75",
     "parentId": "1",
     "level": 1,
     "gender": "KIDS"
@@ -345,7 +345,7 @@
     "id": "31",
     "name": "T-Shirts",
     "slug": "t-shirts",
-    "image": "https://res.cloudinary.com/digu2krba/image/upload/v1784359771/products/11894819__front__1784359769621_wp1a4p.jpg",
+    "image": "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=640&q=75",
     "parentId": "21",
     "level": 2,
     "gender": "KIDS"
@@ -552,7 +552,7 @@
     "id": "188",
     "name": "Bottom Wear",
     "slug": "bottom-wear",
-    "image": "https://images.unsplash.com/photo-1519238263530-99bdd11df2ea?auto=format&fit=crop&w=900&q=85",
+    "image": "https://images.unsplash.com/photo-1542272604-787c3835535d?auto=format&fit=crop&w=640&q=75",
     "parentId": "21",
     "level": 2,
     "gender": "KIDS",
@@ -742,5 +742,38 @@
     "level": 1,
     "gender": "WOMEN",
     "is_active": true
+  },
+  {
+    "id": "kids-boys-t-shirts-fallback",
+    "name": "T-Shirts",
+    "slug": "t-shirts",
+    "image": "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=640&q=75",
+    "parentId": "21",
+    "level": 2,
+    "gender": "KIDS",
+    "is_active": true,
+    "selectable": false
+  },
+  {
+    "id": "kids-boys-bottom-wear-fallback",
+    "name": "Bottom Wear",
+    "slug": "bottom-wear",
+    "image": "https://images.unsplash.com/photo-1542272604-787c3835535d?auto=format&fit=crop&w=640&q=75",
+    "parentId": "21",
+    "level": 2,
+    "gender": "KIDS",
+    "is_active": true,
+    "selectable": false
+  },
+  {
+    "id": "kids-girls-party-wear-fallback",
+    "name": "Party Wear",
+    "slug": "party-wear",
+    "image": "https://images.unsplash.com/photo-1607453998774-d533f65dac99?auto=format&fit=crop&w=640&q=75",
+    "parentId": "22",
+    "level": 2,
+    "gender": "KIDS",
+    "is_active": true,
+    "selectable": false
   }
 ]

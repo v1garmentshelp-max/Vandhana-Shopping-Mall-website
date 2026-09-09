@@ -167,7 +167,6 @@ const Kids = () => {
   const [typedProducts, setTypedProducts] = useState<Product[]>([]);
   const [pageCategories, setPageCategories] = useState<StorefrontCategory[]>([]);
   const [posterMap, setPosterMap] = useState<HomepageImageMap>({});
-  const [postersLoaded, setPostersLoaded] = useState(false);
   const [activeAudience, setActiveAudience] = useState<KidsAudience>("boys");
 
   useEffect(() => {
@@ -202,13 +201,11 @@ const Kids = () => {
       .then(data => {
         if (alive) {
           setPosterMap(data.images);
-          setPostersLoaded(true);
         }
       })
       .catch(() => {
         if (alive) {
           setPosterMap({});
-          setPostersLoaded(true);
         }
       });
     return () => {
@@ -263,7 +260,7 @@ const Kids = () => {
 
   return (
     <div className="w-full bg-white">
-      {postersLoaded ? <HeroCarousel banners={heroBanners} /> : <div className="w-full aspect-[16/6] bg-neutral-100 animate-pulse" />}
+      <HeroCarousel banners={heroBanners} />
       <div className="flex justify-center gap-3 px-4 py-5">
         <button
           type="button"

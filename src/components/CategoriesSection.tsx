@@ -152,6 +152,33 @@ const getGenderCategoryKey = (gender: unknown, name: unknown) => {
 
 const categoryGenderNameImageMap = new Map<string, string>();
 const categoryNameImageMap = new Map<string, string>();
+const categoryAudienceNameImageMap = new Map<string, string>();
+
+const getCategoryAudience = (category: any) => {
+  const parentId = getCategoryParentId(category);
+
+  if (parentId === "21") return "boys";
+  if (parentId === "22") return "girls";
+
+  const path = normalizeCategoryName(
+    category?.categoryPath || category?.category_path,
+  );
+
+  if (/\bboys?\b/.test(path)) return "boys";
+  if (/\bgirls?\b/.test(path)) return "girls";
+
+  return "";
+};
+
+const getAudienceCategoryKey = (category: any) => {
+  const audience = getCategoryAudience(category);
+  const normalizedName = normalizeCategoryName(category?.name || category?.slug);
+  const name = audience && normalizedName.startsWith(`${audience} `)
+    ? normalizedName.slice(audience.length + 1)
+    : normalizedName;
+
+  return audience && name ? `${audience}:${name}` : "";
+};
 
 categoryRecords.forEach((category) => {
   const name = normalizeCategoryName(category.name || category.slug);
@@ -160,6 +187,15 @@ categoryRecords.forEach((category) => {
     category.name || category.slug,
   );
   const image = imageFromValue(category);
+  const audienceNameKey = getAudienceCategoryKey(category);
+
+  if (
+    audienceNameKey &&
+    isGoodImage(image) &&
+    !categoryAudienceNameImageMap.has(audienceNameKey)
+  ) {
+    categoryAudienceNameImageMap.set(audienceNameKey, image);
+  }
 
   if (
     genderNameKey &&
@@ -181,6 +217,14 @@ const getConfiguredCategoryImage = (category: any) => {
 
   if (isGoodImage(idImage)) {
     return idImage as string;
+  }
+
+  const audienceNameImage = categoryAudienceNameImageMap.get(
+    getAudienceCategoryKey(category),
+  );
+
+  if (isGoodImage(audienceNameImage)) {
+    return audienceNameImage as string;
   }
 
   const genderNameKey = getGenderCategoryKey(
@@ -293,6 +337,12 @@ const getCategoryImage = (
   category: any,
   productData: Product[],
 ) => {
+  const mappedImage = getConfiguredCategoryImage(category);
+
+  if (isGoodImage(mappedImage)) {
+    return mappedImage as string;
+  }
+
   const exactProducts = getExactCategoryProducts(category, productData);
 
   for (const product of exactProducts) {
@@ -316,13 +366,24 @@ const getCategoryImage = (
     }
   }
 
-  const mappedImage = getConfiguredCategoryImage(category);
+  return "/placeholder.svg";
+};
 
-  if (isGoodImage(mappedImage)) {
-    return mappedImage as string;
+const optimizeImage = (value: string) => {
+  const url = String(value || "").trim();
+
+  if (!url.includes("res.cloudinary.com") || !url.includes("/image/upload/")) {
+    return url;
   }
 
-  return "/placeholder.svg";
+  if (/\/image\/upload\/(?:[^/]*,)?(?:f_auto|q_auto|w_)/.test(url)) {
+    return url;
+  }
+
+  return url.replace(
+    "/image/upload/",
+    "/image/upload/f_auto,q_auto:eco,w_640,c_fill,g_auto/",
+  );
 };
 
 const getGenderParam = (
@@ -420,11 +481,11 @@ const CategoriesSection = ({
           ref={emblaRef}
         >
           <div className="flex flex-col flex-wrap h-[440px] lg:h-auto lg:flex-row lg:grid lg:grid-cols-5 gap-2 lg:gap-4">
-            {visibleCategories.map((category: any) => {
+            {visibleCategories.map((category: any, index) => {
               const categoryId = normalizeCategoryId(category.id);
-              const image = getCategoryImage(category, productData);
+              const image = optimizeImage(getCategoryImage(category, productData));
               const fallbackImage =
-                getConfiguredCategoryImage(category) || "/placeholder.svg";
+                optimizeImage(getConfiguredCategoryImage(category)) || "/placeholder.svg";
 
               return (
                 <Link
@@ -435,7 +496,11 @@ const CategoriesSection = ({
                   <img
                     src={image}
                     alt={String(category.name || "")}
-                    loading="lazy"
+                    loading={index < 5 ? "eager" : "lazy"}
+                    decoding="async"
+                    fetchPriority={index < 5 ? "high" : "low"}
+                    width={640}
+                    height={853}
                     className="absolute inset-0 w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-110"
                     onError={(event) => {
                       const imageElement = event.currentTarget;
