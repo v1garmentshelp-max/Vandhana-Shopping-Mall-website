@@ -3410,6 +3410,11 @@ const fetchRows = async (
         "color"
     );
 
+    params.set(
+        "response_version",
+        "color-cards-v2"
+    );
+
     const productParams = new URLSearchParams(params);
     productParams.set("branch_id", String(branchId));
 

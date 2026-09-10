@@ -18,7 +18,11 @@ import { fetchCategoriesByGender, fetchProductsByGender, type StorefrontCategory
 const normalizeText = (value: any) => String(value || "").toLowerCase().replace(/-/g, " ").replace(/&/g, " and ").replace(/[^a-z0-9]+/g, " ").replace(/\s+/g, " ").trim();
 
 const productDesignIdentity = (product: Product) => {
+  const groupKey = String((product as any).storefrontGroupKey ?? (product as any).storefront_group_key ?? (product as any).groupKey ?? (product as any).group_key ?? "").trim().toLowerCase();
+  if (groupKey) return `group|${groupKey}`;
   const designCode = String((product as any).designCode ?? (product as any).design_code ?? "").trim().toLowerCase();
+  const colour = normalizeText((product as any).colour ?? (product as any).color ?? (product as any).selectedColour ?? (product as any).selectedColor ?? "");
+  if (designCode && colour) return `design|${designCode}|colour|${colour}`;
   if (designCode) return `design|${designCode}`;
   const productId = String((product as any).productId ?? (product as any).product_id ?? product.id ?? "").trim().toLowerCase();
   if (productId) return `product|${productId}`;
