@@ -1,0 +1,35 @@
+.v1-home-shop { padding: 24px 16px 48px; background: #fff; color: #141414; }
+.v1-home-shop > div { max-width: 1280px; margin-inline: auto; padding-inline: 0; }
+.v1-home-heading { font-size: clamp(28px, 4vw, 44px); font-weight: 900; line-height: 1.12; text-transform: uppercase; margin: 0 0 18px; }
+.v1-home-heading > span { color: #efc300; }
+.v1-home-covers, .v1-home-category-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.v1-home-tile { position: relative; min-width: 0; width: 100%; aspect-ratio: 4/5; overflow: hidden; border: 1px solid #ece8e1; border-radius: 16px; background: #f4f1eb; text-align: left; cursor: pointer; isolation: isolate; }
+.v1-home-tile:focus-visible { outline: 3px solid #a87b00; outline-offset: 3px; }
+.v1-home-tile img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 25%; transition: opacity 160ms ease; }
+.v1-home-art { position: absolute; top: 22%; left: 50%; transform: translateX(-50%); color: #b19b70; }
+.v1-home-shade { position: absolute; inset: 0; background: transparent; pointer-events: none; }
+.v1-home-with-image .v1-home-shade { background: linear-gradient(0deg, #000c, #0000 65%); }
+.v1-home-tile-text { position: absolute; inset: auto 12px 14px; color: #26221b; }
+.v1-home-tile-text strong { display: block; font-size: 18px; font-weight: 800; line-height: 1.2; overflow-wrap: break-word; }
+.v1-home-tile-text > span { display: flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; margin-top: 7px; }
+.v1-home-with-image .v1-home-tile-text { color: #fff; }
+.v1-home-with-image .v1-home-tile-text > span { color: #ffe05c; }
+.v1-home-cover .v1-home-tile-text strong { font-size: 26px; }
+.v1-home-kids-cover { grid-column: 1/-1; aspect-ratio: 4/3; }
+.v1-home-kids-cover img { object-position: center 70%; }
+.v1-home-category-section { margin-top: 36px; }
+.v1-home-status { padding: 28px 0; font-size: 14px; line-height: 1.5; color: #5e5b55; }
+.v1-home-status button { margin-top: 12px; border: 1px solid #ddd; border-radius: 8px; padding: 10px 18px; min-height: 44px; color: #111; }
+@media(min-width: 640px) { .v1-home-category-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media(min-width: 768px) {
+    .v1-home-shop { padding: 40px 24px 64px; }
+    .v1-home-covers { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
+    .v1-home-kids-cover { grid-column: auto; aspect-ratio: 4/5; }
+    .v1-home-category-section { margin-top: 56px; }
+    .v1-home-category-grid { gap: 20px; }
+    .v1-home-tile-text { inset: auto 20px 20px; }
+    .v1-home-tile-text strong { font-size: 23px; }
+    .v1-home-cover .v1-home-tile-text strong { font-size: 38px; }
+}
+@media(min-width: 1024px) { .v1-home-category-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+@media(prefers-reduced-motion: reduce) { .v1-home-tile img { transition: none; } }
