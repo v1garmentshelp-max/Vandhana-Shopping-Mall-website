@@ -91,66 +91,6 @@ const filterProductsByAudience = (products: Product[], categories: StorefrontCat
         return categoryMatches;
     return byName(products, audience === "boys" ? ["boy", "boys", "kids boy"] : ["girl", "girls", "kids girl"]);
 };
-const getKidsShopCategories = (categories: StorefrontCategory[]) => {
-    const activeCategories = categories.filter((category: any) => {
-        if (!getCategoryId(category))
-            return false;
-        if (category?.is_active === false)
-            return false;
-        if (category?.selectable === false)
-            return false;
-        return true;
-    });
-    const topLevelCategories = activeCategories
-        .filter((category: any) => Number(category?.level) === 1)
-        .sort((first: any, second: any) => {
-        const firstOrder = Number(first?.sort_order) || 0;
-        const secondOrder = Number(second?.sort_order) || 0;
-        if (firstOrder !== secondOrder)
-            return firstOrder - secondOrder;
-        return String(first?.name || "").localeCompare(String(second?.name || ""));
-    });
-    const result: any[] = [];
-    topLevelCategories.forEach((parent: any, parentIndex) => {
-        const parentId = getCategoryId(parent);
-        const children = activeCategories
-            .filter((category: any) => getCategoryParentId(category) === parentId)
-            .sort((first: any, second: any) => {
-            const firstOrder = Number(first?.sort_order) || 0;
-            const secondOrder = Number(second?.sort_order) || 0;
-            if (firstOrder !== secondOrder)
-                return firstOrder - secondOrder;
-            return String(first?.name || "").localeCompare(String(second?.name || ""));
-        });
-        if (children.length === 0) {
-            result.push({ ...parent, __parentOrder: parentIndex, __childOrder: Number(parent?.sort_order) || 0 });
-            return;
-        }
-        children.forEach((category: any) => {
-            const parentName = String(parent?.name || "").trim();
-            const categoryName = String(category?.name || "").trim();
-            const displayName = parentName && !normalizeText(categoryName).startsWith(normalizeText(parentName)) ? `${parentName} ${categoryName}` : categoryName;
-            result.push({ ...category, name: displayName, __parentOrder: parentIndex, __childOrder: Number(category?.sort_order) || 0 });
-        });
-    });
-    const uniqueCategories = new Map<string, any>();
-    result.forEach(category => {
-        const categoryId = getCategoryId(category);
-        if (categoryId && !uniqueCategories.has(categoryId))
-            uniqueCategories.set(categoryId, category);
-    });
-    return Array.from(uniqueCategories.values()).sort((first: any, second: any) => {
-        const firstParent = Number(first?.__parentOrder) || 0;
-        const secondParent = Number(second?.__parentOrder) || 0;
-        if (firstParent !== secondParent)
-            return firstParent - secondParent;
-        const firstChild = Number(first?.__childOrder) || 0;
-        const secondChild = Number(second?.__childOrder) || 0;
-        if (firstChild !== secondChild)
-            return firstChild - secondChild;
-        return String(first?.name || "").localeCompare(String(second?.name || ""), undefined, { numeric: true });
-    });
-};
 const Kids = () => {
     const [typedProducts, setTypedProducts] = useState<Product[]>([]);
     const [pageCategories, setPageCategories] = useState<StorefrontCategory[]>([]);
@@ -207,10 +147,8 @@ const Kids = () => {
         { id: 3, image: posterMap["kids.hero.4"]?.imageUrl || poster3, alt: posterMap["kids.hero.4"]?.altText || "Kids Wear", link: posterMap["kids.hero.4"]?.link || "/collections?gender=Kids" },
         { id: 4, image: posterMap["kids.hero.5"]?.imageUrl || poster4, alt: posterMap["kids.hero.5"]?.altText || "Kids Fashion", link: posterMap["kids.hero.5"]?.link || "/collections?gender=Kids" }
     ], [posterMap]);
-    const audienceCategoryIds = useMemo(() => getAudienceCategoryIds(pageCategories, activeAudience), [pageCategories, activeAudience]);
-    const audienceCategories = useMemo(() => pageCategories.filter(category => audienceCategoryIds.has(getCategoryId(category))), [pageCategories, audienceCategoryIds]);
     const audienceProducts = useMemo(() => filterProductsByAudience(typedProducts, pageCategories, activeAudience), [typedProducts, pageCategories, activeAudience]);
-    const shopCategories = useMemo(() => getKidsShopCategories(audienceCategories), [audienceCategories]);
+
     const newDrops = useMemo(() => dedupeByDesign(audienceProducts), [audienceProducts]);
     const nightDresses = useMemo(() => {
         const matched = byCategoryIds(audienceProducts, pageCategories, ["24", "36"]);
@@ -234,7 +172,7 @@ const Kids = () => {
           Kids-Girls
         </button>
       </div>
-      {shopCategories.length > 0 ? <CategoriesSection categories={shopCategories as any} title="Shop by Category" productData={audienceProducts} categoryTree={pageCategories as any}/> : null}
+      <CategoriesSection gender="KIDS" audience={activeAudience} title="Shop by Category" />
       <NamedSection title="NEW DROPS" productData={newDrops} autoplay={false}/>
       <HeroProductSection products={newDrops.slice(0, 10)} className="mb-4"/>
       {nightDresses.length > 0 ? <NamedSection title="NIGHT DRESSES" productData={nightDresses}/> : null}

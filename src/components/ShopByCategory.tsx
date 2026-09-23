@@ -3,7 +3,7 @@ import { useNavigate } from "react-router";
 import { ChevronRight, ShoppingBag } from "lucide-react";
 import Wrapper from "./Wrapper";
 import KidsImage from "../assets/kids.jpeg";
-import { fetchCategoryPreviews, fetchHomepageCategories, type CategoryPreview } from "../services/categoryPreviews";
+import { fetchCategoryPreviews, type CategoryPreview } from "../services/categoryPreviews";
 import "./ShopByCategory.css";
 
 type Gender = "Men" | "Women" | "Kids";
@@ -48,32 +48,10 @@ const ShopByCategory: React.FC = () => {
         let active = true;
         setLoading(true);
         setError(false);
-        let hasRows = false;
-        let completed = 0;
-        const finish = () => {
-            completed += 1;
-            if (active && completed === 2 && !hasRows) { setError(true); setLoading(false); }
-        };
-        fetchHomepageCategories().then(data => {
-            if (!active) return;
-            hasRows = true;
-            setRows(current => {
-                const images = new Map(current.map(row => [row.id, row.images]));
-                return data.map(row => ({ ...row, images: images.get(row.id) || [] }));
-            });
-            setError(false);
-            setLoading(false);
-        }).catch(() => {}).finally(finish);
         fetchCategoryPreviews().then(data => {
-            if (!active || !data.length) return;
-            hasRows = true;
-            setRows(current => {
-                const previews = new Map(data.map(row => [row.id, row.images]));
-                return current.length ? current.map(row => ({ ...row, images: previews.get(row.id) || row.images })) : data;
-            });
-            setError(false);
-            setLoading(false);
-        }).catch(() => {}).finally(finish);
+            if (active) setRows(data);
+        }).catch(() => { if (active) setError(true); })
+          .finally(() => { if (active) setLoading(false); });
         return () => { active = false; };
     }, [retry]);
     const selectGender = (gender: Gender) => {

@@ -71,21 +71,6 @@ const byName = (products: Product[], words: string[]) => {
   }));
 };
 
-const getShopCategories = (categories: StorefrontCategory[]) => {
-  const uniqueCategories = new Map<string, StorefrontCategory>();
-  categories.forEach((category: any) => {
-    const categoryId = getCategoryId(category);
-    if (!categoryId || category?.is_active === false || category?.selectable === false || Number(category?.level) !== 1) return;
-    if (!uniqueCategories.has(categoryId)) uniqueCategories.set(categoryId, category);
-  });
-  return Array.from(uniqueCategories.values()).sort((first: any, second: any) => {
-    const firstOrder = Number(first?.sort_order) || 0;
-    const secondOrder = Number(second?.sort_order) || 0;
-    if (firstOrder !== secondOrder) return firstOrder - secondOrder;
-    return String(first?.name || "").localeCompare(String(second?.name || ""));
-  });
-};
-
 const Women = () => {
   const [typedProducts, setTypedProducts] = useState<Product[]>([]);
   const [pageCategories, setPageCategories] = useState<StorefrontCategory[]>([]);
@@ -154,7 +139,6 @@ const Women = () => {
     { id: 2, desktopImage: posterMap["women.offer.2"]?.imageUrl || banner2, link: posterMap["women.offer.2"]?.link || "/collections?gender=Women" }
   ], [posterMap]);
 
-  const shopCategories = useMemo(() => getShopCategories(pageCategories), [pageCategories]);
   const newDrops = useMemo(() => dedupeByDesign(typedProducts), [typedProducts]);
   const kurthiPantSets = useMemo(() => {
     const matched = byCategoryIds(typedProducts, pageCategories, ["15"]);
@@ -176,7 +160,7 @@ const Women = () => {
   return (
     <div className="w-full bg-white">
       {postersLoaded ? <HeroCarousel banners={heroBanners} /> : <div className="w-full aspect-[16/6] bg-neutral-100 animate-pulse" />}
-      {shopCategories.length > 0 ? <CategoriesSection categories={shopCategories as any} title="Shop by Category" productData={typedProducts} /> : null}
+      <CategoriesSection gender="WOMEN" title="Shop by Category" />
       <NamedSection title="NEW DROPS" productData={newDrops} autoplay={false} />
       <HeroProductSection products={newDrops.slice(0, 10)} className="mb-4" />
       {kurthiPantSets.length > 0 ? <NamedSection title="KURTHI PANT SETS" productData={kurthiPantSets} /> : null}

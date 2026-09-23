@@ -180,6 +180,10 @@ export default function Cart() {
         if (!userId || updatingKey)
             return;
         const nextQuantity = Math.max(1, item.quantity + delta);
+        if (!item.isCustom && nextQuantity > item.stock) {
+            setError(`Only ${item.stock} available for this size and colour.`);
+            return;
+        }
         if (nextQuantity === item.quantity)
             return;
         const key = getItemKey(item);
@@ -229,6 +233,10 @@ export default function Cart() {
         }
     };
     const handleCheckout = () => {
+        if (cartItems.some(item => !item.isCustom && item.quantity > item.stock)) {
+            setError("Some quantities exceed available stock. Reduce the quantity or remove the item before checkout.");
+            return;
+        }
         if (cartItems.length > 0) {
             navigate("/checkout");
         }
@@ -370,7 +378,7 @@ export default function Cart() {
                                 <span className="w-8 text-xs text-center font-semibold text-gray-900">
                                   {item.quantity}
                                 </span>
-                                <button onClick={() => updateQuantity(item, 1)} disabled={disabled} className="px-3 py-1.5 text-gray-500 hover:bg-gray-50 hover:text-black transition-colors disabled:opacity-50">
+                                <button onClick={() => updateQuantity(item, 1)} disabled={disabled || (!item.isCustom && item.quantity >= item.stock)} className="px-3 py-1.5 text-gray-500 hover:bg-gray-50 hover:text-black transition-colors disabled:opacity-50">
                                   <FiPlus size={14}/>
                                 </button>
                               </div>
@@ -383,7 +391,7 @@ export default function Cart() {
                               <span className="w-10 text-center font-semibold text-gray-900">
                                 {item.quantity}
                               </span>
-                              <button onClick={() => updateQuantity(item, 1)} disabled={disabled} className="px-3 py-2 text-gray-500 hover:bg-gray-50 hover:text-black transition-colors disabled:opacity-50">
+                              <button onClick={() => updateQuantity(item, 1)} disabled={disabled || (!item.isCustom && item.quantity >= item.stock)} className="px-3 py-2 text-gray-500 hover:bg-gray-50 hover:text-black transition-colors disabled:opacity-50">
                                 <FiPlus size={16}/>
                               </button>
                             </div>

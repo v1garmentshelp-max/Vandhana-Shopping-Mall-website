@@ -71,23 +71,6 @@ const byName = (products: Product[], words: string[]) => {
         return searchWords.some(word => text.includes(word));
     }));
 };
-const getShopCategories = (categories: StorefrontCategory[]) => {
-    const uniqueCategories = new Map<string, StorefrontCategory>();
-    categories.forEach((category: any) => {
-        const categoryId = getCategoryId(category);
-        if (!categoryId || category?.is_active === false || category?.selectable === false || Number(category?.level) !== 1)
-            return;
-        if (!uniqueCategories.has(categoryId))
-            uniqueCategories.set(categoryId, category);
-    });
-    return Array.from(uniqueCategories.values()).sort((first: any, second: any) => {
-        const firstOrder = Number(first?.sort_order) || 0;
-        const secondOrder = Number(second?.sort_order) || 0;
-        if (firstOrder !== secondOrder)
-            return firstOrder - secondOrder;
-        return String(first?.name || "").localeCompare(String(second?.name || ""));
-    });
-};
 const Men = () => {
     const [typedProducts, setTypedProducts] = useState<Product[]>([]);
     const [pageCategories, setPageCategories] = useState<StorefrontCategory[]>([]);
@@ -156,7 +139,7 @@ const Men = () => {
         { id: 3, desktopImage: posterMap["men.offer.3"]?.imageUrl || banner4, link: posterMap["men.offer.3"]?.link || "/collections?gender=Men" },
         { id: 4, desktopImage: posterMap["men.offer.4"]?.imageUrl || banner3, link: posterMap["men.offer.4"]?.link || "/collections?gender=Men" }
     ], [posterMap]);
-    const shopCategories = useMemo(() => getShopCategories(pageCategories), [pageCategories]);
+
     const newDrops = useMemo(() => dedupeByDesign(typedProducts), [typedProducts]);
     const tshirts = useMemo(() => {
         const matched = byCategoryIds(typedProducts, pageCategories, ["4"]);
@@ -172,7 +155,7 @@ const Men = () => {
     }, [typedProducts, pageCategories]);
     return (<div className="v1-store-page w-full bg-white">
       {postersLoaded ? <HeroCarousel banners={heroBanners}/> : <div className="w-full aspect-[16/6] bg-neutral-100 animate-pulse"/>}
-      {shopCategories.length > 0 ? <CategoriesSection categories={shopCategories as any} title="Shop by Category" productData={typedProducts}/> : null}
+      <CategoriesSection gender="MEN" title="Shop by Category" />
       <NamedSection title="NEW DROPS" productData={newDrops} autoplay={false}/>
       <HeroProductSection products={newDrops.slice(0, 10)} className="mb-4"/>
       {tshirts.length > 0 ? <NamedSection title="T-SHIRTS & POLO" productData={tshirts}/> : null}
