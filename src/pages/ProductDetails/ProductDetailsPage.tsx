@@ -1,3 +1,4 @@
+import {useStoreEffect} from "../../hooks/useStoreEffect";
 import { compareSizes, formatSizeLabel } from "../../utils/sizeOrder";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
@@ -780,7 +781,7 @@ const ProductDetails: React.FC = () => {
         ]
             .filter(Boolean)
             .join(" > "));
-    useEffect(() => {
+    useStoreEffect((refresh) => {
         let alive = true;
         const load = async () => {
             if (!id) {
@@ -788,7 +789,7 @@ const ProductDetails: React.FC = () => {
                 setProduct(null);
                 return;
             }
-            setLoading(true);
+            if (!refresh) setLoading(true);
             setLoadError("");
             try {
                 const found = await fetchProductById(id, 3);
@@ -840,6 +841,7 @@ const ProductDetails: React.FC = () => {
                     usable[0] ||
                     rows[0];
                 setProduct(found);
+                if (refresh) return;
                 setSelectedColor(first?.color ||
                     productColor ||
                     text((found as any)
@@ -856,7 +858,7 @@ const ProductDetails: React.FC = () => {
             }
             catch (error: any) {
                 if (alive) {
-                    setProduct(null);
+                    if (!refresh) setProduct(null);
                     setLoadError(error?.message ||
                         "Unable to load product");
                 }

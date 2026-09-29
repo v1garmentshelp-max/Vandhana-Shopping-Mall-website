@@ -1,5 +1,6 @@
+import {useStoreEffect} from "../hooks/useStoreEffect";
 import "../styles/mobile-ui.css";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router";
 import { ChevronRight, ShoppingBag } from "lucide-react";
 import Wrapper from "./Wrapper";
@@ -29,9 +30,9 @@ const CategoriesSection = ({ title = "Shop by Category", gender, audience }: {
     const [error, setError] = useState(false);
     const [loading, setLoading] = useState(true);
     const [retry, setRetry] = useState(0);
-    useEffect(() => {
+    useStoreEffect((refresh) => {
         let active = true;
-        setLoading(true); setError(false);
+        if (!refresh) setLoading(true); setError(false);
         fetchCategoryPreviews().then(data => { if (active) setRows(data); })
             .catch(() => { if (active) setError(true); })
             .finally(() => { if (active) setLoading(false); });

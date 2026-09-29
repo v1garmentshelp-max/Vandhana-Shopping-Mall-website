@@ -1,3 +1,5 @@
+import EditorialShowcase from "../components/EditorialShowcase";
+import {useStoreEffect} from "../hooks/useStoreEffect";
 import "../styles/mobile-ui.css";
 import FeaturesSection from "../components/FeaturesSection";
 import NamedSection from "../components/NamedSection";
@@ -81,7 +83,7 @@ const Men = () => {
         localStorage.setItem("preferred_gender", "Men");
         localStorage.setItem("preferred_gender_url", "/men");
     }, []);
-    useEffect(() => {
+    useStoreEffect((refresh) => {
         let alive = true;
         const loadData = async () => {
             try {
@@ -95,8 +97,8 @@ const Men = () => {
                 console.error("Failed to load Men page data:", error);
                 if (!alive)
                     return;
-                setTypedProducts([]);
-                setPageCategories([]);
+                if (!refresh) setTypedProducts([]);
+                if (!refresh) setPageCategories([]);
             }
         };
         void loadData();
@@ -104,7 +106,7 @@ const Men = () => {
             alive = false;
         };
     }, []);
-    useEffect(() => {
+    useStoreEffect((refresh) => {
         let alive = true;
         fetchHomepageConfiguration("men")
             .then(data => {
@@ -116,8 +118,8 @@ const Men = () => {
         })
             .catch(() => {
             if (alive) {
-                setPosterMap({});
-                setPosterSettings({});
+                if (!refresh) setPosterMap({});
+                if (!refresh) setPosterSettings({});
                 setPostersLoaded(true);
             }
         });
@@ -156,6 +158,7 @@ const Men = () => {
     return (<div className="v1-store-page w-full bg-white">
       {postersLoaded ? <HeroCarousel banners={heroBanners}/> : <div className="w-full aspect-[16/6] bg-neutral-100 animate-pulse"/>}
       <CategoriesSection gender="MEN" title="Shop by Category" />
+      <EditorialShowcase page="men" images={posterMap} />
       <NamedSection title="NEW DROPS" productData={newDrops} autoplay={false}/>
       <HeroProductSection products={newDrops.slice(0, 10)} className="mb-4"/>
       {tshirts.length > 0 ? <NamedSection title="T-SHIRTS & POLO" productData={tshirts}/> : null}

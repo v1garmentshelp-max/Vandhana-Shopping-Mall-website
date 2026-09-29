@@ -17,6 +17,7 @@ import ScrollToTop from "./components/ScrollToTop";
 import Kids from "./pages/Kids";
 import Customizer from "./pages/Customizer";
 import Checkout from "./pages/Checkout";
+import OrderDetails from "./pages/OrderDetails";
 
 function AppContent() {
   const location = useLocation();
@@ -52,6 +53,8 @@ function AppContent() {
         <Route path="/profile" element={<Profile />} />
         <Route path="*" element={<NotFound />} />
         <Route path="/checkout" element={<Checkout />} />
+        <Route path="/orders/:id" element={<OrderDetails />} />
+        <Route path="/order-success/:id" element={<OrderDetails />} />
       </Routes>
       {!isCustomizePage && <Footer />}
     </>

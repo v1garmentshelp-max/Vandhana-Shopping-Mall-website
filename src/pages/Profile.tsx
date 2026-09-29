@@ -1,6 +1,6 @@
 import "../styles/mobile-ui.css";
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import { BiGridAlt } from "react-icons/bi";
 import { FiBox, FiClock, FiGift, FiMapPin, FiUser, FiLogOut, FiInfo, FiChevronRight, } from "react-icons/fi";
 import { fetchBranchProducts } from "../services/productsApi";
@@ -437,6 +437,7 @@ export default function Profile() {
         newPassword: "",
     });
     const [orders, setOrders] = useState<OrderRecord[]>([]);
+    const [ordersError,setOrdersError]=useState("");
     const [rewardWallet, setRewardWallet] = useState<RewardWallet | null>(null);
     const [rewardHistory, setRewardHistory] = useState<RewardTransaction[]>([]);
     const [rewardLoading, setRewardLoading] = useState(false);
@@ -468,14 +469,9 @@ export default function Profile() {
         setRewardLoading(true);
         setRewardError("");
         try {
-            const [walletRes, historyRes] = await Promise.all([
-                fetch(`${API_BASE}/api/rewards/wallet`, {
-                    method: "GET",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
-                    },
-                }),
+            const walletRes = await (async () => { const response = await fetch(`${API_BASE}/api/rewards/wallet`, { cache: "no-store", headers: { Authorization: `Bearer ${token}` } }); return response; })();
+            const [, historyRes] = await Promise.all([
+                Promise.resolve(walletRes),
                 fetch(`${API_BASE}/api/rewards/history?limit=100`, {
                     method: "GET",
                     headers: {
@@ -489,6 +485,7 @@ export default function Profile() {
             if (!walletRes.ok) {
                 throw new Error(walletData?.message || "Unable to load reward points");
             }
+            if(!historyRes.ok)throw new Error(historyData?.message || "Reward history could not be loaded. Please refresh.");
             setRewardWallet(normalizeRewardWallet(walletData));
             setRewardHistory(historyRes.ok ? normalizeRewardHistory(historyData) : []);
         }
@@ -501,21 +498,30 @@ export default function Profile() {
             setRewardLoading(false);
         }
     };
+    useEffect(()=>{
+        let last=0;
+        const refresh=()=>{if(document.visibilityState!=="visible"||Date.now()-last<1000)return;last=Date.now();void loadRewards();};
+        window.addEventListener("focus",refresh);window.addEventListener("rewards-updated",refresh);
+        return ()=>{window.removeEventListener("focus",refresh);window.removeEventListener("rewards-updated",refresh);};
+    },[]);
     const loadProfileAndOrders = async (email: string) => {
         setLoading(true);
+        setOrdersError("");
         setError("");
         try {
             const [profileRes, ordersRes] = await Promise.all([
-                fetch(`${API_BASE}/api/user/by-email/${encodeURIComponent(email)}`, {
+                fetch(`${API_BASE}/api/auth/me`, {
                     method: "GET",
                     headers: {
                         "Content-Type": "application/json",
+                        Authorization: `Bearer ${getStoredToken()}`,
                     },
                 }),
-                fetch(`${API_BASE}/api/sales/web/by-user?email=${encodeURIComponent(email)}`, {
+                fetch(`${API_BASE}/api/storefront/orders`, {
                     method: "GET",
                     headers: {
                         "Content-Type": "application/json",
+                        Authorization: `Bearer ${getStoredToken()}`,
                     },
                 }),
             ]);
@@ -526,7 +532,8 @@ export default function Profile() {
                 type: "",
             };
             if (profileRes.ok) {
-                const profileData = await profileRes.json();
+                const profileResult = await profileRes.json();
+                const profileData = profileResult.user || profileResult;
                 nextProfile = {
                     id: profileData.id,
                     name: profileData.name || storedUserNameFromEmail(email),
@@ -566,12 +573,14 @@ export default function Profile() {
                 setOrders(await enrichOrders(normalizedOrders));
             }
             else {
-                setOrders([]);
+                const failure = await ordersRes.json().catch(() => ({}));
+                throw new Error(failure.message || "Your orders could not be loaded. Please refresh.");
             }
             syncStoredUser(nextProfile);
         }
-        catch {
-            setError("Unable to load your profile right now.");
+        catch (e: any) {
+            setError(e.message || "Unable to load your profile right now.");
+            setOrdersError(e.message || "Unable to load your orders. Please refresh.");
         }
         finally {
             setLoading(false);
@@ -746,7 +755,7 @@ export default function Profile() {
         }
         switch (activeTab) {
             case "orders":
-                return <OrdersTab orders={orders}/>;
+                return <OrdersTab orders={orders} error={ordersError} onRetry={()=>void loadProfileAndOrders(profile.email)}/>;
             case "addresses":
                 return <AddressesTab addresses={addresses}/>;
             case "rewards":
@@ -837,15 +846,15 @@ export default function Profile() {
       </div>
     </div>);
 }
-function OrdersTab({ orders }: {
-    orders: OrderRecord[];
+function OrdersTab({ orders, error, onRetry }: {
+    orders: OrderRecord[]; error: string; onRetry: ()=>void;
 }) {
     return (<div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 md:p-8 animate-in fade-in duration-300">
       <h2 className="text-xl font-bold text-gray-900 mb-8 tracking-tight">
         My Orders
       </h2>
 
-      {!orders.length ? (<div className="rounded-lg border border-dashed border-gray-200 p-10 text-center">
+      {error ? <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-5 text-red-700"><p>{error}</p><button className="mt-3 underline font-bold" onClick={onRetry}>Retry orders</button></div> : !orders.length ? (<div className="rounded-lg border border-dashed border-gray-200 p-10 text-center">
           <p className="text-gray-500 font-medium">No orders found yet.</p>
         </div>) : (<div className="flex flex-col gap-6">
           {orders.map((order) => (order.items.length
@@ -882,10 +891,10 @@ function OrdersTab({ orders }: {
                       <span className={`px-3.5 py-1.5 text-[11px] font-extrabold tracking-widest uppercase rounded-full ${statusBadgeClasses(order.status)}`}>
                         {order.status}
                       </span>
-                      <button className="text-[13px] font-bold text-[#4285f4] hover:underline flex items-center gap-0.5">
-                        Order ID: {order.id.slice(0, 8)}
+                      <Link to={`/orders/${order.id}`} className="text-[13px] font-bold text-[#4285f4] hover:underline flex items-center gap-0.5">
+                        View order & options
                         <FiChevronRight size={16}/>
-                      </button>
+                      </Link>
                     </div>
                   </div>
                 </div>)))}

@@ -1,3 +1,4 @@
+import {useStoreEffect} from "../hooks/useStoreEffect";
 import "../styles/mobile-ui.css";
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useLocation } from "react-router";
@@ -195,10 +196,10 @@ const CollectionTabsContent = ({ title }: {
         localStorage.setItem("preferred_gender", preferredGender);
         localStorage.setItem("preferred_gender_url", `/${preferredGender.toLowerCase()}`);
     }, [preferredGender]);
-    useEffect(() => {
+    useStoreEffect((refresh) => {
         let alive = true;
         const loadData = async () => {
-            setProductsLoading(true);
+            if (!refresh) setProductsLoading(true);
             setError("");
             try {
                 const [data, categoryData] = await Promise.all([
@@ -215,8 +216,8 @@ const CollectionTabsContent = ({ title }: {
             }
             catch (loadError: any) {
                 if (alive) {
-                    setProducts([]);
-                    setCategories([]);
+                    if (!refresh) setProducts([]);
+                    if (!refresh) setCategories([]);
                     setError(loadError?.message || "Unable to load products");
                 }
             }

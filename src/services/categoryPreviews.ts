@@ -35,9 +35,11 @@ export const fetchCategoryPreviews = (branchId = 3): Promise<CategoryPreview[]> 
                 .filter((url: unknown): url is string => typeof url === "string" && /^https?:\/\//i.test(url) && !/placeholder/i.test(url))));
             rows.push({ ...row, id, images });
         }
-        cache.set(branchId, { expires: Date.now() + 60000, rows });
+        cache.set(branchId, { expires: Date.now() + 15000, rows });
         return rows;
     }).finally(() => { clearTimeout(timeout); pending.delete(branchId); });
     pending.set(branchId, request);
     return request;
 };
+
+export const clearCategoryPreviewCache = () => cache.clear();

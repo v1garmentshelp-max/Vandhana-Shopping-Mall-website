@@ -1,3 +1,5 @@
+import EditorialShowcase from "../components/EditorialShowcase";
+import {useStoreEffect} from "../hooks/useStoreEffect";
 import { useEffect, useMemo, useState } from "react";
 import CategoriesSection from "../components/CategoriesSection";
 import HeroCarousel, { type Banner } from "../components/HeroCarousel";
@@ -83,7 +85,7 @@ const Women = () => {
     localStorage.setItem("preferred_gender_url", "/women");
   }, []);
 
-  useEffect(() => {
+  useStoreEffect((refresh) => {
     let alive = true;
     const loadData = async () => {
       try {
@@ -94,8 +96,8 @@ const Women = () => {
       } catch (error) {
         console.error("Failed to load Women page data:", error);
         if (!alive) return;
-        setTypedProducts([]);
-        setPageCategories([]);
+        if (!refresh) setTypedProducts([]);
+        if (!refresh) setPageCategories([]);
       }
     };
     void loadData();
@@ -104,7 +106,7 @@ const Women = () => {
     };
   }, []);
 
-  useEffect(() => {
+  useStoreEffect((refresh) => {
     let alive = true;
     fetchHomepageConfiguration("women")
       .then(data => {
@@ -116,8 +118,8 @@ const Women = () => {
       })
       .catch(() => {
         if (alive) {
-          setPosterMap({});
-          setPosterSettings({});
+          if (!refresh) setPosterMap({});
+          if (!refresh) setPosterSettings({});
           setPostersLoaded(true);
         }
       });
@@ -161,6 +163,7 @@ const Women = () => {
     <div className="w-full bg-white">
       {postersLoaded ? <HeroCarousel banners={heroBanners} /> : <div className="w-full aspect-[16/6] bg-neutral-100 animate-pulse" />}
       <CategoriesSection gender="WOMEN" title="Shop by Category" />
+      <EditorialShowcase page="women" images={posterMap} />
       <NamedSection title="NEW DROPS" productData={newDrops} autoplay={false} />
       <HeroProductSection products={newDrops.slice(0, 10)} className="mb-4" />
       {kurthiPantSets.length > 0 ? <NamedSection title="KURTHI PANT SETS" productData={kurthiPantSets} /> : null}

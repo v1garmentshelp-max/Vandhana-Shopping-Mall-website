@@ -1,3 +1,4 @@
+import {useStoreEffect} from "../hooks/useStoreEffect";
 import "../styles/mobile-ui.css";
 import { useEffect, useMemo, useState, } from "react";
 import { useSearchParams, } from "react-router";
@@ -304,7 +305,7 @@ export default function Collection() {
     const [mobileTab, setMobileTab,] = useState("Sizes");
     const selectedGender = genderValue(filters.Gender?.[0] ||
         "Men");
-    useEffect(() => {
+    useStoreEffect(() => {
         let active = true;
         fetchCategoriesTree()
             .then((tree) => {
@@ -323,9 +324,9 @@ export default function Collection() {
             active = false;
         };
     }, []);
-    useEffect(() => {
+    useStoreEffect((refresh) => {
         let active = true;
-        setLoading(true);
+        if (!refresh) setLoading(true);
         setError("");
         fetchProductsByGender(selectedGender, 3)
             .then((data) => {
@@ -337,7 +338,7 @@ export default function Collection() {
         })
             .catch((reason) => {
             if (active) {
-                setProducts([]);
+                if (!refresh) setProducts([]);
                 setError(reason?.message ||
                     "Unable to load products");
             }

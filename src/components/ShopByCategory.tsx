@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import {useStoreEffect} from "../hooks/useStoreEffect";
+import React, { useState } from "react";
 import { useNavigate } from "react-router";
 import { ChevronRight, ShoppingBag } from "lucide-react";
 import Wrapper from "./Wrapper";
@@ -44,9 +45,9 @@ const ShopByCategory: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
     const [retry, setRetry] = useState(0);
-    useEffect(() => {
+    useStoreEffect((refresh) => {
         let active = true;
-        setLoading(true);
+        if (!refresh) setLoading(true);
         setError(false);
         fetchCategoryPreviews().then(data => {
             if (active) setRows(data);

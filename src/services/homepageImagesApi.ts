@@ -33,7 +33,7 @@ export type HomepageConfiguration = {
   settings: HomepageSectionSettingsMap;
 };
 
-const configurationCache = new Map<string, HomepageConfiguration>();
+const configurationCache = new Map<string, {value:HomepageConfiguration;expires:number}>();
 const configurationRequests = new Map<string, Promise<HomepageConfiguration>>();
 
 const readJson = async (response: Response) => {
@@ -45,7 +45,7 @@ const readJson = async (response: Response) => {
 export const fetchHomepageConfiguration = async (page?: string): Promise<HomepageConfiguration> => {
   const cacheKey = String(page || "all").toLowerCase();
   const cached = configurationCache.get(cacheKey);
-  if (cached) return cached;
+  if (cached && cached.expires > Date.now()) return cached.value;
 
   const pending = configurationRequests.get(cacheKey);
   if (pending) return pending;
@@ -70,7 +70,7 @@ export const fetchHomepageConfiguration = async (page?: string): Promise<Homepag
       : {};
 
     const configuration = { images, settings };
-    configurationCache.set(cacheKey, configuration);
+    configurationCache.set(cacheKey, {value:configuration,expires:Date.now()+15000});
     configurationRequests.delete(cacheKey);
     return configuration;
   }).catch(error => {

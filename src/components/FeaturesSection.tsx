@@ -17,7 +17,7 @@ const FeaturesSection = ({ className }: {
         {
             icon: (<RotateCcw size={36} className="text-[#FFD700]" strokeWidth={1.5}/>),
             title: "EASY RETURNS",
-            description: "30-DAY POLICY",
+            description: "7-DAY RETURNS · NO RETURNS ON INNERWEAR",
         },
         {
             icon: (<Paintbrush size={36} className="text-[#FFD700]" strokeWidth={1.5}/>),

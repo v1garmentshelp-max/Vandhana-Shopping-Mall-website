@@ -1,3 +1,4 @@
+import { storeRequest } from "../services/storefrontApi";
 import "../styles/mobile-ui.css";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router";
@@ -247,7 +248,9 @@ export default function Cart() {
     const totalQuantity = useMemo(() => {
         return cartItems.reduce((sum, item) => sum + item.quantity, 0);
     }, [cartItems]);
-    const shipping = subtotal >= 1000 || subtotal === 0 ? 0 : 75;
+    const [deliveryPolicy, setDeliveryPolicy] = useState<any>(null);
+    useEffect(() => { let active = true; storeRequest("/storefront/policy").then(data => { if (active) setDeliveryPolicy(data); }).catch(() => {}); return () => { active = false; }; }, []);
+    const shipping = !deliveryPolicy || subtotal === 0 || subtotal >= deliveryPolicy.free_shipping_threshold ? 0 : Number(deliveryPolicy.delivery_below_threshold);
     const total = subtotal + shipping;
     const totalOriginalPrice = useMemo(() => {
         return cartItems.reduce((sum, item) => sum + (item.originalPrice || item.price) * item.quantity, 0);
@@ -444,16 +447,16 @@ export default function Cart() {
                         </p>
                       </div>
                       <div className="flex justify-between items-center">
-                        <p>Shipping Charges</p>
+                        <p>Prepaid delivery estimate</p>
                         <p className="font-medium text-gray-900">
-                          {shipping === 0 ? (<span className="text-[#009b4d]">FREE</span>) : (`₹${shipping}`)}
+                          {!deliveryPolicy ? "Calculated at checkout" : shipping === 0 ? (<span className="text-[#009b4d]">FREE</span>) : (`₹${shipping}`)}
                         </p>
                       </div>
                     </div>
                   </div>
                 </details>
                 <div className="flex justify-between items-center px-4 py-4 border-t border-gray-50 text-[13px]">
-                  <span className="text-gray-800">Total</span>
+                  <span className="text-gray-800">Estimated prepaid total</span>
                   <span className="font-extrabold text-[15px] text-gray-900">
                     ₹{total}
                   </span>
@@ -466,6 +469,7 @@ export default function Cart() {
                 <h2 className="text-xl font-bold text-gray-900 tracking-tight mb-6">
                   Order Summary
                 </h2>
+                <p className="text-xs text-gray-600 mb-4">COD fees are added at checkout. Final delivery and rewards are shown before placing your order.</p>
 
                 <div className="flex flex-col gap-4 text-gray-600 mb-6 text-sm">
                   <div className="flex justify-between items-center">
@@ -481,15 +485,15 @@ export default function Cart() {
                     </p>
                   </div>
                   <div className="flex justify-between items-center">
-                    <p>Estimated Shipping</p>
+                    <p>Prepaid delivery estimate</p>
                     <p className="font-medium text-gray-900">
-                      {shipping === 0 ? (<span className="text-green-600 font-bold tracking-wide">
+                      {!deliveryPolicy ? "Calculated at checkout" : shipping === 0 ? (<span className="text-green-600 font-bold tracking-wide">
                           Free
                         </span>) : (`₹${shipping}`)}
                     </p>
                   </div>
                   <div className="border-t border-gray-100 pt-4 mt-2 flex justify-between items-center">
-                    <p className="text-lg font-bold text-gray-900">Total</p>
+                    <p className="text-lg font-bold text-gray-900">Estimated prepaid total</p>
                     <p className="text-2xl font-black text-gray-900">
                       ₹{total}
                     </p>

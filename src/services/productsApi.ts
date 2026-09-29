@@ -1,12 +1,11 @@
 import { compareSizes } from "../utils/sizeOrder";
 import type { Product, ProductGender } from "../Models/Product";
 import { resolveColorHex } from "../utils/colorHexMap";
-import categoriesJson from "../Data/categories.json";
 const API_BASE = "https://vandhana-shopping-mall-backend.vercel.app";
 const DEFAULT_BRANCH_ID = 3;
 const FALLBACK_IMAGE = "data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='900' height='1200' viewBox='0 0 900 1200'%3E%3Crect width='900' height='1200' fill='%23f3f4f6'/%3E%3Cpath d='M315 540h270v120H315z' fill='%23e5e7eb'/%3E%3C/svg%3E";
-const PRODUCT_CACHE_MS = 60000;
-const CATEGORY_CACHE_MS = 10 * 60000;
+const PRODUCT_CACHE_MS = 15000;
+const CATEGORY_CACHE_MS = 15000;
 type ResponseCacheEntry = {
     data: any;
     expiresAt: number;
@@ -79,7 +78,6 @@ export type StorefrontCategory = {
     sort_order?: number;
     children?: StorefrontCategory[];
 };
-const fallbackCategories = categoriesJson as StorefrontCategory[];
 const clean = (value: any) => String(value ?? "")
     .replace(/\s+/g, " ")
     .trim();
@@ -1270,9 +1268,7 @@ const categoryImage = (category: Row) => {
     if (validImage(category.image)) {
         return clean(category.image);
     }
-    return (fallbackCategories.find((item) => String(item.id) ===
-        String(category.id))?.image ||
-        FALLBACK_IMAGE);
+    return FALLBACK_IMAGE;
 };
 const categoryNode = (node: Row, parentId: string | null = null): StorefrontCategory => {
     const id = String(node.id ||
@@ -1314,31 +1310,6 @@ const categoryNode = (node: Row, parentId: string | null = null): StorefrontCate
             : [],
     };
 };
-const flatTree = (items: StorefrontCategory[]) => {
-    const map = new Map(items.map((item) => [
-        String(item.id),
-        {
-            ...item,
-            children: [],
-        } as StorefrontCategory,
-    ]));
-    const roots: StorefrontCategory[] = [];
-    map.forEach((item) => {
-        const parent = item.parentId ||
-            item.parent_id;
-        if (parent &&
-            map.has(String(parent))) {
-            map
-                .get(String(parent))!
-                .children!
-                .push(item);
-        }
-        else {
-            roots.push(item);
-        }
-    });
-    return roots;
-};
 const fetchJson = async (url: string, ttl = PRODUCT_CACHE_MS) => {
     const cached = responseCache.get(url);
     if (cached && cached.expiresAt > Date.now()) {
@@ -1353,7 +1324,7 @@ const fetchJson = async (url: string, ttl = PRODUCT_CACHE_MS) => {
         headers: {
             Accept: "application/json",
         },
-        cache: "default",
+        cache: "no-store",
     })
         .then(async (response) => {
         const data = await response.json().catch(() => []);
@@ -1415,15 +1386,8 @@ export const fetchCategoriesTree = async (gender?: ProductGender | string): Prom
             ? data.map((node: Row) => categoryNode(node))
             : [];
     }
-    catch {
-        const flat = fallbackCategories
-            .filter((item) => item.is_active !==
-            false)
-            .map((item) => categoryNode(item));
-        return flatTree(backendGender
-            ? flat.filter((item) => item.gender ===
-                backendGender)
-            : flat);
+    catch (error) {
+        throw error instanceof Error ? error : new Error('Unable to load store categories');
     }
 };
 export const fetchCategoriesByGender = async (gender: ProductGender) => flattenCategoryTree(await fetchCategoriesTree(gender)).filter((item) => item.level >
@@ -1700,3 +1664,5 @@ export const fetchProductById = async (id: string | number, branchId = DEFAULT_B
             0,
     } as unknown as Product;
 };
+
+export const clearProductResponseCache = () => responseCache.clear();

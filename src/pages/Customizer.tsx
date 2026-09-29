@@ -1,3 +1,4 @@
+import {useStoreEffect} from "../hooks/useStoreEffect";
 import {
   AlignCenter,
   AlignLeft,
@@ -41,8 +42,7 @@ type StoredUser = {
   type?: string;
 };
 
-const CUSTOM_PRODUCT_PRICE = 799;
-const CUSTOM_PRODUCT_ORIGINAL_PRICE = 999;
+
 
 const COLORS = [
   { name: "White", code: "#ffffff" },
@@ -82,6 +82,9 @@ const getStoredUser = (): StoredUser | null => {
 
 const Customizer = () => {
   const navigate = useNavigate();
+  const [studio, setStudio] = useState<{enabled:boolean;garments:{id:string;price:number;mrp:number;enabled:boolean}[];sizes:string[];colors:{name:string;code:string}[]}|null>(null);
+  const [studioError,setStudioError] = useState('');
+  useStoreEffect(()=>{const controller=new AbortController();fetch('https://vandhana-shopping-mall-backend.vercel.app/api/mobile/store',{signal:controller.signal}).then(async r=>{if(!r.ok)throw new Error('The design studio is temporarily unavailable.');const d=await r.json();setStudio(d.customizer);setStudioError('')}).catch(e=>{if(e.name!=='AbortError')setStudioError(e.message)});return()=>controller.abort()},[]);
   const [step, setStep] = useState(1);
   const [side, setSide] = useState<Side>("front");
   const [garmentType, setGarmentType] = useState<GarmentType>("crew");
@@ -188,7 +191,7 @@ const Customizer = () => {
     refs.setReference(virtualEl);
   }, [activeObject, isInteracting, showFontMenu, refs, side]);
 
-  const handleNext = () => step < 3 && setStep(step + 1);
+  const handleNext = () => {if(!studio?.enabled){setCartError(studioError || 'The design studio is loading or currently unavailable.');return;}if(step<3)setStep(step+1);};
 
   const goToPreview = () => {
     const c = getActiveCanvas();
@@ -417,6 +420,8 @@ const Customizer = () => {
 
   const handleAddToCart = async () => {
     if (!size || isAdding) return;
+    const garment = studio?.garments.find(g=>g.id===garmentType && g.enabled);
+    if(!studio?.enabled || !garment){setCartError(studioError || 'This custom garment is currently unavailable.');return;}
 
     const user = getStoredUser();
     const userId = Number(user?.id || 0);
@@ -445,8 +450,8 @@ const Customizer = () => {
         custom_title: `Custom ${garmentType}`,
         custom_brand: "V1Garments",
         custom_image_url: displayImage,
-        custom_price: CUSTOM_PRODUCT_PRICE,
-        custom_original_price: CUSTOM_PRODUCT_ORIGINAL_PRICE,
+        custom_price: garment.price,
+        custom_original_price: garment.mrp,
         custom_payload: payload,
       });
 
@@ -547,7 +552,7 @@ const Customizer = () => {
                   Select Color
                 </h3>
                 <div className="flex gap-4 overflow-x-auto pb-4 pt-1 px-1 custom-scrollbar w-full">
-                  {COLORS.map((c) => (
+                  {(studio?.colors || []).map((c) => (
                     <div key={c.code} className="flex justify-center shrink-0">
                       <button
                         onClick={() => setSelectedColor(c.code)}
@@ -577,7 +582,7 @@ const Customizer = () => {
                   Select Size
                 </h3>
                 <div className="flex flex-wrap gap-2">
-                  {["S", "M", "L", "XL", "2XL", "3XL"].map((s) => (
+                  {(studio?.sizes || []).map((s) => (
                     <button
                       key={s}
                       onClick={() => setSize(s)}

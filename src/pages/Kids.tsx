@@ -1,3 +1,5 @@
+import EditorialShowcase from "../components/EditorialShowcase";
+import {useStoreEffect} from "../hooks/useStoreEffect";
 import "../styles/mobile-ui.css";
 import { useEffect, useMemo, useState } from "react";
 import HeroCarousel from "../components/HeroCarousel";
@@ -100,7 +102,7 @@ const Kids = () => {
         localStorage.setItem("preferred_gender", "Kids");
         localStorage.setItem("preferred_gender_url", "/kids");
     }, []);
-    useEffect(() => {
+    useStoreEffect((refresh) => {
         let alive = true;
         const loadData = async () => {
             try {
@@ -114,8 +116,8 @@ const Kids = () => {
                 console.error("Failed to load Kids page data:", error);
                 if (!alive)
                     return;
-                setTypedProducts([]);
-                setPageCategories([]);
+                if (!refresh) setTypedProducts([]);
+                if (!refresh) setPageCategories([]);
             }
         };
         void loadData();
@@ -123,7 +125,7 @@ const Kids = () => {
             alive = false;
         };
     }, []);
-    useEffect(() => {
+    useStoreEffect((refresh) => {
         let alive = true;
         fetchHomepageConfiguration("kids")
             .then(data => {
@@ -133,7 +135,7 @@ const Kids = () => {
         })
             .catch(() => {
             if (alive) {
-                setPosterMap({});
+                if (!refresh) setPosterMap({});
             }
         });
         return () => {
@@ -173,6 +175,7 @@ const Kids = () => {
         </button>
       </div>
       <CategoriesSection gender="KIDS" audience={activeAudience} title="Shop by Category" />
+      <EditorialShowcase page="kids" images={posterMap} />
       <NamedSection title="NEW DROPS" productData={newDrops} autoplay={false}/>
       <HeroProductSection products={newDrops.slice(0, 10)} className="mb-4"/>
       {nightDresses.length > 0 ? <NamedSection title="NIGHT DRESSES" productData={nightDresses}/> : null}
