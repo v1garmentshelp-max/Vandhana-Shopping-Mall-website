@@ -1,3 +1,4 @@
+import { customerFetch } from "./storefrontApi";
 const API_BASE = "https://vandhana-shopping-mall-backend.vercel.app";
 
 export type CartApiItem = {
@@ -213,7 +214,7 @@ const exactVariantId = (payload: {
 }) => payload.variant_id ?? payload.product_id ?? null;
 
 export const fetchCart = async (userId: number, branchId = 3): Promise<CartApiItem[]> => {
-  const res = await fetch(
+  const res = await customerFetch(
     `${API_BASE}/api/cart/${encodeURIComponent(userId)}?branch_id=${encodeURIComponent(branchId)}`,
     {
       method: "GET",
@@ -228,7 +229,7 @@ export const fetchCart = async (userId: number, branchId = 3): Promise<CartApiIt
 };
 
 export const fetchCartCount = async (userId: number): Promise<number> => {
-  const res = await fetch(`${API_BASE}/api/cart/count/${encodeURIComponent(userId)}`, {
+  const res = await customerFetch(`${API_BASE}/api/cart/count/${encodeURIComponent(userId)}`, {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
@@ -261,7 +262,7 @@ export const addToCart = async (payload: AddCartPayload) => {
     hsn_percentage: payload.hsn_percentage ?? null,
   };
 
-  const res = await fetch(`${API_BASE}/api/cart/vandana-cart`, {
+  const res = await customerFetch(`${API_BASE}/api/cart/vandana-cart`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -291,7 +292,7 @@ export const updateCartQuantity = async (payload: UpdateCartPayload) => {
     throw new Error("variant_id or cart_item_id is required to update cart quantity");
   }
 
-  const res = await fetch(`${API_BASE}/api/cart/vandana-cart`, {
+  const res = await customerFetch(`${API_BASE}/api/cart/vandana-cart`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
@@ -315,7 +316,7 @@ export const removeFromCart = async (payload: RemoveCartPayload) => {
     throw new Error("variant_id or cart_item_id is required to remove a cart item");
   }
 
-  const res = await fetch(`${API_BASE}/api/cart/vandana-cart`, {
+  const res = await customerFetch(`${API_BASE}/api/cart/vandana-cart`, {
     method: "DELETE",
     headers: {
       "Content-Type": "application/json",
@@ -333,7 +334,7 @@ export const removeFromCart = async (payload: RemoveCartPayload) => {
 };
 
 export const clearCart = async (userId: number) => {
-  const res = await fetch(`${API_BASE}/api/cart/${encodeURIComponent(userId)}/clear`, {
+  const res = await customerFetch(`${API_BASE}/api/cart/${encodeURIComponent(userId)}/clear`, {
     method: "DELETE",
     headers: {
       "Content-Type": "application/json",

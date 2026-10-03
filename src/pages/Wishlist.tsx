@@ -1,3 +1,4 @@
+import { customerFetch } from "../services/storefrontApi";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { FiHeart, FiTrash2 } from "react-icons/fi";
@@ -153,7 +154,7 @@ export default function Wishlist() {
     setError("");
 
     try {
-      const res = await fetch(`${API_BASE}/api/wishlist/${uid}`, {
+      const res = await customerFetch(`${API_BASE}/api/wishlist/${uid}`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -198,7 +199,7 @@ export default function Wishlist() {
     setRemovingId(variantId);
 
     try {
-      const res = await fetch(`${API_BASE}/api/wishlist`, {
+      const res = await customerFetch(`${API_BASE}/api/wishlist`, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",

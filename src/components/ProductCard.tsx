@@ -1,3 +1,4 @@
+import { customerFetch } from "../services/storefrontApi";
 import "../styles/mobile-ui.css";
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router";
@@ -532,7 +533,7 @@ export const ProductCard: React.FC<ProductCardProps> = (props: any) => {
         setIsUpdatingWishlist(true);
         try {
             if (isWishlisted) {
-                const response = await fetch(`${API_BASE}/api/wishlist`, {
+                const response = await customerFetch(`${API_BASE}/api/wishlist`, {
                     method: "DELETE",
                     headers: {
                         "Content-Type": "application/json",
@@ -555,7 +556,7 @@ export const ProductCard: React.FC<ProductCardProps> = (props: any) => {
                 setIsWishlisted(false);
             }
             else {
-                const response = await fetch(`${API_BASE}/api/wishlist`, {
+                const response = await customerFetch(`${API_BASE}/api/wishlist`, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",

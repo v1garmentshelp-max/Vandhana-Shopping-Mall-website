@@ -1,5 +1,10 @@
 export const STORE_API = (import.meta.env.VITE_API_BASE || 'https://vandhana-shopping-mall-backend.vercel.app').replace(/\/+$/, '');
 export const customerToken = () => localStorage.getItem('token') || sessionStorage.getItem('token') || localStorage.getItem('authToken') || sessionStorage.getItem('authToken') || localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token') || '';
+export function customerFetch(input: RequestInfo | URL, options: RequestInit = {}) {
+  const headers=new Headers(options.headers);
+  headers.set('Authorization',`Bearer ${customerToken()}`);
+  return fetch(input,{...options,headers});
+}
 export class StoreError extends Error {
   status: number;
   code?: string;

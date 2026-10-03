@@ -1,3 +1,4 @@
+import { customerFetch } from "../../services/storefrontApi";
 import {useStoreEffect} from "../../hooks/useStoreEffect";
 import { compareSizes, formatSizeLabel } from "../../utils/sizeOrder";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -1170,7 +1171,7 @@ const ProductDetails: React.FC = () => {
         }
         setUpdatingWishlist(true);
         try {
-            const response = await fetch(`${API_BASE}/api/wishlist`, {
+            const response = await customerFetch(`${API_BASE}/api/wishlist`, {
                 method: wishlisted
                     ? "DELETE"
                     : "POST",

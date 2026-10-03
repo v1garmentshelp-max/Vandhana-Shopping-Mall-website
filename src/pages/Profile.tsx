@@ -1,3 +1,4 @@
+import { customerFetch } from "../services/storefrontApi";
 import "../styles/mobile-ui.css";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
@@ -276,7 +277,7 @@ const normalizeOrders = (data: any): OrderRecord[] => {
         return [];
     return data.map((order: any) => ({
         id: String(order.id || ""),
-        status: String(order.status || "PLACED"),
+        status: String(order.display_status || order.status || "PLACED"),
         payment_status: order.payment_status || "",
         payment_method: order.payment_method || "",
         created_at: order.created_at || "",
@@ -628,7 +629,7 @@ export default function Profile() {
             const fullName = `${form.firstName} ${form.lastName}`.trim() || profile.name;
             let updatedMobile = profile.mobile;
             if ((form.mobile || "").trim() !== (profile.mobile || "").trim()) {
-                const res = await fetch(`${API_BASE}/api/user/update-mobile`, {
+                const res = await customerFetch(`${API_BASE}/api/user/update-mobile`, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",

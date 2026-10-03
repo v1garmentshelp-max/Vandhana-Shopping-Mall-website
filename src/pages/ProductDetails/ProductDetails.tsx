@@ -1,3 +1,4 @@
+import { customerFetch } from "../../services/storefrontApi";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 import CarouselModule from "react-multi-carousel";
@@ -2430,7 +2431,7 @@ const ProductDetails:
 
             try {
                 const response =
-                    await fetch(
+                    await customerFetch(
                         `${API_BASE}/api/wishlist`,
                         {
                             method:
