@@ -1,0 +1,8 @@
+.shiwang-strip{display:flex;justify-content:center;align-items:center;gap:20px;flex-wrap:wrap;padding:12px 20px;background:#342034;color:#fff3db;font:500 13px/1.5 'Montserrat',sans-serif;text-align:center;text-decoration:none}
+.shiwang-strip strong{letter-spacing:.15em;color:#ffd033}.shiwang-strip:hover{background:#4a2c46}
+.shiwang-note{margin:14px 0;padding:16px;border:1px solid #e8d8bd;border-radius:12px;background:#fff8e9;color:#4b303c;font:14px/1.6 'Montserrat',sans-serif}
+.shiwang-note strong{font-weight:800}.shiwang-note p{margin:5px 0}.shiwang-note small{display:block;font-size:12px;color:#65545a}
+.shiwang-badge{margin:8px 0 0;border-radius:5px;padding:6px 8px;background:#fff2cf;color:#553045;font-size:11px;font-weight:700;line-height:1.4}
+.shiwang-page{max-width:1280px;margin:auto;padding:32px 20px 60px}.shiwang-page h1{font-size:clamp(28px,5vw,48px);font-weight:800;color:#342034}.shiwang-products{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:28px 20px;margin-top:30px}
+.shiwang-prices{display:flex;gap:12px;flex-wrap:wrap;margin:20px 0}.shiwang-prices span{border:1px solid #e8d8bd;border-radius:10px;padding:12px 18px;background:#fff8e9}.shiwang-prices b{display:block;font-size:22px}.shiwang-page button{border:1px solid #342034;border-radius:6px;padding:8px 16px}
+@media(max-width:700px){.shiwang-strip{gap:3px 10px;padding:10px 12px;font-size:11px}.shiwang-strip span:last-child{width:100%}.shiwang-products{grid-template-columns:repeat(2,minmax(0,1fr));gap:20px 12px}.shiwang-page{padding:24px 14px}.shiwang-prices{display:grid;grid-template-columns:1fr 1fr}.shiwang-prices span{padding:10px}.shiwang-note{padding:12px;font-size:12px}}

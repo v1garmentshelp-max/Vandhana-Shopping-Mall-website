@@ -19,6 +19,9 @@ import Customizer from "./pages/Customizer";
 import Checkout from "./pages/Checkout";
 import OrderDetails from "./pages/OrderDetails";
 
+import { ShiwangOfferProvider, ShiwangBanner } from "./components/ShiwangOffer";
+import ShiwangCollection from "./pages/ShiwangCollection";
+
 function AppContent() {
   const location = useLocation();
   const isCustomizePage = location.pathname.startsWith("/customize");
@@ -39,7 +42,9 @@ function AppContent() {
     <>
       <ScrollToTop />
       <Header />
+      {!isCustomizePage && <ShiwangBanner />}
       <Routes>
+        <Route path="/offers/shiwang" element={<ShiwangCollection />} />
         <Route path="/" element={<Home />} />
         <Route path="/men" element={<Men />} />
         <Route path="/women" element={<Women />} />
@@ -64,7 +69,7 @@ function AppContent() {
 export default function App() {
   return (
     <BrowserRouter>
-      <AppContent />
+      <ShiwangOfferProvider><AppContent /></ShiwangOfferProvider>
     </BrowserRouter>
   );
 }

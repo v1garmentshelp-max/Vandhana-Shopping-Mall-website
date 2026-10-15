@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router';
 import { customerToken, money, notifyCommerceChanged, payForCheckout, postStore, StoreError, storeRequest } from '../services/storefrontApi';
 import type { Checkout as SavedCheckout, Quote } from '../services/storefrontApi';
 import '../styles/commerce.css';
+import { ShiwangQuoteOffer } from '../components/ShiwangOffer';
 type Address = { fullName: string; mobile: string; line1: string; line2: string; city: string; state: string; pincode: string };
 type Attempt = { request_key: string; address: Address; payment_method: 'COD' | 'ONLINE'; reward_points: number; fingerprint: string; quote_version: number };
 export default function Checkout() {
@@ -45,6 +46,14 @@ export default function Checkout() {
     storeRequest('/rewards/wallet').then(data => { if (active) { setWallet(data); setWalletError(''); } }).catch(e => { if (active) setWalletError(e.message); });
     return () => { active = false; };
   }, [customer, refresh]);
+  useEffect(() => {
+    const expiry = quote?.offers?.[0]?.ends_at;
+    if (!expiry) return;
+    const delay = Date.parse(expiry) - Date.now();
+    if (delay <= 0) return;
+    const timer = window.setTimeout(() => setRefresh(n => n + 1), Math.min(delay + 50, 2147483647));
+    return () => clearTimeout(timer);
+  }, [quote]);
   const applyPoints = () => {
     const requested = Number(pointsInput);
     if (!Number.isSafeInteger(requested) || requested < 0 || requested > Number(wallet?.balance || 0)) { setError('Enter whole reward points within your available balance.'); return; }
@@ -93,7 +102,7 @@ export default function Checkout() {
     </div><aside className="v1-commerce-card" aria-busy={quoteLoading}><h2>Your order</h2>
       {quoteError && <div className="v1-commerce-alert" role="alert"><p>{quoteError}</p><div className="v1-commerce-actions"><button className="v1-commerce-secondary" onClick={() => { if (points) { setPoints(0); setPointsInput(''); } setRefresh(n => n + 1); }}>Refresh total</button><Link to="/cart">Edit cart</Link></div></div>}
       {quoteLoading && <p role="status"><span className="v1-commerce-loader" />Updating your total...</p>}
-      {quote && <><div>{quote.items.map(item => <div className="v1-commerce-item" key={item.cart_item_id}>{item.image_url && <img src={item.image_url} alt={item.name} loading="lazy" />}<div><strong>{item.name}</strong><p>{item.size} · {item.colour} · Qty {item.qty}</p><p>{money(item.price * item.qty)}</p></div></div>)}</div><div className="v1-commerce-summary"><div className="v1-commerce-row"><span>Product MRP</span><span>{money(quote.mrp)}</span></div><div className="v1-commerce-row"><span>Product discount</span><span>−{money(quote.discount)}</span></div><div className="v1-commerce-row"><span>Products subtotal</span><span>{money(quote.subtotal)}</span></div><div className="v1-commerce-row"><span>Delivery charge</span><span>{quote.delivery_fee ? money(quote.delivery_fee) : 'FREE'}</span></div><div className="v1-commerce-row"><span>COD charge</span><span>{money(quote.cod_fee)}</span></div>{quote.reward_points > 0 && <div className="v1-commerce-row"><span>Rewards redeemed</span><span>−{money(quote.reward_points)}</span></div>}<div className="v1-commerce-row v1-commerce-total"><span>Total</span><span>{money(quote.payable)}</span></div></div></>}
+      {quote && <><ShiwangQuoteOffer quote={quote} /><div>{quote.items.map((item, index) => <div className="v1-commerce-item" key={`${item.cart_item_id}:${index}`}>{item.image_url && <img src={item.image_url} alt={item.name} loading="lazy" />}<div><strong>{item.name}</strong><p>{item.size} · {item.colour} · Qty {item.qty}</p><p>{money(item.price * item.qty)}</p></div></div>)}</div><div className="v1-commerce-summary"><div className="v1-commerce-row"><span>Product MRP</span><span>{money(quote.mrp)}</span></div><div className="v1-commerce-row"><span>Product discount</span><span>−{money(quote.discount - (quote.offer_discount || 0))}</span></div>{!!quote.offer_discount && <div className="v1-commerce-row"><span>Shiwang pair savings</span><span>−{money(quote.offer_discount)}</span></div>}<div className="v1-commerce-row"><span>Products subtotal</span><span>{money(quote.subtotal)}</span></div><div className="v1-commerce-row"><span>Delivery charge</span><span>{quote.delivery_fee ? money(quote.delivery_fee) : 'FREE'}</span></div><div className="v1-commerce-row"><span>COD charge</span><span>{money(quote.cod_fee)}</span></div>{quote.reward_points > 0 && <div className="v1-commerce-row"><span>Rewards redeemed</span><span>−{money(quote.reward_points)}</span></div>}<div className="v1-commerce-row v1-commerce-total"><span>Total</span><span>{money(quote.payable)}</span></div></div></>}
       <p className="v1-commerce-note">Cancel within 7 days of placing your order, before dispatch. Eligible returns within 7 days of delivery. Innerwear cannot be returned. Delivery and COD charges are not refundable.</p>
       <button className="v1-commerce-primary" style={{ width: '100%', marginTop: 16 }} disabled={busy || quoteLoading || !quote || !!quoteError || !!attempt || recoveryError} onClick={() => void submit()}>{busy ? 'Securing your order...' : method === 'COD' ? 'Place COD order' : 'Continue to payment'}</button>
       <p className="v1-commerce-muted">The amount shown above is calculated by V1Garments. Payment and order status are verified before confirmation.</p>

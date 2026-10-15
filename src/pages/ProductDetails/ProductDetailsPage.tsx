@@ -1,3 +1,4 @@
+import { ShiwangProductOffer, useShiwangOffer } from "../../components/ShiwangOffer";
 import { customerFetch } from "../../services/storefrontApi";
 import {useStoreEffect} from "../../hooks/useStoreEffect";
 import { compareSizes, formatSizeLabel } from "../../utils/sizeOrder";
@@ -718,7 +719,8 @@ const ProductDetails: React.FC = () => {
     const backendProductId = useMemo(() => productBackendId(product), [product]);
     const storedUser = getStoredUser();
     const isB2B = isBusinessUser(storedUser);
-    const currentPrice = isB2B
+    const shiwangOffer = useShiwangOffer(product);
+    const currentPrice = !isB2B && shiwangOffer ? shiwangOffer.single_price : isB2B
         ? selectedVariant
             ?.finalPriceB2B ||
             num((product as any)
@@ -1370,6 +1372,7 @@ const ProductDetails: React.FC = () => {
                                 {path}
                             </p>) : null}
 
+                        {!isB2B && <ShiwangProductOffer product={product} />}
                         <div className="flex items-center flex-wrap gap-4 mb-4">
                             <span className="text-2xl font-bold text-gray-900">
                                 {formatMoney(currentPrice)}

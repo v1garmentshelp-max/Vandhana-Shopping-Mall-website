@@ -25,7 +25,9 @@ export const postStore = <T = any>(path: string, body: unknown) => storeRequest<
 export const money = (value: unknown) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(Number(value || 0));
 export type Quote = {
   fingerprint: string; policy_version: number; payment_method: 'COD' | 'ONLINE';
-  items: { cart_item_id: number; variant_id: number | null; name: string; size: string; colour: string; qty: number; price: number; mrp: number; image_url: string | null }[];
+  items: { cart_item_id: number; variant_id: number | null; name: string; size: string; colour: string; qty: number; price: number; mrp: number; offer_id?: string; offer_part?: string; image_url: string | null }[];
+  offers?: { id: string; quantity: number; pairs: number; singles: number; subtotal: number; discount: number; ends_at: string }[];
+  offer_discount?: number;
   subtotal: number; mrp: number; discount: number; shipping: number; delivery_fee: number; cod_fee: number; reward_points: number; payable: number;
 };
 export type Checkout = { key: string; sale_id: string; payment_method: string; payment_status: string; fully_paid: boolean; amount: number; quote: Quote };

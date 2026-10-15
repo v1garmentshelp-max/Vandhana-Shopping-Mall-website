@@ -621,6 +621,7 @@ const normalizeVariant = (variant: Row, row: Row) => {
                 100)
         : directB2B;
     return {
+        offer: variant.offer || row.offer || null,
         id: variantId || barcode,
         variant_id: variantId,
         variantId,
@@ -1090,6 +1091,7 @@ const normalizeProduct = (row: Row): Product | null => {
     const finalB2B = numeric(first(selected.final_price_b2b, selected.finalPriceB2b, selected.b2b_final_price, originalB2B), originalB2B);
     const b2bDiscount = percentage(first(selected.b2b_discount_pct, selected.b2bDiscountPct, selected.discount_b2b, 0));
     return {
+        offer: selected.offer || row.offer || null,
         id: routeKey ||
             clean(first(productId, selected.variant_id, selected.barcode, "")),
         productId,

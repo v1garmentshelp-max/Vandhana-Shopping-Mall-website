@@ -1,3 +1,5 @@
+import { ShiwangQuoteOffer } from "../components/ShiwangOffer";
+import type { Quote } from "../services/storefrontApi";
 import { storeRequest } from "../services/storefrontApi";
 import "../styles/mobile-ui.css";
 import { useEffect, useMemo, useState } from "react";
@@ -101,7 +103,7 @@ const normalizeCartItem = (item: CartApiItem, businessAccount: boolean): CartLin
         ? item.custom_payload
         : {};
     return {
-        cartItemId: item.cart_item_id,
+        cartItemId: Number(item.cart_item_id),
         id: item.id || item.variant_id || item.product_id || item.cart_item_id || "",
         productId: item.product_id ?? item.productId ?? null,
         variantId: item.variant_id ?? item.variantId ?? item.id ?? null,
@@ -140,6 +142,35 @@ export default function Cart() {
     const [loading, setLoading] = useState(true);
     const [updatingKey, setUpdatingKey] = useState<string | null>(null);
     const [error, setError] = useState("");
+    const [quote, setQuote] = useState<Quote | null>(null);
+    const [quoteLoading, setQuoteLoading] = useState(false), [quoteError, setQuoteError] = useState("");
+    const [quoteRefresh, setQuoteRefresh] = useState(0);
+    useEffect(() => {
+        if (businessAccount || !userId || !cartItems.length) { setQuote(null); setQuoteLoading(false); return; }
+        const controller = new AbortController(); setQuoteLoading(true); setQuote(null); setQuoteError("");
+        storeRequest<Quote>("/storefront/checkout/quote", { method: "POST", body: JSON.stringify({ payment_method: "ONLINE", reward_points: 0, quote_version: 2 }), signal: controller.signal })
+            .then(data => { if (!controller.signal.aborted) setQuote(data); })
+            .catch(e => { if (!controller.signal.aborted) setQuoteError(e.message); })
+            .finally(() => { if (!controller.signal.aborted) setQuoteLoading(false); });
+        return () => controller.abort();
+    }, [cartItems, businessAccount, userId, quoteRefresh]);
+    useEffect(() => {
+        const refresh = () => setQuoteRefresh(n => n + 1);
+        const interval = window.setInterval(refresh, 60000);
+        window.addEventListener('focus', refresh);
+        return () => { clearInterval(interval); window.removeEventListener('focus', refresh); };
+    }, []);
+    useEffect(() => {
+        const expiry = quote?.offers?.[0]?.ends_at;
+        if (!expiry) return;
+        const delay = Date.parse(expiry) - Date.now();
+        if (delay <= 0) return;
+        const timer = window.setTimeout(() => setQuoteRefresh(n => n + 1), Math.min(delay + 50, 2147483647));
+        return () => clearTimeout(timer);
+    }, [quote]);
+    const pricingReady = businessAccount || (!!quote && !quoteLoading && !quoteError);
+    const lineTotal = (item: CartLine) => businessAccount ? item.price * item.quantity : quote?.items.filter(i => i.cart_item_id === item.cartItemId).reduce((sum, i) => sum + i.price * i.qty, 0);
+
     const loadCart = async () => {
         if (!userId) {
             setCartItems([]);
@@ -234,6 +265,7 @@ export default function Cart() {
         }
     };
     const handleCheckout = () => {
+        if (!pricingReady || updatingKey) return;
         if (cartItems.some(item => !item.isCustom && item.quantity > item.stock)) {
             setError("Some quantities exceed available stock. Reduce the quantity or remove the item before checkout.");
             return;
@@ -242,7 +274,7 @@ export default function Cart() {
             navigate("/checkout");
         }
     };
-    const subtotal = useMemo(() => {
+    const catalogueSubtotal = useMemo(() => {
         return cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
     }, [cartItems]);
     const totalQuantity = useMemo(() => {
@@ -250,12 +282,15 @@ export default function Cart() {
     }, [cartItems]);
     const [deliveryPolicy, setDeliveryPolicy] = useState<any>(null);
     useEffect(() => { let active = true; storeRequest("/storefront/policy").then(data => { if (active) setDeliveryPolicy(data); }).catch(() => {}); return () => { active = false; }; }, []);
-    const shipping = !deliveryPolicy || subtotal === 0 || subtotal >= deliveryPolicy.free_shipping_threshold ? 0 : Number(deliveryPolicy.delivery_below_threshold);
+    const subtotal = businessAccount ? catalogueSubtotal : (quote?.subtotal || 0);
+    const shipping = !businessAccount ? (quote?.delivery_fee || 0) : !deliveryPolicy || subtotal === 0 || subtotal >= deliveryPolicy.free_shipping_threshold ? 0 : Number(deliveryPolicy.delivery_below_threshold);
     const total = subtotal + shipping;
     const totalOriginalPrice = useMemo(() => {
         return cartItems.reduce((sum, item) => sum + (item.originalPrice || item.price) * item.quantity, 0);
     }, [cartItems]);
-    const totalDiscount = Math.max(0, totalOriginalPrice - subtotal);
+    const totalDiscount = businessAccount ? Math.max(0, totalOriginalPrice - subtotal) : (quote?.discount || 0);
+    const offerDiscount = quote?.offer_discount || 0;
+    const showMoney = (value: number) => pricingReady ? `₹${value.toLocaleString("en-IN", { maximumFractionDigits: 2 })}` : "—";
     if (!userId) {
         return (<div className="v1-cart min-h-screen bg-gray-50 py-10 font-montserrat">
         <div className="max-w-4xl mx-auto px-4">
@@ -300,6 +335,11 @@ export default function Cart() {
             {error}
           </div>) : null}
 
+        {!businessAccount && cartItems.length > 0 && <div className="mx-4 md:mx-8 mb-4">
+          {quoteLoading && <p role="status">Updating your offer and total…</p>}
+          {quoteError && <div role="alert"><p>{quoteError}</p><button onClick={() => setQuoteRefresh(n => n + 1)}>Retry pricing</button></div>}
+          <ShiwangQuoteOffer quote={quote} />
+        </div>}
         {cartItems.length > 0 ? (<div className="flex flex-col lg:flex-row gap-4 md:gap-10 w-full px-0 md:px-8">
             <div className="flex-1 w-full">
               <div className="bg-white md:rounded-xl shadow-sm border-y md:border border-gray-100 overflow-hidden">
@@ -357,10 +397,10 @@ export default function Cart() {
 
                             <div className="hidden md:block text-right">
                               <p className="text-lg font-bold text-gray-900">
-                                ₹{item.price}
+                                {pricingReady ? showMoney(lineTotal(item) || 0) : "—"}<small className="block text-xs font-normal">Line total · Qty {item.quantity}</small>
                               </p>
-                              {item.originalPrice && item.originalPrice > item.price && (<p className="text-sm text-gray-400 line-through">
-                                  ₹{item.originalPrice}
+                              {pricingReady && item.originalPrice && item.originalPrice * item.quantity > (lineTotal(item) || 0) && (<p className="text-sm text-gray-400 line-through">
+                                  ₹{Number(item.originalPrice) * item.quantity}
                                 </p>)}
                             </div>
 
@@ -375,26 +415,26 @@ export default function Cart() {
                                 Size : {item.selectedSize || "-"}
                               </button>
                               <div className="flex items-center border border-gray-200 rounded-md">
-                                <button onClick={() => updateQuantity(item, -1)} disabled={disabled} className="px-3 py-1.5 text-gray-500 hover:bg-gray-50 hover:text-black transition-colors disabled:opacity-50">
+                                <button aria-label={`Decrease quantity for ${item.title}`} onClick={() => updateQuantity(item, -1)} disabled={disabled} className="px-3 py-1.5 text-gray-500 hover:bg-gray-50 hover:text-black transition-colors disabled:opacity-50">
                                   <FiMinus size={14}/>
                                 </button>
                                 <span className="w-8 text-xs text-center font-semibold text-gray-900">
                                   {item.quantity}
                                 </span>
-                                <button onClick={() => updateQuantity(item, 1)} disabled={disabled || (!item.isCustom && item.quantity >= item.stock)} className="px-3 py-1.5 text-gray-500 hover:bg-gray-50 hover:text-black transition-colors disabled:opacity-50">
+                                <button aria-label={`Increase quantity for ${item.title}`} onClick={() => updateQuantity(item, 1)} disabled={disabled || (!item.isCustom && item.quantity >= item.stock)} className="px-3 py-1.5 text-gray-500 hover:bg-gray-50 hover:text-black transition-colors disabled:opacity-50">
                                   <FiPlus size={14}/>
                                 </button>
                               </div>
                             </div>
 
                             <div className="hidden md:flex items-center border border-gray-200 rounded-md">
-                              <button onClick={() => updateQuantity(item, -1)} disabled={disabled} className="px-3 py-2 text-gray-500 hover:bg-gray-50 hover:text-black transition-colors disabled:opacity-50">
+                              <button aria-label={`Decrease quantity for ${item.title}`} onClick={() => updateQuantity(item, -1)} disabled={disabled} className="px-3 py-2 text-gray-500 hover:bg-gray-50 hover:text-black transition-colors disabled:opacity-50">
                                 <FiMinus size={16}/>
                               </button>
                               <span className="w-10 text-center font-semibold text-gray-900">
                                 {item.quantity}
                               </span>
-                              <button onClick={() => updateQuantity(item, 1)} disabled={disabled || (!item.isCustom && item.quantity >= item.stock)} className="px-3 py-2 text-gray-500 hover:bg-gray-50 hover:text-black transition-colors disabled:opacity-50">
+                              <button aria-label={`Increase quantity for ${item.title}`} onClick={() => updateQuantity(item, 1)} disabled={disabled || (!item.isCustom && item.quantity >= item.stock)} className="px-3 py-2 text-gray-500 hover:bg-gray-50 hover:text-black transition-colors disabled:opacity-50">
                                 <FiPlus size={16}/>
                               </button>
                             </div>
@@ -402,14 +442,14 @@ export default function Cart() {
                             <div className="md:hidden text-right flex flex-col items-end">
                               <div className="flex items-end gap-1.5">
                                 <span className="text-[14px] font-extrabold text-gray-900">
-                                  ₹{item.price}
+                                  {pricingReady ? showMoney(lineTotal(item) || 0) : "—"}<small className="block text-xs font-normal">Line total · Qty {item.quantity}</small>
                                 </span>
-                                {item.originalPrice && item.originalPrice > item.price && (<span className="text-[11px] text-gray-400 line-through mb-[2px]">
-                                    ₹{item.originalPrice}
+                                {pricingReady && item.originalPrice && item.originalPrice * item.quantity > (lineTotal(item) || 0) && (<span className="text-[11px] text-gray-400 line-through mb-[2px]">
+                                    ₹{Number(item.originalPrice) * item.quantity}
                                   </span>)}
                               </div>
-                              {item.originalPrice && item.originalPrice > item.price && (<span className="text-[10px] text-[#009b4d] font-semibold mt-1 tracking-wide">
-                                  You saved ₹{item.originalPrice - item.price}
+                              {pricingReady && item.originalPrice && item.originalPrice * item.quantity > (lineTotal(item) || 0) && (<span className="text-[10px] text-[#009b4d] font-semibold mt-1 tracking-wide">
+                                  You saved ₹{Number((item.originalPrice * item.quantity - (lineTotal(item) || 0)).toFixed(2))}
                                 </span>)}
                             </div>
 
@@ -437,15 +477,16 @@ export default function Cart() {
                       <div className="flex justify-between items-center">
                         <p>Total MRP (Incl. of taxes)</p>
                         <p className="font-medium text-gray-900">
-                          ₹{subtotal + totalDiscount}
+                          {showMoney(subtotal + totalDiscount)}
                         </p>
                       </div>
                       <div className="flex justify-between items-center">
-                        <p>Discount on MRP</p>
+                        <p>Product discount</p>
                         <p className="font-medium text-[#009b4d]">
-                          -₹{totalDiscount}
+                          {pricingReady ? `-₹${totalDiscount - offerDiscount}` : "—"}
                         </p>
                       </div>
+                      {offerDiscount > 0 && <div className="flex justify-between items-center"><p>Shiwang pair savings</p><p>-₹{offerDiscount}</p></div>}
                       <div className="flex justify-between items-center">
                         <p>Prepaid delivery estimate</p>
                         <p className="font-medium text-gray-900">
@@ -458,7 +499,7 @@ export default function Cart() {
                 <div className="flex justify-between items-center px-4 py-4 border-t border-gray-50 text-[13px]">
                   <span className="text-gray-800">Estimated prepaid total</span>
                   <span className="font-extrabold text-[15px] text-gray-900">
-                    ₹{total}
+                    {showMoney(total)}
                   </span>
                 </div>
               </div>
@@ -475,15 +516,16 @@ export default function Cart() {
                   <div className="flex justify-between items-center">
                     <p>Total MRP (Incl. of taxes)</p>
                     <p className="font-medium text-gray-900">
-                      ₹{subtotal + totalDiscount}
+                      {showMoney(subtotal + totalDiscount)}
                     </p>
                   </div>
                   <div className="flex justify-between items-center">
-                    <p>Discount on MRP</p>
+                    <p>Product discount</p>
                     <p className="font-medium text-green-600">
-                      -₹{totalDiscount}
+                      {pricingReady ? `-₹${totalDiscount - offerDiscount}` : "—"}
                     </p>
                   </div>
+                  {offerDiscount > 0 && <div className="flex justify-between items-center"><p>Shiwang pair savings</p><p>-₹{offerDiscount}</p></div>}
                   <div className="flex justify-between items-center">
                     <p>Prepaid delivery estimate</p>
                     <p className="font-medium text-gray-900">
@@ -495,12 +537,12 @@ export default function Cart() {
                   <div className="border-t border-gray-100 pt-4 mt-2 flex justify-between items-center">
                     <p className="text-lg font-bold text-gray-900">Estimated prepaid total</p>
                     <p className="text-2xl font-black text-gray-900">
-                      ₹{total}
+                      {showMoney(total)}
                     </p>
                   </div>
                 </div>
 
-                <button type="button" onClick={handleCheckout} className="w-full py-4 bg-primary text-black font-bold tracking-widest text-[13px] uppercase rounded-sm hover:scale-[1.02] transition-transform flex items-center justify-center gap-2 mt-2">
+                <button type="button" disabled={!pricingReady || !!updatingKey} onClick={handleCheckout} className="w-full py-4 bg-primary text-black font-bold tracking-widest text-[13px] uppercase rounded-sm hover:scale-[1.02] transition-transform flex items-center justify-center gap-2 mt-2">
                   Proceed to Checkout <FiArrowRight size={18}/>
                 </button>
 
@@ -538,7 +580,7 @@ export default function Cart() {
           <div className="px-4 py-3 flex justify-between items-center gap-4">
             <div className="flex flex-col flex-1 pl-1">
               <span className="font-extrabold text-[17px] text-gray-900 leading-tight">
-                ₹{total}
+                {showMoney(total)}
               </span>
               <button onClick={() => window.scrollTo({
                 top: document.body.scrollHeight,
@@ -548,7 +590,7 @@ export default function Cart() {
               </button>
             </div>
 
-            <button type="button" onClick={handleCheckout} className="bg-[#fdd835] text-[#2c2c2c] min-w-0 flex-1 sm:min-w-[200px] font-extrabold px-6 py-3.5 rounded-[4px] text-[13px] tracking-wider uppercase flex items-center justify-center transition-opacity hover:opacity-90">
+            <button type="button" disabled={!pricingReady || !!updatingKey} onClick={handleCheckout} className="bg-[#fdd835] text-[#2c2c2c] min-w-0 flex-1 sm:min-w-[200px] font-extrabold px-6 py-3.5 rounded-[4px] text-[13px] tracking-wider uppercase flex items-center justify-center transition-opacity hover:opacity-90">
               Proceed
             </button>
           </div>

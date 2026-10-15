@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import type { Product } from "../Models/Product";
 import { Heart } from "lucide-react";
+import { ShiwangProductOffer, useShiwangOffer } from "./ShiwangOffer";
 const API_BASE = "https://vandhana-shopping-mall-backend.vercel.app";
 type StoredUser = {
     id?: number;
@@ -467,7 +468,8 @@ export const ProductCard: React.FC<ProductCardProps> = (props: any) => {
         product_id,
         id,
     ]);
-    const finalPrice = Number(price || 0);
+    const shiwangOffer = useShiwangOffer(props);
+    const finalPrice = shiwangOffer ? shiwangOffer.single_price : Number(price || 0);
     const finalOriginalPrice = Number(originalPrice ||
         props.original_price ||
         props.mrp ||
@@ -620,6 +622,7 @@ export const ProductCard: React.FC<ProductCardProps> = (props: any) => {
       </div>
 
       <div className="mt-3 flex flex-col">
+        <ShiwangProductOffer product={props} compact />
         {showBrand ? (<p className="truncate font-poppins text-[0.72rem] font-extrabold uppercase leading-tight tracking-wide text-gray-500 md:text-[0.78rem]">
             {displayBrand}
           </p>) : null}
