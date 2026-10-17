@@ -28,6 +28,7 @@ export type Quote = {
   items: { cart_item_id: number; variant_id: number | null; name: string; size: string; colour: string; qty: number; price: number; mrp: number; offer_id?: string; offer_part?: string; image_url: string | null }[];
   offers?: { id: string; quantity: number; pairs: number; singles: number; subtotal: number; discount: number; ends_at: string }[];
   offer_discount?: number;
+  max_reward_points: number; max_points_per_product: number;
   subtotal: number; mrp: number; discount: number; shipping: number; delivery_fee: number; cod_fee: number; reward_points: number; payable: number;
 };
 export type Checkout = { key: string; sale_id: string; payment_method: string; payment_status: string; fully_paid: boolean; amount: number; quote: Quote };

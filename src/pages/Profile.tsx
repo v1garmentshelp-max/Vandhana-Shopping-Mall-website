@@ -924,7 +924,7 @@ function RewardsTab({ wallet, history, loading, error, onRefresh, }: {
             <div className="flex items-center gap-2 text-[#fdd835] mb-3">
               <FiGift size={20}/>
               <span className="text-[11px] font-bold uppercase tracking-[0.18em]">
-                Vandhana Rewards
+                V1 Garments Rewards
               </span>
             </div>
             <p className="text-sm text-gray-400 font-medium">Active Balance</p>
@@ -935,7 +935,7 @@ function RewardsTab({ wallet, history, loading, error, onRefresh, }: {
               <span className="text-sm text-[#fdd835] font-bold mb-1.5">Points</span>
             </div>
             <p className="text-xs text-gray-400 mt-3">
-              Signup rewards remain valid for {wallet?.validityDays || 90} days from the credited date.
+              Signup rewards remain valid for {wallet?.validityDays || 90} days from the credited date. Redeem up to 10 points per product purchased.
             </p>
           </div>
 

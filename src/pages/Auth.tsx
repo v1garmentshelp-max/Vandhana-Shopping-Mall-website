@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { FiArrowRight, FiCheckCircle } from "react-icons/fi";
 import { useNavigate } from "react-router";
 
-const API_BASE = "https://vandhana-shopping-mall-backend.vercel.app";
+import { STORE_API } from '../services/storefrontApi';
+
+const API_BASE = STORE_API;
 
 type AuthMode = "login" | "signup" | "forgot";
 type AuthStep = "form" | "success";

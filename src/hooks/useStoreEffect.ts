@@ -23,13 +23,13 @@ function subscribe(listener:()=>void){
   if(!listeners.size){clearInterval(timer);timer=undefined;window.removeEventListener('focus',refresh);window.removeEventListener('online',refresh);document.removeEventListener('visibilitychange',refresh);}
  };
 }
-// Initial/route loads may show skeletons. Background updates keep current content visible.
+                                                                                           
 export function useStoreEffect(effect:(refresh:boolean)=>(()=>void)|void,dependencies:DependencyList){
  useEffect(()=>{
   let cleanup=effect(false);
   const stop=subscribe(()=>{cleanup?.();cleanup=effect(true)});
   return()=>{stop();cleanup?.()};
-  // The caller supplies the route/filter dependencies, like useEffect.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+                                                                       
+                                                         
  },dependencies);
 }
