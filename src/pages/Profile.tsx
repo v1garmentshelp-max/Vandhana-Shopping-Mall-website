@@ -935,7 +935,7 @@ function RewardsTab({ wallet, history, loading, error, onRefresh, }: {
               <span className="text-sm text-[#fdd835] font-bold mb-1.5">Points</span>
             </div>
             <p className="text-xs text-gray-400 mt-3">
-              Signup rewards remain valid for {wallet?.validityDays || 90} days from the credited date. Redeem up to 10 points per product purchased.
+              Signup rewards remain valid for {wallet?.validityDays || 90} days from the credited date. Redeem up to 10% of the product subtotal after discounts, rounded down to whole points. Delivery and COD charges are excluded.
             </p>
           </div>
 
