@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { FiArrowRight, FiCheckCircle } from "react-icons/fi";
 import { useNavigate } from "react-router";
 
+import AddressFields, { addressError, emptyAddress } from '../components/AddressFields';
+import type { LookupStatus } from '../components/AddressFields';
 import { STORE_API } from '../services/storefrontApi';
 
 const API_BASE = STORE_API;
@@ -127,6 +129,10 @@ export default function Auth() {
     confirmPassword: "",
   });
 
+  const [addAddress, setAddAddress] = useState(false);
+  const [signupAddress, setSignupAddress] = useState({ ...emptyAddress });
+  const [addressStatus, setAddressStatus] = useState<LookupStatus>('idle');
+
   const [forgotForm, setForgotForm] = useState({
     email: "",
     otp: "",
@@ -191,28 +197,12 @@ export default function Auth() {
       userType: "b2c",
       user_type: "B2C",
       customer_type: "B2C",
+      ...(addAddress ? { address: { ...signupAddress, fullName: signupForm.name.trim(), mobile: signupForm.mobile.trim() } } : {}),
     };
 
-    const endpoints = [
-      `${API_BASE}/api/auth/signup`,
-      `${API_BASE}/api/auth/register`,
-      `${API_BASE}/api/users/signup`,
-      `${API_BASE}/api/users/register`,
-    ];
-
-    let lastMessage = "Signup failed";
-
-    for (const endpoint of endpoints) {
-      try {
-        const { res, data } = await requestJson(endpoint, payload);
-        if (res.ok) {
-          return data as AuthResponse;
-        }
-        lastMessage = (data as AuthResponse)?.message || lastMessage;
-      } catch {}
-    }
-
-    throw new Error(lastMessage);
+    const { res, data } = await requestJson(`${API_BASE}/api/auth/signup`, payload);
+    if (!res.ok) throw new Error(data?.message || "Signup failed");
+    return data as AuthResponse;
   };
 
   const tryLogin = async (email: string, password: string) => {
@@ -279,6 +269,11 @@ export default function Auth() {
         throw new Error("Passwords do not match");
       }
 
+      if (addAddress) {
+        const invalid = addressError({ ...signupAddress, fullName: signupForm.name.trim(), mobile: signupForm.mobile.trim() });
+        if (invalid) throw new Error(invalid);
+        if (['loading', 'not_found', 'mismatch'].includes(addressStatus)) throw new Error('Check your PIN code and state before creating your account.');
+      }
       await trySignup();
 
       const loginData = await tryLogin(
@@ -690,10 +685,14 @@ export default function Auth() {
                 />
               </div>
 
+              <div className="v1-signup-address">
+                <label className="flex items-center gap-3 text-sm font-semibold"><input type="checkbox" checked={addAddress} disabled={loading} onChange={event => setAddAddress(event.target.checked)} />Add a delivery address (optional)</label>
+                {addAddress && <><p>Save your address now to use it at checkout.</p><AddressFields value={signupAddress} onChange={setSignupAddress} disabled={loading} includeRecipient={false} onLookupStatus={setAddressStatus} /></>}
+              </div>
               <div>
                 <button
                   type="submit"
-                  disabled={!canSignup || loading}
+                  disabled={!canSignup || loading || (addAddress && ['loading', 'not_found', 'mismatch'].includes(addressStatus))}
                   className="w-full flex justify-center items-center gap-2 py-4 px-4 border border-transparent rounded-md shadow-sm text-[13px] font-extrabold uppercase tracking-widest text-[#2c2c2c] bg-primary hover:bg-[#f2c713] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                 >
                   {loading ? "Please wait..." : "Create Account"}

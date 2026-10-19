@@ -1,4 +1,4 @@
-import { customerFetch } from "../services/storefrontApi";
+import { customerFetch, storeRequest, STORE_API } from "../services/storefrontApi";
 import "../styles/mobile-ui.css";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
@@ -6,7 +6,7 @@ import { BiGridAlt } from "react-icons/bi";
 import { FiBox, FiClock, FiGift, FiMapPin, FiUser, FiLogOut, FiInfo, FiChevronRight, } from "react-icons/fi";
 import { fetchBranchProducts } from "../services/productsApi";
 import type { Product, ProductVariant } from "../Models/Product";
-const API_BASE = "https://vandhana-shopping-mall-backend.vercel.app";
+const API_BASE = STORE_API;
 type StoredUser = {
     id?: number;
     name?: string;
@@ -437,6 +437,16 @@ export default function Profile() {
         currentPassword: "",
         newPassword: "",
     });
+    const [savedAddresses, setSavedAddresses] = useState<AddressRecord[]>([]);
+    const [addressLoadError, setAddressLoadError] = useState('');
+    useEffect(() => {
+        if (!getStoredToken()) return;
+        const controller = new AbortController();
+        storeRequest<{ id: string; label: string; address: Record<string, any> }[]>('/storefront/addresses', { signal: controller.signal }).then(rows => {
+            if (!controller.signal.aborted) setSavedAddresses(rows.map(row => ({ key: row.id, label: row.label, name: row.address.fullName || '', mobile: row.address.mobile || '', address: row.address })));
+        }).catch(() => { if (!controller.signal.aborted) setAddressLoadError('Saved addresses could not be loaded. Refresh this page to retry.'); });
+        return () => controller.abort();
+    }, []);
     const [orders, setOrders] = useState<OrderRecord[]>([]);
     const [ordersError,setOrdersError]=useState("");
     const [rewardWallet, setRewardWallet] = useState<RewardWallet | null>(null);
@@ -686,7 +696,8 @@ export default function Profile() {
     };
     const addresses = useMemo<AddressRecord[]>(() => {
         const seen = new Set<string>();
-        const out: AddressRecord[] = [];
+        const out: AddressRecord[] = [...savedAddresses];
+        savedAddresses.forEach(item => seen.add(buildAddressKey(item.address)));
         orders.forEach((order, index) => {
             const address = order.shipping_address && typeof order.shipping_address === "object"
                 ? order.shipping_address
@@ -706,7 +717,7 @@ export default function Profile() {
             });
         });
         return out;
-    }, [orders, profile.name, profile.mobile]);
+    }, [orders, profile.name, profile.mobile, savedAddresses]);
     const sidebarLinks = [
         { id: "overview", icon: <BiGridAlt size={22}/>, title: "Overview" },
         { id: "orders", icon: <FiBox size={22}/>, title: "My Orders" },
@@ -758,7 +769,7 @@ export default function Profile() {
             case "orders":
                 return <OrdersTab orders={orders} error={ordersError} onRetry={()=>void loadProfileAndOrders(profile.email)}/>;
             case "addresses":
-                return <AddressesTab addresses={addresses}/>;
+                return <><p role="status">{addressLoadError}</p><AddressesTab addresses={addresses}/></>;
             case "rewards":
                 return (<RewardsTab wallet={rewardWallet} history={rewardHistory} loading={rewardLoading} error={rewardError} onRefresh={loadRewards}/>);
             case "profile":
