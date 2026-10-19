@@ -175,15 +175,20 @@ export default function Auth() {
   }, [signupForm]);
 
   const requestJson = async (url: string, body: Record<string, any>) => {
-    const res = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-    });
-
-    const data = await res.json().catch(() => ({}));
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+    } catch {
+      throw new Error(url.endsWith('/signup') ? "We could not confirm registration. Check your connection and try signing in before registering again." : "We could not reach the store. Check your connection and try again.");
+    }
+    const data = await res.json().catch(() => null);
+    if (res.status === 404 || res.status === 405 || !data || typeof data !== 'object' || Array.isArray(data)) {
+      throw new Error(url.endsWith('/signup') ? "Registration is temporarily unavailable. Please try again later." : "Account services are temporarily unavailable. Please try again later.");
+    }
     return { res, data };
   };
 
@@ -263,6 +268,8 @@ export default function Auth() {
 
     setLoading(true);
     setError("");
+    setNotice("");
+    let accountCreated = false;
 
     try {
       if (signupForm.password.trim() !== signupForm.confirmPassword.trim()) {
@@ -275,6 +282,7 @@ export default function Auth() {
         if (['loading', 'not_found', 'mismatch'].includes(addressStatus)) throw new Error('Check your PIN code and state before creating your account.');
       }
       await trySignup();
+      accountCreated = true;
 
       const loginData = await tryLogin(
         signupForm.email.trim(),
@@ -298,7 +306,14 @@ export default function Auth() {
       setStep("success");
       setTimeout(() => navigate("/profile"), 1000);
     } catch (err: any) {
-      setError(err?.message || "Unable to sign up");
+      if (accountCreated) {
+        setMode("login");
+        setLoginForm({ email: signupForm.email.trim(), password: "" });
+        setNotice("Your account was created. Please sign in to continue; you do not need to register again.");
+        setError(err?.message || "Automatic sign-in could not be completed.");
+      } else {
+        setError(err?.message || "Unable to sign up");
+      }
     } finally {
       setLoading(false);
     }

@@ -1,4 +1,8 @@
-export const STORE_API = (import.meta.env.VITE_API_BASE || 'https://vandhana-shopping-mall-backend.vercel.app').replace(/\/+$/, '');
+export function normalizeStoreApi(value?: string) {
+  const configured = String(value || '').trim();
+  return (configured || 'https://vandhana-shopping-mall-backend.vercel.app').replace(/\/+$/, '').replace(/(?:\/api)+$/i, '');
+}
+export const STORE_API = normalizeStoreApi(import.meta.env.VITE_API_BASE);
 export const customerToken = () => localStorage.getItem('token') || sessionStorage.getItem('token') || localStorage.getItem('authToken') || sessionStorage.getItem('authToken') || localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token') || '';
 export function customerFetch(input: RequestInfo | URL, options: RequestInit = {}) {
   const headers=new Headers(options.headers);

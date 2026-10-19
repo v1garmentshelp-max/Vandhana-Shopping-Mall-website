@@ -1,3 +1,46 @@
+VERCEL BUILD AND REGISTRATION FIX — 19 OCTOBER 2026
+
+The failed commit 15a8fc4 contains src/Data/india-states.json, but AddressFields.tsx imports src/data/india-states.json. Linux paths are case-sensitive. The corrected AddressFields.tsx embeds a typed list of all 36 states and Union territories, so it no longer depends on either JSON path. This resolves TS2307 and the associated TS7006 errors. The complete project also retains the other source and asset files from that GitHub commit.
+
+The live website was still serving the older registration code after the failed deployment. That code tried /api/auth/signup, /api/auth/register, /api/users/signup and /api/users/register, allowing a later 404 to hide the original error. The corrected registration uses only POST /api/auth/signup and preserves validation, duplicate-account and server messages. A failed automatic sign-in after successful registration now asks the customer to sign in without registering the account again. No production account was created during verification.
+
+VITE_API_BASE now accepts the backend origin with or without a final /api and normalizes it before creating requests, preventing /api/api URLs. Invalid API URL configuration stops the build with a clear message. Node.js is pinned to 24.x in package.json and package-lock.json.
+
+DEPLOY THIS WEBSITE
+
+1. Extract the ZIP. Copy the contents of its vandhana-website directory into the root of your Vandhana-Shopping-Mall-website GitHub repository. package.json, package-lock.json, vite.config.ts, vercel.json, index.html, src and public must be at the project root. Do not upload only individual component files or add another nested vandhana-website folder inside the existing project.
+
+2. In the website Vercel project, set this environment variable for Production and any Preview environments you use:
+
+VITE_API_BASE=https://vandhana-shopping-mall-backend.vercel.app
+
+3. Confirm the Vercel Root Directory points to that directory containing package.json. Build command: npm run build. Output directory: dist. Node.js: 24.x.
+
+4. Build locally from the website project directory:
+
+npm ci
+npm run build
+
+5. Commit the updated project files to GitHub and redeploy the new commit in Vercel. Refresh the website after the deployment succeeds. A failed deployment leaves the older website running.
+
+The backend route /api/auth/signup was verified live with an empty validation-only request: it returned 400 with the required-fields message, confirming that the route exists. The live /healthz endpoint returned 200 and /api/locations/states returned the state list. A duplicate account, database failure or another registration problem must be handled using its actual returned message; the corrected form no longer hides it behind a fallback 404.
+
+No new database migration is introduced by this website fix. If you have not run the saved-address migration from the previous backend release, run these in the backend directory with its existing DATABASE_URL:
+
+npm run migrate:addresses
+npm run preflight:addresses
+
+The build correction does not change points, offer prices, saved addresses, carrier configuration or email credentials. The earlier 10% reward cap and V1 Garments password-reset branding remain included.
+
+VERIFICATION
+
+Production build verified from the corrected complete archive on Linux with Node.js 24. State suggestions, PIN autofill, stale-response handling, saved checkout addresses, COD/prepaid estimates, and signup address submission passed interaction checks. Registration error checks verified 400, 409, 500, 404, invalid HTML responses, network failures and failed automatic sign-in. Tests used a backend URL ending in /api/ to verify normalization. These checks do not create accounts or orders in production.
+
+Vercel Node.js version reference:
+https://vercel.com/docs/functions/runtimes/node-js/node-js-versions
+
+PREVIOUS ADDRESS AND DELIVERY SETUP
+
 V1 GARMENTS — ADDRESS AND DELIVERY UPDATE — 19 OCTOBER 2026
 
 Included in this release

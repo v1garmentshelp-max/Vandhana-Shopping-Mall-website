@@ -1,8 +1,46 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
-import states from '../data/india-states.json';
 import { storeRequest, StoreError } from '../services/storefrontApi';
 import '../styles/address.css';
+
+const states: readonly string[] = [
+  "Andaman and Nicobar Islands",
+  "Andhra Pradesh",
+  "Arunachal Pradesh",
+  "Assam",
+  "Bihar",
+  "Chandigarh",
+  "Chhattisgarh",
+  "Dadra and Nagar Haveli and Daman and Diu",
+  "Delhi",
+  "Goa",
+  "Gujarat",
+  "Haryana",
+  "Himachal Pradesh",
+  "Jammu and Kashmir",
+  "Jharkhand",
+  "Karnataka",
+  "Kerala",
+  "Ladakh",
+  "Lakshadweep",
+  "Madhya Pradesh",
+  "Maharashtra",
+  "Manipur",
+  "Meghalaya",
+  "Mizoram",
+  "Nagaland",
+  "Odisha",
+  "Puducherry",
+  "Punjab",
+  "Rajasthan",
+  "Sikkim",
+  "Tamil Nadu",
+  "Telangana",
+  "Tripura",
+  "Uttar Pradesh",
+  "Uttarakhand",
+  "West Bengal"
+];
 
 export type Address = { fullName: string; mobile: string; line1: string; line2: string; city: string; state: string; pincode: string };
 export type LookupStatus = 'idle' | 'loading' | 'found' | 'not_found' | 'unavailable' | 'mismatch';
