@@ -1,3 +1,5 @@
+CURRENT UPDATE: Read COD-ADVANCE-UPDATE.txt first. Payment rules, pricing examples and validation results below describe earlier releases and are superseded by that guide where they differ. The Shiwang offer has not been extended beyond 20 October 2026.
+
 VERCEL BUILD AND REGISTRATION FIX — 19 OCTOBER 2026
 
 The failed commit 15a8fc4 contains src/Data/india-states.json, but AddressFields.tsx imports src/data/india-states.json. Linux paths are case-sensitive. The corrected AddressFields.tsx embeds a typed list of all 36 states and Union territories, so it no longer depends on either JSON path. This resolves TS2307 and the associated TS7006 errors. The complete project also retains the other source and asset files from that GitHub commit.
