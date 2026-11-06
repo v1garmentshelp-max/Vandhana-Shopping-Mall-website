@@ -21,11 +21,37 @@
   }
   .v1-categories { padding: 24px 16px; }
   .v1-categories h2 { font-size: 30px; line-height: 1.1; }
-  .v1-category-grid { gap: 12px; height: auto; }
+  /* Category tiles: allow the full text label to occupy the available space.
+     The previous rule incorrectly gave the NAME span a fixed 28px by 28px box,
+     forcing labels such as BOTTOM WEAR, INNER WEAR and T-SHIRTS to overflow. */
+  .v1-category-grid { column-gap: 10px; row-gap: 7px; height: auto; }
   .v1-category-grid > a { border-radius: 16px; box-shadow: 0 4px 12px #0000000d; aspect-ratio: 3 / 4; }
-  .v1-category-grid > a > div:last-child { left: 12px; bottom: 12px; width: calc(100% - 24px); gap: 6px; }
-  .v1-category-grid h3 { font-size: 18px; line-height: 1.1; overflow-wrap: anywhere; }
-  .v1-category-grid > a > div:last-child > span { width: 28px; height: 28px; flex-shrink: 0; }
+  .v1-category-grid > a > div:last-child {
+    left: 10px;
+    right: 10px;
+    bottom: 9px;
+    width: auto;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 5px;
+  }
+  .v1-category-grid > a > div:last-child > span {
+    flex: 1 1 auto;
+    min-width: 0;
+    width: auto;
+    height: auto;
+    font-size: clamp(14px, 4vw, 18px);
+    line-height: 1.1;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .v1-category-grid > a > div:last-child > svg {
+    flex: 0 0 18px;
+    width: 18px;
+    height: 18px;
+    align-self: flex-end;
+  }
   .v1-named { padding: 24px 16px 12px; }
   .v1-named > div > div:first-child { flex-wrap: nowrap; align-items: center; gap: 12px; margin-bottom: 16px; }
   .v1-named h2 { font-size: 28px; line-height: 1.1; }
