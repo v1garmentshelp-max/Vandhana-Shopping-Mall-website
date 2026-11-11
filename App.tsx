@@ -1,0 +1,79 @@
+import { BrowserRouter, Route, Routes, useLocation } from "react-router";
+import { useEffect } from "react";
+import "./App.css";
+import Header from "./components/Header";
+import Footer from "./components/Footer";
+import Home from "./pages/Home";
+import Men from "./pages/Men";
+import ProductDetailsPage from "./pages/ProductDetails/ProductDetailsPage";
+import Collection from "./pages/Collection";
+import Women from "./pages/Women";
+import Cart from "./pages/Cart";
+import Wishlist from "./pages/Wishlist";
+import NotFound from "./pages/NotFound";
+import Auth from "./pages/Auth";
+import Profile from "./pages/Profile";
+import ScrollToTop from "./components/ScrollToTop";
+import Kids from "./pages/Kids";
+import Customizer from "./pages/Customizer";
+import Checkout from "./pages/Checkout";
+import OrderDetails from "./pages/OrderDetails";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import AccountDeletion from "./pages/AccountDeletion";
+
+import { ShiwangOfferProvider, ShiwangBanner } from "./components/ShiwangOffer";
+import ShiwangCollection from "./pages/ShiwangCollection";
+
+function AppContent() {
+  const location = useLocation();
+  const isCustomizePage = location.pathname.startsWith("/customize");
+
+  useEffect(() => {
+    if (isCustomizePage) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "auto";
+    }
+
+    return () => {
+      document.body.style.overflow = "auto";
+    };
+  }, [isCustomizePage]);
+
+  return (
+    <>
+      <ScrollToTop />
+      <Header />
+      {!isCustomizePage && <ShiwangBanner />}
+      <Routes>
+        <Route path="/offers/shiwang" element={<ShiwangCollection />} />
+        <Route path="/" element={<Home />} />
+        <Route path="/men" element={<Men />} />
+        <Route path="/women" element={<Women />} />
+        <Route path="/kids" element={<Kids />} />
+        <Route path="/customize" element={<Customizer />} />
+        <Route path="/product/:id" element={<ProductDetailsPage />} />
+        <Route path="/collections" element={<Collection />} />
+        <Route path="/cart" element={<Cart />} />
+        <Route path="/wishlist" element={<Wishlist />} />
+        <Route path="/auth" element={<Auth />} />
+        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+        <Route path="/account-deletion" element={<AccountDeletion />} />
+        <Route path="/profile" element={<Profile />} />
+        <Route path="*" element={<NotFound />} />
+        <Route path="/checkout" element={<Checkout />} />
+        <Route path="/orders/:id" element={<OrderDetails />} />
+        <Route path="/order-success/:id" element={<OrderDetails />} />
+      </Routes>
+      {!isCustomizePage && <Footer />}
+    </>
+  );
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <ShiwangOfferProvider><AppContent /></ShiwangOfferProvider>
+    </BrowserRouter>
+  );
+}
