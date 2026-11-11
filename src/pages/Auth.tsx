@@ -850,12 +850,8 @@ export default function Auth() {
           )}
 
           <div className="mt-8 text-center text-xs font-medium text-gray-500 leading-relaxed px-4">
-            By continuing, you agree to our{" "}
-            <a href="#" className="font-bold text-gray-900 hover:underline">
-              Terms of Use
-            </a>{" "}
-            and{" "}
-            <a href="#" className="font-bold text-gray-900 hover:underline">
+            By continuing, you acknowledge our{" "}
+            <a href="/privacy-policy" className="font-bold text-gray-900 hover:underline">
               Privacy Policy
             </a>
             .

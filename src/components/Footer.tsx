@@ -20,6 +20,8 @@ const Footer: React.FC = () => {
     { name: "Wishlist", path: "/wishlist" },
     { name: "Cart", path: "/cart" },
     { name: "Profile", path: "/profile" },
+    { name: "Privacy Policy", path: "/privacy-policy" },
+    { name: "Account Deletion", path: "/account-deletion" },
     { name: "Support", path: "/support" },
   ];
 

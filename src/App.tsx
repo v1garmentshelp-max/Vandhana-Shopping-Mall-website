@@ -18,6 +18,8 @@ import Kids from "./pages/Kids";
 import Customizer from "./pages/Customizer";
 import Checkout from "./pages/Checkout";
 import OrderDetails from "./pages/OrderDetails";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import AccountDeletion from "./pages/AccountDeletion";
 
 import { ShiwangOfferProvider, ShiwangBanner } from "./components/ShiwangOffer";
 import ShiwangCollection from "./pages/ShiwangCollection";
@@ -55,6 +57,8 @@ function AppContent() {
         <Route path="/cart" element={<Cart />} />
         <Route path="/wishlist" element={<Wishlist />} />
         <Route path="/auth" element={<Auth />} />
+        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+        <Route path="/account-deletion" element={<AccountDeletion />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="*" element={<NotFound />} />
         <Route path="/checkout" element={<Checkout />} />
