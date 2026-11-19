@@ -69,6 +69,24 @@ const Footer: React.FC = () => {
               Explore men, women, kids, and custom wear collections with quality
               styles, fresh arrivals, and easy shopping.
             </p>
+
+            <address className="mt-6 max-w-sm space-y-1 font-poppins text-sm not-italic leading-relaxed text-white/80">
+              <p className="font-semibold text-white">Vandana Garments</p>
+              <p>
+                Dr No 8/4/54, GT Road, Srikakulam
+                <br />
+                Andhra Pradesh – 532001
+              </p>
+              <p>
+                Phone:{" "}
+                <a
+                  href="tel:+919701883266"
+                  className="text-white underline underline-offset-4 hover:text-primary"
+                >
+                  9701883266
+                </a>
+              </p>
+            </address>
           </div>
 
           <div className="md:col-span-7 grid grid-cols-2 md:grid-cols-3 gap-8">
